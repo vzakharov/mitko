@@ -2,6 +2,15 @@
 
 An LLM-powered Telegram bot that helps match IT job seekers with employers/contractors through natural conversation.
 
+## Usage
+
+1. Users start a conversation with `/start`
+2. Bot asks questions to understand their profile (seeker vs provider)
+3. Once profile is complete, bot stores it with vector embeddings
+4. Background job periodically finds matches using cosine similarity
+5. Both parties are notified and can accept/reject
+6. When both accept, contact details are shared
+
 ## Features
 
 - Freeform conversation to understand user profiles
@@ -65,15 +74,6 @@ curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https:
 - `MATCHING_INTERVAL_MINUTES` - How often to run matching (default: 30)
 - `SIMILARITY_THRESHOLD` - Minimum similarity score for matches (default: 0.7)
 - `MAX_MATCHES_PER_PROFILE` - Max matches per profile per run (default: 5)
-
-## Usage
-
-1. Users start a conversation with `/start`
-2. Bot asks questions to understand their profile (seeker vs provider)
-3. Once profile is complete, bot stores it with vector embeddings
-4. Background job periodically finds matches using cosine similarity
-5. Both parties are notified and can accept/reject
-6. When both accept, contact details are shared
 
 ## Development
 
