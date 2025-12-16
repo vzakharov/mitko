@@ -63,3 +63,9 @@ def start_matching_scheduler(bot: Bot) -> None:
     )
     scheduler.start()
 
+
+def stop_matching_scheduler() -> None:
+    """Stop the scheduler gracefully"""
+    if scheduler.running:
+        scheduler.shutdown(wait=True)
+

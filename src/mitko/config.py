@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str
     telegram_webhook_secret: str | None = None
     telegram_webhook_url: str | None = None
+    telegram_mode: Literal["webhook", "polling", "auto"] = "auto"
 
     llm_provider: Literal["openai", "anthropic"] = "openai"
     openai_api_key: str | None = None
@@ -27,6 +28,12 @@ class Settings(BaseSettings):
             raise ValueError("OPENAI_API_KEY is required when using OpenAI")
         if self.llm_provider == "anthropic" and not self.anthropic_api_key:
             raise ValueError("ANTHROPIC_API_KEY is required when using Anthropic")
+
+    def get_effective_mode(self) -> Literal["webhook", "polling"]:
+        """Resolve auto mode to actual mode"""
+        if self.telegram_mode == "auto":
+            return "webhook" if self.telegram_webhook_url else "polling"
+        return self.telegram_mode
 
 
 def get_settings() -> Settings:

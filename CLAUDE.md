@@ -14,8 +14,15 @@ uv sync  # or: pip install -e .
 cp .env.example .env  # then edit with credentials
 alembic upgrade head
 
-# Run
+# Run (Development - Long Polling)
+python -m src.mitko.main
+# Or explicitly:
+TELEGRAM_MODE=polling python -m src.mitko.main
+
+# Run (Production - Webhook)
 uvicorn src.mitko.main:app --reload --host 0.0.0.0 --port 8000
+# Or explicitly:
+TELEGRAM_MODE=webhook uvicorn src.mitko.main:app --host 0.0.0.0 --port 8000
 
 # Code quality
 black src/ tests/
@@ -41,10 +48,12 @@ alembic upgrade head
 - Profile extraction: LLM returns `<PROFILE_COMPLETE>` token + JSON when ready
 - Vector matching: pgvector cosine similarity with configurable threshold
 - Two-phase matching: both parties must accept before connection
+- Runtime modes: Webhook (production) or Long Polling (development) - auto-detected or explicit via `TELEGRAM_MODE`
 
 **Structure**:
 - `models/`: SQLAlchemy ORM (User, Profile with embeddings, Conversation, Match)
-- `bot/`: Telegram handlers and keyboards
+- `bot/`: Telegram handlers, keyboards, and bot initialization
+- `runtime/`: Modular runtime implementations (webhook, polling)
 - `llm/`: Provider abstraction (OpenAI/Anthropic)
 - `services/`: Business logic (profiler, matcher)
 - `jobs/`: Background matching scheduler

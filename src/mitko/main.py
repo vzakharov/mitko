@@ -1,50 +1,55 @@
-from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
-from aiogram import Bot, Dispatcher
-from aiohttp import web
+import asyncio
 import logging
 
+from fastapi import FastAPI
+
 from .config import settings
-from .bot.handlers import router, set_bot_instance
-from .jobs.matching import start_matching_scheduler
+from .bot.core import initialize_bot
+from .runtime.webhook import WebhookRuntime
+from .runtime.polling import PollingRuntime
+from .jobs.matching import start_matching_scheduler, stop_matching_scheduler
 
 logger = logging.getLogger(__name__)
 
-bot = Bot(token=settings.telegram_bot_token)
-set_bot_instance(bot)
-dp = Dispatcher()
-dp.include_router(router)
+
+def get_runtime():
+    """Factory function to select runtime based on config"""
+    mode = settings.get_effective_mode()
+
+    if mode == "webhook":
+        if not settings.telegram_webhook_url:
+            raise ValueError("Webhook mode requires TELEGRAM_WEBHOOK_URL")
+        logger.info("Using webhook mode")
+        return WebhookRuntime()
+    else:
+        logger.info("Using polling mode")
+        return PollingRuntime()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    if settings.telegram_webhook_url:
-        await bot.set_webhook(
-            url=settings.telegram_webhook_url,
-            secret_token=settings.telegram_webhook_secret,
-        )
-    start_matching_scheduler(bot)
-    yield
-    if settings.telegram_webhook_url:
-        await bot.delete_webhook()
+# For webhook mode (uvicorn entry point)
+app: FastAPI | None = None
+if settings.get_effective_mode() == "webhook":
+    bot, dp = initialize_bot()
+    runtime = WebhookRuntime()
+    app = runtime.create_app(bot, dp)
 
 
-app = FastAPI(lifespan=lifespan)
+# For polling mode (direct execution)
+async def main():
+    """Main entry point for polling mode"""
+    bot, dp = initialize_bot()
+    runtime = get_runtime()
+
+    try:
+        await runtime.startup(bot, dp)
+        start_matching_scheduler(bot)
+        await runtime.run(bot, dp)
+    finally:
+        stop_matching_scheduler()
+        await runtime.shutdown(bot, dp)
 
 
-@app.post("/webhook/{secret_path:str}")
-async def webhook_handler(request: Request, secret_path: str) -> web.Response:
-    if settings.telegram_webhook_secret and secret_path != settings.telegram_webhook_secret:
-        return web.Response(status=403)
-
-    update_dict = await request.json()
-    from aiogram.types import Update
-    update = Update(**update_dict)
-    await dp.feed_update(bot, update)
-    return web.Response(status=200)
-
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    asyncio.run(main())
 
