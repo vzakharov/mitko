@@ -1,9 +1,13 @@
 from sqlalchemy import BigInteger, String, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 from ..models.base import Base
+
+if TYPE_CHECKING:
+    from .conversation import Conversation
+    from .profile import Profile
 
 
 UserRole = Literal["seeker", "provider"]
