@@ -4,10 +4,13 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
 import uuid
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 from ..models.base import Base
 
+if TYPE_CHECKING:
+    from .user import User
+    from .match import Match
 
 UserRole = Literal["seeker", "provider"]
 

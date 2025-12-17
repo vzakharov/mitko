@@ -3,10 +3,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 import uuid
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from ..models.base import Base
 
+if TYPE_CHECKING:
+    from .profile import Profile
 
 MatchStatus = Literal["pending", "a_accepted", "b_accepted", "connected", "rejected"]
 
