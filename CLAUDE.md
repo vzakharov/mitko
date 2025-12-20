@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**IMPORTANT**: Update this file whenever making major architectural changes to keep it accurate.
+
 ## Project Overview
 
 Mitko is an LLM-powered Telegram bot that matches IT job seekers with employers through conversational AI and vector-based semantic matching.
@@ -46,24 +48,27 @@ alembic upgrade head
 
 ## Architecture
 
-**Stack**: FastAPI (webhooks) + aiogram v3 (Telegram) + SQLAlchemy 2.0 async + PostgreSQL/pgvector + APScheduler
+**Stack**: FastAPI (webhooks) + aiogram v3 (Telegram) + SQLAlchemy 2.0 async + PostgreSQL/pgvector + APScheduler + PydanticAI
 
-**Flow**: User chats with bot → LLM extracts profile → Embedding generated → Background job matches profiles using vector similarity → Both parties accept → Contact details shared
+**Flow**: User chats with bot → PydanticAI agent extracts structured profile → Embedding generated → Background job matches profiles using vector similarity → Both parties accept → Contact details shared
 
 **Key Patterns**:
 - Async/await throughout (asyncpg, async sessions)
 - SQLAlchemy 2.0 with `Mapped[]` type hints
-- LLM provider abstraction via Protocol (swappable OpenAI/Anthropic)
-- Profile extraction: LLM returns `<PROFILE_COMPLETE>` token + JSON when ready
+- LLM provider abstraction via Protocol (swappable OpenAI/Anthropic) for conversations
+- PydanticAI agents for structured LLM outputs (profile extraction, summaries, match rationales)
+- Type-safe validated outputs via Pydantic models
+- Automatic retry on invalid LLM responses
 - Vector matching: pgvector cosine similarity with configurable threshold
 - Two-phase matching: both parties must accept before connection
 - Runtime modes: Webhook (production) or Long Polling (development) - auto-detected or explicit via `TELEGRAM_MODE`
 
 **Structure**:
-- `models/`: SQLAlchemy ORM (User, Profile with embeddings, Conversation, Match)
+- `models/`: SQLAlchemy ORM (User with embeddings, Conversation, Match)
+- `agents/`: PydanticAI agents for structured outputs (ProfileAgent, SummaryAgent, RationaleAgent)
 - `bot/`: Telegram handlers, keyboards, and bot initialization
 - `runtime/`: Modular runtime implementations (webhook, polling)
-- `llm/`: Provider abstraction (OpenAI/Anthropic)
+- `llm/`: Provider abstraction (OpenAI/Anthropic) for conversations and embeddings
 - `services/`: Business logic (profiler, matcher)
 - `jobs/`: Background matching scheduler
 
