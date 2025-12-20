@@ -8,8 +8,7 @@ from sqlalchemy import select
 
 from ..models import User, Conversation, UserState, get_db
 from ..services.profiler import ProfileService
-from ..agents import ProfileAgent, get_model_name
-from .conversation import SYSTEM_PROMPT
+from ..agents import ConversationAgent, ProfileData, get_model_name
 from .keyboards import match_consent_keyboard
 
 router = Router()
@@ -63,6 +62,24 @@ async def cmd_start(message: Message) -> None:
         )
 
 
+def _format_profile_card(profile: ProfileData) -> str:
+    """Format profile as a user-visible card"""
+    card_parts = ["📋 Your Profile:\n"]
+
+    # Role
+    roles = []
+    if profile.is_seeker:
+        roles.append("Job Seeker")
+    if profile.is_provider:
+        roles.append("Hiring/Providing")
+    card_parts.append(f"Role: {' & '.join(roles)}")
+
+    # Summary
+    card_parts.append(f"\n\n{profile.summary}")
+
+    return "".join(card_parts)
+
+
 @router.message()
 async def handle_message(message: Message) -> None:
     if not message.text:
@@ -72,32 +89,46 @@ async def handle_message(message: Message) -> None:
         user = await get_or_create_user(message.from_user.id, session)
         conv = await get_or_create_conversation(message.from_user.id, session)
 
+        # Add user message
         conv.messages.append({"role": "user", "content": message.text})
         await session.commit()
 
-        if len(conv.messages) >= 4 and not user.is_complete:
-            try:
-                profile_agent = ProfileAgent(get_model_name())
-                profile_data = await profile_agent.extract_profile(conv.messages)
+        # Use unified conversation agent
+        conversation_agent = ConversationAgent(get_model_name())
 
-                profiler = ProfileService(session)
-                await profiler.create_profile(user, conv, profile_data)
+        # Prepare existing profile for updates
+        existing_profile = None
+        if user.is_complete and user.summary:
+            existing_profile = ProfileData(
+                is_seeker=user.is_seeker or False,
+                is_provider=user.is_provider or False,
+                summary=user.summary
+            )
 
-                await message.answer(
-                    "Great! Your profile is complete. "
-                    "I'll notify you when I find potential matches."
-                )
-                return
-            except Exception:
-                pass
+        # Get response from agent
+        response = await conversation_agent.chat(conv.messages, existing_profile)
 
-        from ..llm import get_llm_provider
-        llm = get_llm_provider()
-        response = await llm.chat(conv.messages, SYSTEM_PROMPT)
+        # Handle profile creation/update
+        if response.profile:
+            profiler = ProfileService(session)
+            is_update = user.is_complete
 
-        conv.messages.append({"role": "assistant", "content": response})
+            await profiler.create_or_update_profile(
+                user,
+                response.profile,
+                is_update=is_update
+            )
+
+            # Show profile card to user
+            profile_card = _format_profile_card(response.profile)
+            await message.answer(f"{response.utterance}\n\n{profile_card}")
+        else:
+            # Just send the utterance
+            await message.answer(response.utterance)
+
+        # Store assistant response
+        conv.messages.append({"role": "assistant", "content": response.utterance})
         await session.commit()
-        await message.answer(response)
 
 
 @router.callback_query(F.data.startswith("match_accept:"))
@@ -106,7 +137,7 @@ async def handle_match_accept(callback: CallbackQuery) -> None:
     match_id = UUID(match_id_str)
 
     async for session in get_db():
-        from ..models import Match, MatchStatus, Profile
+        from ..models import Match, MatchStatus
 
         result = await session.execute(select(Match).where(Match.id == match_id))
         match = result.scalar_one_or_none()
@@ -114,29 +145,29 @@ async def handle_match_accept(callback: CallbackQuery) -> None:
             await callback.answer("Match not found", show_alert=True)
             return
 
-        profile_a_result = await session.execute(
-            select(Profile).where(Profile.id == match.profile_a_id)
+        user_a_result = await session.execute(
+            select(User).where(User.telegram_id == match.user_a_id)
         )
-        profile_b_result = await session.execute(
-            select(Profile).where(Profile.id == match.profile_b_id)
+        user_b_result = await session.execute(
+            select(User).where(User.telegram_id == match.user_b_id)
         )
-        profile_a = profile_a_result.scalar_one()
-        profile_b = profile_b_result.scalar_one()
+        user_a = user_a_result.scalar_one()
+        user_b = user_b_result.scalar_one()
 
-        user_profile = None
-        other_profile = None
-        if profile_a.telegram_id == callback.from_user.id:
-            user_profile = profile_a
-            other_profile = profile_b
-        elif profile_b.telegram_id == callback.from_user.id:
-            user_profile = profile_b
-            other_profile = profile_a
+        current_user = None
+        other_user = None
+        if user_a.telegram_id == callback.from_user.id:
+            current_user = user_a
+            other_user = user_b
+        elif user_b.telegram_id == callback.from_user.id:
+            current_user = user_b
+            other_user = user_a
         else:
             await callback.answer("You're not authorized for this match", show_alert=True)
             return
 
         if match.status == "pending":
-            match.status = "a_accepted" if user_profile.id == profile_a.id else "b_accepted"
+            match.status = "a_accepted" if current_user.telegram_id == user_a.telegram_id else "b_accepted"
             await session.commit()
             await callback.answer("Thanks! Waiting for the other party to respond.")
         elif match.status in ("a_accepted", "b_accepted"):
@@ -145,13 +176,13 @@ async def handle_match_accept(callback: CallbackQuery) -> None:
 
             bot = get_bot()
             await bot.send_message(
-                profile_a.telegram_id,
-                f"🎉 Connection made! Here are the details:\n\n{profile_b.summary}\n\n"
+                user_a.telegram_id,
+                f"🎉 Connection made! Here are the details:\n\n{user_b.summary}\n\n"
                 f"You can now contact them directly.",
             )
             await bot.send_message(
-                profile_b.telegram_id,
-                f"🎉 Connection made! Here are the details:\n\n{profile_a.summary}\n\n"
+                user_b.telegram_id,
+                f"🎉 Connection made! Here are the details:\n\n{user_a.summary}\n\n"
                 f"You can now contact them directly.",
             )
             await callback.answer("Connected! Check your messages for details.")

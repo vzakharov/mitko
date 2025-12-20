@@ -50,15 +50,17 @@ alembic upgrade head
 
 **Stack**: FastAPI (webhooks) + aiogram v3 (Telegram) + SQLModel (Pydantic + SQLAlchemy 2.0) async + PostgreSQL/pgvector + APScheduler + PydanticAI
 
-**Flow**: User chats with bot → PydanticAI agent extracts structured profile → Embedding generated → Background job matches profiles using vector similarity → Both parties accept → Contact details shared
+**Flow**: User chats with bot → ConversationAgent handles natural conversation and organically extracts/updates profile → Embedding generated → Background job matches profiles using vector similarity → Both parties accept → Contact details shared
 
 **Key Patterns**:
 - Async/await throughout (asyncpg, async sessions)
 - SQLModel for Pydantic-powered ORM models with automatic validation
-- LLM provider abstraction via Protocol (swappable OpenAI/Anthropic) for conversations
-- PydanticAI agents for structured LLM outputs (profile extraction, summaries, match rationales)
-- Type-safe validated outputs via Pydantic models
+- Unified conversational agent: single PydanticAI agent handles both conversation and profile extraction/updates
+- Organic profile creation: no message thresholds, agent decides when it has enough information
+- Conversational profile updates: users can modify their profile naturally (e.g., "change my location to Berlin")
+- Type-safe validated outputs via Pydantic models (ConversationResponse with utterance + optional profile)
 - Automatic retry on invalid LLM responses
+- Smart embedding regeneration: only when summary changes, not on every update
 - Vector matching: pgvector cosine similarity with configurable threshold
 - Two-phase matching: both parties must accept before connection
 - Summary-driven matching: all relevant info in text summary (no structured_data field)
@@ -66,11 +68,11 @@ alembic upgrade head
 
 **Structure**:
 - `models/`: SQLModel ORM (User with embeddings, Conversation, Match) - Pydantic-powered validation
-- `agents/`: PydanticAI agents for structured outputs (ProfileAgent, SummaryAgent, RationaleAgent)
+- `agents/`: PydanticAI agents for structured outputs (ConversationAgent for chat+profiles, RationaleAgent for match explanations)
 - `bot/`: Telegram handlers, keyboards, and bot initialization
 - `runtime/`: Modular runtime implementations (webhook, polling)
-- `llm/`: Provider abstraction (OpenAI/Anthropic) for conversations and embeddings
-- `services/`: Business logic (profiler, matcher)
+- `llm/`: Provider abstraction (OpenAI/Anthropic) for embeddings
+- `services/`: Business logic (profiler with create/update support, matcher)
 - `jobs/`: Background matching scheduler
 
 **Important**:

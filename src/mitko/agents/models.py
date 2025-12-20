@@ -74,3 +74,17 @@ class SummaryResult(BaseModel):
         if len(v) < 20:
             raise ValueError("Summary is too short (minimum 20 characters)")
         return v
+
+
+class ConversationResponse(BaseModel):
+    """Unified response from conversational agent"""
+
+    utterance: str
+    profile: ProfileData | None = None
+
+    @field_validator("utterance")
+    @classmethod
+    def validate_utterance(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Utterance cannot be empty")
+        return v.strip()
