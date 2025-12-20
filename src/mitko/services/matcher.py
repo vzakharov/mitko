@@ -2,14 +2,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, text
 
 from ..models import User, Match, MatchStatus
-from ..llm import LLMProvider
 from ..config import settings
+from ..agents import RationaleAgent, get_model_name
 
 
 class MatcherService:
-    def __init__(self, session: AsyncSession, llm: LLMProvider) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self.session = session
-        self.llm = llm
 
     async def find_matches(self) -> list[Match]:
         seeker_users = await self.session.execute(
@@ -98,17 +97,19 @@ class MatcherService:
         return match
 
     async def _generate_match_rationale(self, seeker: User, provider: User) -> str:
-        prompt = f"""Explain why these two profiles would be a good match for each other.
+        rationale_agent = RationaleAgent(get_model_name())
+        rationale = await rationale_agent.generate_rationale(
+            seeker_summary=seeker.summary or "",
+            seeker_data=seeker.structured_data or {},
+            provider_summary=provider.summary or "",
+            provider_data=provider.structured_data or {},
+        )
 
-Seeker Profile:
-{seeker.summary}
-Structured Data: {seeker.structured_data}
+        message_parts = [rationale.explanation]
+        if rationale.key_alignments:
+            message_parts.append("\n\nKey alignments:")
+            for alignment in rationale.key_alignments:
+                message_parts.append(f"• {alignment}")
 
-Provider Profile:
-{provider.summary}
-Structured Data: {provider.structured_data}
-
-Provide a brief, friendly explanation (2-3 sentences) of why they match well."""
-
-        return await self.llm.chat([{"role": "user", "content": prompt}], "")
+        return "".join(message_parts)
 

@@ -5,7 +5,6 @@ from sqlalchemy import select
 
 from ..models import async_session_maker, Match, Profile
 from ..services.matcher import MatcherService
-from ..llm import get_llm_provider
 from ..config import settings
 from ..bot.keyboards import match_consent_keyboard
 
@@ -14,8 +13,7 @@ scheduler = AsyncIOScheduler()
 
 async def run_matching_job(bot: Bot) -> None:
     async with async_session_maker() as session:
-        llm = get_llm_provider()
-        matcher = MatcherService(session, llm)
+        matcher = MatcherService(session)
         matches = await matcher.find_matches()
 
         for match in matches:

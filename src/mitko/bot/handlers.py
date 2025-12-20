@@ -1,5 +1,3 @@
-import json
-import re
 from uuid import UUID
 
 from aiogram import Router, F, Bot
@@ -9,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ..models import User, Conversation, UserState, get_db
-from ..llm import get_llm_provider
 from ..services.profiler import ProfileService
-from .conversation import SYSTEM_PROMPT, PROFILE_COMPLETE_TOKEN
+from ..agents import ProfileAgent, get_model_name
+from .conversation import SYSTEM_PROMPT
 from .keyboards import match_consent_keyboard
 
 router = Router()
@@ -77,28 +75,29 @@ async def handle_message(message: Message) -> None:
         conv.messages.append({"role": "user", "content": message.text})
         await session.commit()
 
+        if len(conv.messages) >= 4 and not user.is_complete:
+            try:
+                profile_agent = ProfileAgent(get_model_name())
+                profile_data = await profile_agent.extract_profile(conv.messages)
+
+                profiler = ProfileService(session)
+                await profiler.create_profile(user, conv, profile_data)
+
+                await message.answer(
+                    "Great! Your profile is complete. "
+                    "I'll notify you when I find potential matches."
+                )
+                return
+            except Exception:
+                pass
+
+        from ..llm import get_llm_provider
         llm = get_llm_provider()
         response = await llm.chat(conv.messages, SYSTEM_PROMPT)
 
-        if PROFILE_COMPLETE_TOKEN in response:
-            parts = response.split(PROFILE_COMPLETE_TOKEN, 1)
-            bot_response = parts[0].strip()
-            json_part = parts[1].strip()
-
-            try:
-                profile_data = json.loads(json_part)
-                profiler = ProfileService(session, llm)
-                await profiler.create_profile(user, conv, profile_data)
-                await message.answer(
-                    bot_response + "\n\nGreat! Your profile is complete. "
-                    "I'll notify you when I find potential matches."
-                )
-            except json.JSONDecodeError:
-                await message.answer(response)
-        else:
-            conv.messages.append({"role": "assistant", "content": response})
-            await session.commit()
-            await message.answer(response)
+        conv.messages.append({"role": "assistant", "content": response})
+        await session.commit()
+        await message.answer(response)
 
 
 @router.callback_query(F.data.startswith("match_accept:"))
