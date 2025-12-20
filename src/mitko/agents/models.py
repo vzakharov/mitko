@@ -10,7 +10,6 @@ class ProfileData(BaseModel):
     is_seeker: bool
     is_provider: bool
     summary: str
-    structured_data: dict[str, Any]
 
     @model_validator(mode="after")
     def validate_roles(self) -> "ProfileData":

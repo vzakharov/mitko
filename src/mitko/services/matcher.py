@@ -100,9 +100,7 @@ class MatcherService:
         rationale_agent = RationaleAgent(get_model_name())
         rationale = await rationale_agent.generate_rationale(
             seeker_summary=seeker.summary or "",
-            seeker_data=seeker.structured_data or {},
             provider_summary=provider.summary or "",
-            provider_data=provider.structured_data or {},
         )
 
         message_parts = [rationale.explanation]

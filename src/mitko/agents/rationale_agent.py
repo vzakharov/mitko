@@ -44,18 +44,14 @@ Be specific and highlight the most relevant connections.
     async def generate_rationale(
         self,
         seeker_summary: str,
-        seeker_data: dict,
         provider_summary: str,
-        provider_data: dict,
     ) -> MatchRationale:
         """
         Generate a structured match rationale.
 
         Args:
             seeker_summary: Summary of the seeker's profile
-            seeker_data: Structured data from the seeker's profile
             provider_summary: Summary of the provider's profile
-            provider_data: Structured data from the provider's profile
 
         Returns:
             MatchRationale: Structured rationale with explanation, alignments, and confidence
@@ -66,12 +62,10 @@ Be specific and highlight the most relevant connections.
         prompt = f"""Analyze these two profiles and explain why they're a good match:
 
 Seeker Profile:
-Summary: {seeker_summary}
-Structured Data: {seeker_data}
+{seeker_summary}
 
 Provider Profile:
-Summary: {provider_summary}
-Structured Data: {provider_data}
+{provider_summary}
 
 Generate a structured match rationale with:
 - explanation: A brief, friendly 2-3 sentence explanation

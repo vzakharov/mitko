@@ -29,19 +29,17 @@ Pay special attention to users who mention both seeking work AND hiring/contract
 When you have enough information, extract a structured profile with:
 - is_seeker: true if they're looking for work
 - is_provider: true if they're hiring or offering opportunities
-- summary: A 2-3 sentence summary of who they are and what they're looking for
-- structured_data: A dictionary containing:
-  - skills: list of skills mentioned
-  - experience_years: number of years experience (or null)
-  - location: their location (or null)
-  - rate_range: their rate expectations (or null)
-  - hiring_for: list of roles they're hiring for (or null/empty if not a provider)
-  - availability: their availability (full-time/part-time/contract/etc, or null)
+- summary: A comprehensive 2-3 sentence summary capturing ALL relevant information about who they are and what they're looking for, including:
+  * Their skills and experience level
+  * What type of work they seek (if seeker) or roles they're hiring for (if provider)
+  * Location, availability, rate expectations, and any other important details
+  * Make this summary rich and detailed - it will be used for matching
 
 IMPORTANT:
 - At least one of is_seeker or is_provider must be true
 - Both can be true if the user wants to both seek work AND hire/contract
 - Listen carefully for clues that indicate both roles
+- The summary should be comprehensive - include all relevant details since there's no structured_data field
 """
 
     def __init__(self, model_name: KnownModelName):

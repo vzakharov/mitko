@@ -15,7 +15,6 @@ class ProfileService:
         is_seeker = profile_data.is_seeker
         is_provider = profile_data.is_provider
         summary = profile_data.summary
-        structured_data = profile_data.structured_data
 
         if not summary or not summary.strip():
             summary = await self._generate_summary(conversation)
@@ -26,7 +25,6 @@ class ProfileService:
         user.is_seeker = is_seeker
         user.is_provider = is_provider
         user.summary = summary
-        user.structured_data = structured_data
         user.embedding = embedding
         user.is_complete = True
         user.state = "active"

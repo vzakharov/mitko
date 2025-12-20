@@ -48,23 +48,24 @@ alembic upgrade head
 
 ## Architecture
 
-**Stack**: FastAPI (webhooks) + aiogram v3 (Telegram) + SQLAlchemy 2.0 async + PostgreSQL/pgvector + APScheduler + PydanticAI
+**Stack**: FastAPI (webhooks) + aiogram v3 (Telegram) + SQLModel (Pydantic + SQLAlchemy 2.0) async + PostgreSQL/pgvector + APScheduler + PydanticAI
 
 **Flow**: User chats with bot → PydanticAI agent extracts structured profile → Embedding generated → Background job matches profiles using vector similarity → Both parties accept → Contact details shared
 
 **Key Patterns**:
 - Async/await throughout (asyncpg, async sessions)
-- SQLAlchemy 2.0 with `Mapped[]` type hints
+- SQLModel for Pydantic-powered ORM models with automatic validation
 - LLM provider abstraction via Protocol (swappable OpenAI/Anthropic) for conversations
 - PydanticAI agents for structured LLM outputs (profile extraction, summaries, match rationales)
 - Type-safe validated outputs via Pydantic models
 - Automatic retry on invalid LLM responses
 - Vector matching: pgvector cosine similarity with configurable threshold
 - Two-phase matching: both parties must accept before connection
+- Summary-driven matching: all relevant info in text summary (no structured_data field)
 - Runtime modes: Webhook (production) or Long Polling (development) - auto-detected or explicit via `TELEGRAM_MODE`
 
 **Structure**:
-- `models/`: SQLAlchemy ORM (User with embeddings, Conversation, Match)
+- `models/`: SQLModel ORM (User with embeddings, Conversation, Match) - Pydantic-powered validation
 - `agents/`: PydanticAI agents for structured outputs (ProfileAgent, SummaryAgent, RationaleAgent)
 - `bot/`: Telegram handlers, keyboards, and bot initialization
 - `runtime/`: Modular runtime implementations (webhook, polling)
@@ -74,8 +75,10 @@ alembic upgrade head
 
 **Important**:
 - PostgreSQL requires `pgvector` extension
-- Embeddings are 1536-dim vectors
+- Embeddings are 1536-dim vectors (stored in User.embedding)
 - Conversation history stored as JSON, full context passed to LLM
 - Webhook security via secret token validation
 - Match authorization checks required before actions
 - **No backwards compatibility needed at this stage** - project hasn't been deployed to production yet
+- Models use SQLModel (not pure SQLAlchemy) for Pydantic validation on field assignment
+- User model has no `structured_data` field - all info in `summary` for semantic matching

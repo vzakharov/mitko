@@ -10,7 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from mitko.models.base import Base
+from sqlmodel import SQLModel
+from mitko.models import User, Conversation, Match  # Import all models
 from mitko.config import settings
 
 config = context.config
@@ -20,7 +21,7 @@ if config.config_file_name is not None:
 
 config.set_main_option("sqlalchemy.url", settings.database_url.replace("+asyncpg", ""))
 
-target_metadata = Base.metadata
+target_metadata = SQLModel.metadata
 
 
 def run_migrations_offline() -> None:
@@ -37,7 +38,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        user_module_prefix="sqlmodel.sql.sqltypes.",
+    )
 
     with context.begin_transaction():
         context.run_migrations()

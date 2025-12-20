@@ -1,11 +1,8 @@
-from sqlalchemy import BigInteger, String, DateTime, Boolean, Text, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlmodel import SQLModel, Field, Relationship, Column
+from sqlalchemy import BigInteger, DateTime, Text, func
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
-from typing import Literal, TYPE_CHECKING
-
-from ..models.base import Base
+from typing import Literal, TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .conversation import Conversation
@@ -15,36 +12,41 @@ if TYPE_CHECKING:
 UserState = Literal["onboarding", "profiling", "active", "paused"]
 
 
-class User(Base):
+class User(SQLModel, table=True):
     __tablename__ = "users"
 
-    telegram_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    telegram_id: int = Field(sa_type=BigInteger(), primary_key=True)
 
     # Role flags
-    is_seeker: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    is_provider: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    is_seeker: bool | None = Field(default=None)
+    is_provider: bool | None = Field(default=None)
 
     # State management
-    state: Mapped[UserState] = mapped_column(String(20), default="onboarding")
+    state: UserState = Field(default="onboarding", max_length=20)
 
     # Profile data (formerly in Profile model)
-    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    structured_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
-    is_complete: Mapped[bool] = mapped_column(Boolean, default=False)
+    summary: str | None = Field(default=None, sa_column=Column(Text))
+    embedding: Any = Field(default=None, sa_type=Vector(1536))
+    is_complete: bool = Field(default=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-    conversations: Mapped[list["Conversation"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    matches_a: Mapped[list["Match"]] = relationship(
-        foreign_keys="Match.user_a_id",
-        back_populates="user_a",
-        cascade="all, delete-orphan",
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )
-    matches_b: Mapped[list["Match"]] = relationship(
-        foreign_keys="Match.user_b_id",
+
+    conversations: list["Conversation"] = Relationship(back_populates="user")
+    matches_a: list["Match"] = Relationship(
+        back_populates="user_a",
+        sa_relationship_kwargs={
+            "foreign_keys": "Match.user_a_id",
+            "cascade": "all, delete-orphan",
+        }
+    )
+    matches_b: list["Match"] = Relationship(
         back_populates="user_b",
-        cascade="all, delete-orphan",
+        sa_relationship_kwargs={
+            "foreign_keys": "Match.user_b_id",
+            "cascade": "all, delete-orphan",
+        }
     )
 
     @property
