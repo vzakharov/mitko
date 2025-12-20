@@ -13,17 +13,22 @@ An LLM-powered Telegram bot that helps match IT job seekers with employers/contr
 
 ## Features
 
-- Freeform conversation to understand user profiles
-- Automatic profile extraction and vector embeddings
+- Natural freeform conversation to understand user profiles
+- Unified conversational agent handles both chat and profile extraction/updates
+- Organic profile creation - agent decides when it has enough information
+- Conversational profile updates (e.g., "change my location to Berlin")
+- Automatic profile extraction with vector embeddings
 - Smart matching using similarity search (pgvector)
 - Mutual consent flow for connections
 - Configurable LLM providers (OpenAI/Anthropic)
+- Type-safe structured outputs via PydanticAI and Pydantic models
 
 ## Architecture
 
 - **FastAPI** - Web framework for webhook handling
 - **aiogram v3** - Async Telegram bot framework
-- **SQLAlchemy 2.0** - Async ORM
+- **SQLModel** - Pydantic-powered async ORM (built on SQLAlchemy 2.0)
+- **PydanticAI** - Type-safe LLM agent framework with structured outputs
 - **Neon PostgreSQL + pgvector** - Database with vector similarity search
 - **APScheduler** - Background job scheduling for matching
 
@@ -80,6 +85,8 @@ curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https:
 The project uses:
 - Type hints throughout
 - Async/await for all I/O operations
-- SQLAlchemy 2.0 async patterns
-- Pydantic for configuration validation
+- SQLModel (Pydantic + SQLAlchemy 2.0) async patterns
+- PydanticAI for type-safe LLM agent outputs
+- Pydantic models for validation and structured data
+- Single unified ConversationAgent for natural conversation and profile management
 

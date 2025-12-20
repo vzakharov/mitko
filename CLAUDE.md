@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**IMPORTANT**: Update this file whenever making major architectural changes to keep it accurate.
+**IMPORTANT**: Update this file AND README.md whenever making major architectural changes to keep them accurate and in sync.
 
 ## Project Overview
 
