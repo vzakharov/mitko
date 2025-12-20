@@ -33,6 +33,15 @@ pytest
 # Database
 alembic revision --autogenerate -m "description"
 alembic upgrade head
+
+# Git commits
+# Use conventional commit prefixes:
+# - feature: new features
+# - refactor: code restructuring without behavior change
+# - fix: bug fixes
+# - docs: documentation changes
+# - test: test additions/changes
+# - chore: maintenance tasks
 ```
 
 ## Architecture
