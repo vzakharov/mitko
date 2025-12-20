@@ -64,3 +64,4 @@ alembic upgrade head
 - Conversation history stored as JSON, full context passed to LLM
 - Webhook security via secret token validation
 - Match authorization checks required before actions
+- **No backwards compatibility needed at this stage** - project hasn't been deployed to production yet

@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from ..models import User, Conversation, Profile
+from ..models import User, Conversation
 from ..llm import LLMProvider, get_embedding_provider
+from ..utils import validate_profile_roles
 
 
 class ProfileService:
@@ -12,8 +12,12 @@ class ProfileService:
 
     async def create_profile(
         self, user: User, conversation: Conversation, profile_data: dict
-    ) -> Profile:
-        role = profile_data.get("role", "seeker")
+    ) -> User:
+        # Validate role fields
+        validate_profile_roles(profile_data)
+
+        is_seeker = profile_data.get("is_seeker", False)
+        is_provider = profile_data.get("is_provider", False)
         summary = profile_data.get("summary", "")
         structured_data = profile_data.get("structured_data", {})
 
@@ -23,34 +27,18 @@ class ProfileService:
         embedding_provider = await get_embedding_provider()
         embedding = await embedding_provider.embed(summary)
 
-        existing_profile = await self.session.execute(
-            select(Profile).where(Profile.telegram_id == user.telegram_id)
-        )
-        profile = existing_profile.scalar_one_or_none()
-
-        if profile:
-            profile.role = role
-            profile.summary = summary
-            profile.structured_data = structured_data
-            profile.embedding = embedding
-            profile.is_complete = True
-        else:
-            profile = Profile(
-                telegram_id=user.telegram_id,
-                role=role,
-                summary=summary,
-                structured_data=structured_data,
-                embedding=embedding,
-                is_complete=True,
-            )
-            self.session.add(profile)
-
-        user.role = role
+        # Update user directly (no separate Profile model)
+        user.is_seeker = is_seeker
+        user.is_provider = is_provider
+        user.summary = summary
+        user.structured_data = structured_data
+        user.embedding = embedding
+        user.is_complete = True
         user.state = "active"
 
         await self.session.commit()
-        await self.session.refresh(profile)
-        return profile
+        await self.session.refresh(user)
+        return user
 
     async def _generate_summary(self, conversation: Conversation) -> str:
         prompt = """Based on the following conversation, generate a concise 2-3 sentence summary 

@@ -1,8 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, text
-import uuid
 
-from ..models import Profile, Match, MatchStatus
+from ..models import User, Match, MatchStatus
 from ..llm import LLMProvider
 from ..config import settings
 
@@ -13,22 +12,22 @@ class MatcherService:
         self.llm = llm
 
     async def find_matches(self) -> list[Match]:
-        seeker_profiles = await self.session.execute(
-            select(Profile).where(
+        seeker_users = await self.session.execute(
+            select(User).where(
                 and_(
-                    Profile.role == "seeker",
-                    Profile.is_complete == True,
-                    Profile.embedding.isnot(None),
+                    User.is_seeker == True,
+                    User.is_complete == True,
+                    User.embedding.isnot(None),
                 )
             )
         )
-        seekers = seeker_profiles.scalars().all()
+        seekers = seeker_users.scalars().all()
 
         matches_created = []
         for seeker in seekers:
             provider_matches = await self._find_similar_providers(seeker)
             for provider, similarity in provider_matches:
-                if await self._should_create_match(seeker.id, provider.id):
+                if await self._should_create_match(seeker.telegram_id, provider.telegram_id):
                     match = await self._create_match(seeker, provider, similarity)
                     matches_created.append(match)
 
@@ -36,21 +35,21 @@ class MatcherService:
         return matches_created
 
     async def _find_similar_providers(
-        self, seeker: Profile
-    ) -> list[tuple[Profile, float]]:
+        self, seeker: User
+    ) -> list[tuple[User, float]]:
         if not seeker.embedding:
             return []
 
         embedding_str = "[" + ",".join(str(x) for x in seeker.embedding) + "]"
 
         query = text("""
-            SELECT p.id, 1 - (p.embedding <=> :seeker_embedding::vector) as similarity
-            FROM profiles p
-            WHERE p.role = 'provider'
-            AND p.is_complete = true
-            AND p.embedding IS NOT NULL
-            AND p.id != :seeker_id
-            AND 1 - (p.embedding <=> :seeker_embedding::vector) >= :threshold
+            SELECT u.telegram_id, 1 - (u.embedding <=> :seeker_embedding::vector) as similarity
+            FROM users u
+            WHERE u.is_provider = true
+            AND u.is_complete = true
+            AND u.embedding IS NOT NULL
+            AND u.telegram_id != :seeker_id
+            AND 1 - (u.embedding <=> :seeker_embedding::vector) >= :threshold
             ORDER BY similarity DESC
             LIMIT :limit
         """)
@@ -59,7 +58,7 @@ class MatcherService:
             query,
             {
                 "seeker_embedding": embedding_str,
-                "seeker_id": str(seeker.id),
+                "seeker_id": seeker.telegram_id,
                 "threshold": settings.similarity_threshold,
                 "limit": settings.max_matches_per_profile,
             },
@@ -67,30 +66,30 @@ class MatcherService:
 
         matches = []
         for row in result:
-            profile = await self.session.get(Profile, uuid.UUID(row.id))
-            if profile:
-                matches.append((profile, float(row.similarity)))
+            user = await self.session.get(User, row.telegram_id)
+            if user:
+                matches.append((user, float(row.similarity)))
         return matches
 
-    async def _should_create_match(self, profile_a_id: uuid.UUID, profile_b_id: uuid.UUID) -> bool:
+    async def _should_create_match(self, user_a_id: int, user_b_id: int) -> bool:
         existing = await self.session.execute(
             select(Match).where(
                 or_(
-                    and_(Match.profile_a_id == profile_a_id, Match.profile_b_id == profile_b_id),
-                    and_(Match.profile_a_id == profile_b_id, Match.profile_b_id == profile_a_id),
+                    and_(Match.user_a_id == user_a_id, Match.user_b_id == user_b_id),
+                    and_(Match.user_a_id == user_b_id, Match.user_b_id == user_a_id),
                 )
             )
         )
         return existing.scalar_one_or_none() is None
 
     async def _create_match(
-        self, seeker: Profile, provider: Profile, similarity: float
+        self, seeker: User, provider: User, similarity: float
     ) -> Match:
         rationale = await self._generate_match_rationale(seeker, provider)
 
         match = Match(
-            profile_a_id=seeker.id,
-            profile_b_id=provider.id,
+            user_a_id=seeker.telegram_id,
+            user_b_id=provider.telegram_id,
             similarity_score=similarity,
             match_rationale=rationale,
             status="pending",
@@ -98,7 +97,7 @@ class MatcherService:
         self.session.add(match)
         return match
 
-    async def _generate_match_rationale(self, seeker: Profile, provider: Profile) -> str:
+    async def _generate_match_rationale(self, seeker: User, provider: User) -> str:
         prompt = f"""Explain why these two profiles would be a good match for each other.
 
 Seeker Profile:
