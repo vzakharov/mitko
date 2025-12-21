@@ -9,7 +9,7 @@ from sqlalchemy import select
 from ..models import User, Conversation, UserState, get_db
 from ..services.profiler import ProfileService
 from ..agents import ConversationAgent, ProfileData, get_model_name
-from .keyboards import match_consent_keyboard
+from .keyboards import match_consent_keyboard, reset_confirmation_keyboard
 
 router = Router()
 
@@ -59,6 +59,37 @@ async def cmd_start(message: Message) -> None:
             "Hi! I'm Mitko, your IT matchmaking assistant. "
             "I'll chat with you to understand what you're looking for, then help connect you with great matches.\n\n"
             "Are you looking for work, or are you hiring?"
+        )
+
+
+@router.message(Command("reset"))
+async def cmd_reset(message: Message) -> None:
+    """Handler for /reset command - shows confirmation dialog"""
+    async for session in get_db():
+        result = await session.execute(
+            select(User).where(User.telegram_id == message.from_user.id)
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            await message.answer(
+                "You don't have an active profile yet. Use /start to begin!"
+            )
+            return
+
+        warning_message = (
+            "⚠️ Reset Your Profile\n\n"
+            "This will permanently:\n"
+            "• Delete your profile information\n"
+            "• Clear your conversation history\n"
+            "• Return you to the onboarding process\n\n"
+            "Your existing matches will be preserved.\n\n"
+            "Are you sure you want to continue?"
+        )
+
+        await message.answer(
+            warning_message,
+            reply_markup=reset_confirmation_keyboard(message.from_user.id)
         )
 
 
@@ -207,4 +238,69 @@ async def handle_match_reject(callback: CallbackQuery) -> None:
         match.status = "rejected"
         await session.commit()
         await callback.answer("Noted. We'll find better matches for you!")
+
+
+@router.callback_query(F.data.startswith("reset_confirm:"))
+async def handle_reset_confirm(callback: CallbackQuery) -> None:
+    """Handler for reset confirmation button"""
+    telegram_id_str = callback.data.split(":", 1)[1]
+    telegram_id = int(telegram_id_str)
+
+    # Authorization check
+    if callback.from_user.id != telegram_id:
+        await callback.answer(
+            "You're not authorized for this action",
+            show_alert=True
+        )
+        return
+
+    async for session in get_db():
+        # Get user and conversation
+        result = await session.execute(
+            select(User).where(User.telegram_id == telegram_id)
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            await callback.answer("User not found", show_alert=True)
+            return
+
+        conv_result = await session.execute(
+            select(Conversation).where(Conversation.telegram_id == telegram_id)
+        )
+        conversation = conv_result.scalar_one_or_none()
+
+        # Use ProfileService to reset
+        profiler = ProfileService(session)
+        await profiler.reset_profile(user, conversation)
+
+        # Send success message
+        await callback.message.edit_text(
+            "✅ Profile Reset Complete\n\n"
+            "Your profile and conversation history have been cleared.\n"
+            "You're now back at the beginning.\n\n"
+            "Ready to start fresh? Tell me: are you looking for work, or are you hiring?"
+        )
+
+        await callback.answer()
+
+
+@router.callback_query(F.data.startswith("reset_cancel:"))
+async def handle_reset_cancel(callback: CallbackQuery) -> None:
+    """Handler for reset cancellation button"""
+    telegram_id_str = callback.data.split(":", 1)[1]
+    telegram_id = int(telegram_id_str)
+
+    # Authorization check
+    if callback.from_user.id != telegram_id:
+        await callback.answer(
+            "You're not authorized for this action",
+            show_alert=True
+        )
+        return
+
+    await callback.message.edit_text(
+        "Reset cancelled. Your profile remains unchanged."
+    )
+    await callback.answer()
 

@@ -56,3 +56,25 @@ class ProfileService:
             user, profile_data, is_update=False
         )
 
+    async def reset_profile(self, user: User, conversation: Conversation | None) -> None:
+        """
+        Reset user profile and conversation to blank state.
+
+        Args:
+            user: User to reset
+            conversation: Conversation to clear (if exists)
+        """
+        # Reset user fields to defaults
+        user.is_seeker = None
+        user.is_provider = None
+        user.summary = None
+        user.embedding = None
+        user.is_complete = False
+        user.state = "onboarding"
+
+        # Clear conversation history (keep the record)
+        if conversation:
+            conversation.messages = []
+
+        await self.session.commit()
+

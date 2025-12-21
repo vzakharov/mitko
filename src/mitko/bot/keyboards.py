@@ -12,3 +12,22 @@ def match_consent_keyboard(match_id: UUID) -> InlineKeyboardMarkup:
         ]
     )
 
+
+def reset_confirmation_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Yes, reset my profile",
+                    callback_data=f"reset_confirm:{telegram_id}"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Cancel",
+                    callback_data=f"reset_cancel:{telegram_id}"
+                ),
+            ]
+        ]
+    )
+
