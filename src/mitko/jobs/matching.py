@@ -7,6 +7,7 @@ from ..models import async_session_maker, Match, Profile
 from ..services.matcher import MatcherService
 from ..config import settings
 from ..bot.keyboards import match_consent_keyboard
+from ..i18n import L
 
 scheduler = AsyncIOScheduler()
 
@@ -30,18 +31,12 @@ async def notify_match(bot: Bot, match: Match, session: AsyncSession) -> None:
     profile_a = profile_a_result.scalar_one()
     profile_b = profile_b_result.scalar_one()
 
-    message_a = (
-        f"🎯 Found a potential match!\n\n"
-        f"{profile_b.summary}\n\n"
-        f"💡 Why this match: {match.match_rationale}\n\n"
-        f"Would you like to connect?"
+    message_a = L.matching.FOUND.format(
+        profile=profile_b.summary, rationale=match.match_rationale
     )
 
-    message_b = (
-        f"🎯 Found a potential match!\n\n"
-        f"{profile_a.summary}\n\n"
-        f"💡 Why this match: {match.match_rationale}\n\n"
-        f"Would you like to connect?"
+    message_b = L.matching.FOUND.format(
+        profile=profile_a.summary, rationale=match.match_rationale
     )
 
     keyboard = match_consent_keyboard(match.id)

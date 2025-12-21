@@ -4,12 +4,13 @@ from pydantic_ai import Agent
 from pydantic_ai.models import KnownModelName
 
 from .models import ConversationResponse, ProfileData
+from ..i18n import L
 
 
 class ConversationAgent:
     """Agent that handles conversation and organic profile extraction/updates"""
 
-    SYSTEM_PROMPT = """You are Mitko, a friendly Telegram bot helping match IT professionals with job opportunities.
+    SYSTEM_PROMPT_BASE = """You are Mitko, a friendly Telegram bot helping match IT professionals with job opportunities.
 
 You have a natural conversation with users to understand their profile. Your responses have TWO components:
 
@@ -48,13 +49,50 @@ Validation:
 - Summary cannot be empty and should be comprehensive
 - Be conversational - don't overwhelm with questions
 
-Remember: Your utterance is what the user sees. Be friendly, natural, and helpful!"""
+LANGUAGE REQUIREMENT:
+- You MUST respond to the user in {language_name}
+- Your utterance field must be in {language_name}
+- The profile summary should also be in {language_name} for better semantic matching
+
+Here are example utterances in {language_name} to guide your style:
+
+Onboarding examples:
+{onboarding_examples}
+
+Profile created examples:
+{profile_created_examples}
+
+Profile updated examples:
+{profile_updated_examples}
+
+Remember: Your utterance is what the user sees. Be friendly, natural, and helpful - in {language_name}!"""
 
     def __init__(self, model_name: KnownModelName):
+        language_name = "English" if L.language == "en" else "Russian"
+
+        # Get example utterances from locale
+        onboarding_examples = "\n".join(
+            f"- {ex}" for ex in L.agent_examples.conversation.ONBOARDING
+        )
+        profile_created_examples = "\n".join(
+            f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_CREATED
+        )
+        profile_updated_examples = "\n".join(
+            f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_UPDATED
+        )
+
+        # Format system prompt with language context
+        system_prompt = self.SYSTEM_PROMPT_BASE.format(
+            language_name=language_name,
+            onboarding_examples=onboarding_examples,
+            profile_created_examples=profile_created_examples,
+            profile_updated_examples=profile_updated_examples,
+        )
+
         self._agent = Agent(
             model_name,
             result_type=ConversationResponse,
-            system_prompt=self.SYSTEM_PROMPT,
+            system_prompt=system_prompt,
         )
 
     async def chat(

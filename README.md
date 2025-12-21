@@ -22,6 +22,7 @@ An LLM-powered Telegram bot that helps match IT job seekers with employers/contr
 - Mutual consent flow for connections
 - Configurable LLM providers (OpenAI/Anthropic)
 - Type-safe structured outputs via PydanticAI and Pydantic models
+- Multi-language support (EN/RU) with type-safe i18n
 
 ## Architecture
 
@@ -76,6 +77,7 @@ curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https:
 - `LLM_PROVIDER` - `openai` or `anthropic` (default: `openai`)
 - `OPENAI_API_KEY` - OpenAI API key (required if using OpenAI)
 - `ANTHROPIC_API_KEY` - Anthropic API key (required if using Anthropic)
+- `MITKO_LANGUAGE` - Language for bot responses: `en` or `ru` (default: `en`)
 - `MATCHING_INTERVAL_MINUTES` - How often to run matching (default: 30)
 - `SIMILARITY_THRESHOLD` - Minimum similarity score for matches (default: 0.7)
 - `MAX_MATCHES_PER_PROFILE` - Max matches per profile per run (default: 5)
@@ -89,4 +91,5 @@ The project uses:
 - PydanticAI for type-safe LLM agent outputs
 - Pydantic models for validation and structured data
 - Single unified ConversationAgent for natural conversation and profile management
+- Type-safe i18n with nested dataclasses for full IDE autocomplete
 

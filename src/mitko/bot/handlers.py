@@ -10,6 +10,7 @@ from ..models import User, Conversation, get_db
 from ..services.profiler import ProfileService
 from ..agents import ConversationAgent, ProfileData, get_model_name
 from .keyboards import reset_confirmation_keyboard, MatchAction, ResetAction
+from ..i18n import L
 
 router = Router()
 
@@ -55,11 +56,7 @@ async def get_or_create_conversation(telegram_id: int, session: AsyncSession) ->
 async def cmd_start(message: Message) -> None:
     async for session in get_db():
         user = await get_or_create_user(message.from_user.id, session)
-        await message.answer(
-            "Hi! I'm Mitko, your IT matchmaking assistant. "
-            "I'll chat with you to understand what you're looking for, then help connect you with great matches.\n\n"
-            "Are you looking for work, or are you hiring?"
-        )
+        await message.answer(L.commands.start.GREETING)
 
 
 @router.message(Command("reset"))
@@ -72,38 +69,26 @@ async def cmd_reset(message: Message) -> None:
         user = result.scalar_one_or_none()
 
         if not user:
-            await message.answer(
-                "You don't have an active profile yet. Use /start to begin!"
-            )
+            await message.answer(L.commands.reset.NO_PROFILE)
             return
 
-        warning_message = (
-            "⚠️ Reset Your Profile\n\n"
-            "This will permanently:\n"
-            "• Delete your profile information\n"
-            "• Clear your conversation history\n"
-            "• Return you to the onboarding process\n\n"
-            "Your existing matches will be preserved.\n\n"
-            "Are you sure you want to continue?"
-        )
-
         await message.answer(
-            warning_message,
+            L.commands.reset.WARNING,
             reply_markup=reset_confirmation_keyboard(message.from_user.id)
         )
 
 
 def _format_profile_card(profile: ProfileData) -> str:
     """Format profile as a user-visible card"""
-    card_parts = ["📋 Your Profile:\n"]
+    card_parts = [L.profile.CARD_HEADER + "\n"]
 
     # Role
     roles = []
     if profile.is_seeker:
-        roles.append("Job Seeker")
+        roles.append(L.profile.ROLE_SEEKER)
     if profile.is_provider:
-        roles.append("Hiring/Providing")
-    card_parts.append(f"Role: {' & '.join(roles)}")
+        roles.append(L.profile.ROLE_PROVIDER)
+    card_parts.append(f"{L.profile.ROLE_LABEL}: {L.profile.ROLE_SEPARATOR.join(roles)}")
 
     # Summary
     card_parts.append(f"\n\n{profile.summary}")
@@ -172,7 +157,7 @@ async def handle_match_accept(callback: CallbackQuery, callback_data: MatchActio
         result = await session.execute(select(Match).where(Match.id == match_id))
         match = result.scalar_one_or_none()
         if not match:
-            await callback.answer("Match not found", show_alert=True)
+            await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
             return
 
         user_a_result = await session.execute(
@@ -193,13 +178,13 @@ async def handle_match_accept(callback: CallbackQuery, callback_data: MatchActio
             current_user = user_b
             other_user = user_a
         else:
-            await callback.answer("You're not authorized for this match", show_alert=True)
+            await callback.answer(L.matching.errors.UNAUTHORIZED, show_alert=True)
             return
 
         if match.status == "pending":
             match.status = "a_accepted" if current_user.telegram_id == user_a.telegram_id else "b_accepted"
             await session.commit()
-            await callback.answer("Thanks! Waiting for the other party to respond.")
+            await callback.answer(L.matching.ACCEPT_WAITING)
         elif match.status in ("a_accepted", "b_accepted"):
             match.status = "connected"
             await session.commit()
@@ -207,17 +192,15 @@ async def handle_match_accept(callback: CallbackQuery, callback_data: MatchActio
             bot = get_bot()
             await bot.send_message(
                 user_a.telegram_id,
-                f"🎉 Connection made! Here are the details:\n\n{user_b.summary}\n\n"
-                f"You can now contact them directly.",
+                L.matching.CONNECTION_MADE.format(profile=user_b.summary),
             )
             await bot.send_message(
                 user_b.telegram_id,
-                f"🎉 Connection made! Here are the details:\n\n{user_a.summary}\n\n"
-                f"You can now contact them directly.",
+                L.matching.CONNECTION_MADE.format(profile=user_a.summary),
             )
-            await callback.answer("Connected! Check your messages for details.")
+            await callback.answer(L.matching.ACCEPT_CONNECTED)
         else:
-            await callback.answer("This match is already processed", show_alert=True)
+            await callback.answer(L.matching.errors.ALREADY_PROCESSED, show_alert=True)
 
 
 @router.callback_query(MatchAction.filter(F.action == "reject"))
@@ -230,12 +213,12 @@ async def handle_match_reject(callback: CallbackQuery, callback_data: MatchActio
         result = await session.execute(select(Match).where(Match.id == match_id))
         match = result.scalar_one_or_none()
         if not match:
-            await callback.answer("Match not found", show_alert=True)
+            await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
             return
 
         match.status = "rejected"
         await session.commit()
-        await callback.answer("Noted. We'll find better matches for you!")
+        await callback.answer(L.matching.REJECT_NOTED)
 
 
 @router.callback_query(ResetAction.filter(F.action == "confirm"))
@@ -245,10 +228,7 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
 
     # Authorization check
     if callback.from_user.id != telegram_id:
-        await callback.answer(
-            "You're not authorized for this action",
-            show_alert=True
-        )
+        await callback.answer(L.system.errors.UNAUTHORIZED, show_alert=True)
         return
 
     async for session in get_db():
@@ -259,7 +239,7 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
         user = result.scalar_one_or_none()
 
         if not user:
-            await callback.answer("User not found", show_alert=True)
+            await callback.answer(L.system.errors.USER_NOT_FOUND, show_alert=True)
             return
 
         conv_result = await session.execute(
@@ -272,12 +252,7 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
         await profiler.reset_profile(user, conversation)
 
         # Send success message
-        await callback.message.edit_text(
-            "✅ Profile Reset Complete\n\n"
-            "Your profile and conversation history have been cleared.\n"
-            "You're now back at the beginning.\n\n"
-            "Ready to start fresh? Tell me: are you looking for work, or are you hiring?"
-        )
+        await callback.message.edit_text(L.commands.reset.SUCCESS)
 
         await callback.answer()
 
@@ -289,14 +264,9 @@ async def handle_reset_cancel(callback: CallbackQuery, callback_data: ResetActio
 
     # Authorization check
     if callback.from_user.id != telegram_id:
-        await callback.answer(
-            "You're not authorized for this action",
-            show_alert=True
-        )
+        await callback.answer(L.system.errors.UNAUTHORIZED, show_alert=True)
         return
 
-    await callback.message.edit_text(
-        "Reset cancelled. Your profile remains unchanged."
-    )
+    await callback.message.edit_text(L.commands.reset.CANCELLED)
     await callback.answer()
 

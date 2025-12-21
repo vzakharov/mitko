@@ -4,12 +4,13 @@ from pydantic_ai import Agent
 from pydantic_ai.models import KnownModelName
 
 from .models import MatchRationale
+from ..i18n import L
 
 
 class RationaleAgent:
     """Agent for generating structured match rationales"""
 
-    SYSTEM_PROMPT = """You are an expert IT matchmaker who explains why two professionals would work well together.
+    SYSTEM_PROMPT_BASE = """You are an expert IT matchmaker who explains why two professionals would work well together.
 
 Your task is to analyze two IT professional profiles and explain why they're a good match.
 
@@ -25,7 +26,12 @@ Focus on:
 - Technology stack overlap
 - Role compatibility (seeker ↔ provider)
 
-Be specific and highlight the most relevant connections.
+LANGUAGE REQUIREMENT:
+- You MUST provide your explanation and key_alignments in {language_name}
+- Be specific and highlight the most relevant connections
+
+Here are example explanations in {language_name}:
+{examples}
 """
 
     def __init__(self, model_name: KnownModelName):
@@ -35,10 +41,21 @@ Be specific and highlight the most relevant connections.
         Args:
             model_name: The LLM model to use (e.g., "openai:gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022")
         """
+        language_name = "English" if L.language == "en" else "Russian"
+
+        # Get example rationales from locale
+        examples = "\n".join(f"- {ex}" for ex in L.agent_examples.rationale.EXAMPLES)
+
+        # Format system prompt with language context
+        system_prompt = self.SYSTEM_PROMPT_BASE.format(
+            language_name=language_name,
+            examples=examples,
+        )
+
         self._agent = Agent(
             model_name,
             result_type=MatchRationale,
-            system_prompt=self.SYSTEM_PROMPT,
+            system_prompt=system_prompt,
         )
 
     async def generate_rationale(

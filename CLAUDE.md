@@ -71,6 +71,7 @@ alembic upgrade head
 - Two-phase matching: both parties must accept before connection
 - Summary-driven matching: all relevant info in text summary (no structured_data field)
 - Runtime modes: Webhook (production) or Long Polling (development) - auto-detected or explicit via `TELEGRAM_MODE`
+- Type-safe i18n: nested dataclasses with full IDE autocomplete, single language per deployment via `MITKO_LANGUAGE` env var
 
 **Structure**:
 - `models/`: SQLModel ORM (User with embeddings, Conversation, Match) - Pydantic-powered validation
@@ -80,6 +81,7 @@ alembic upgrade head
 - `llm/`: Provider abstraction (OpenAI/Anthropic) for embeddings
 - `services/`: Business logic (profiler with create/update support, matcher)
 - `jobs/`: Background matching scheduler
+- `i18n.py`: Type-safe internationalization with nested dataclasses (EN/RU support)
 
 **Important**:
 - PostgreSQL requires `pgvector` extension
@@ -90,3 +92,5 @@ alembic upgrade head
 - **No backwards compatibility needed at this stage** - project hasn't been deployed to production yet
 - Models use SQLModel (not pure SQLAlchemy) for Pydantic validation on field assignment
 - User model has no `structured_data` field - all info in `summary` for semantic matching
+- Language setting via `MITKO_LANGUAGE` env var ("en" or "ru") - controls all user-facing text and agent responses
+- LLM system prompts stay in English for optimal performance, but agents respond in configured language

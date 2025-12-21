@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     similarity_threshold: float = 0.7
     max_matches_per_profile: int = 5
 
+    mitko_language: Literal["en", "ru"] = "en"
+
     def validate_llm_keys(self) -> None:
         if self.llm_provider == "openai" and not self.openai_api_key:
             raise ValueError("OPENAI_API_KEY is required when using OpenAI")
