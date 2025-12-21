@@ -33,7 +33,7 @@ class EnglishLocale(Locale):
         reset=CommandsReset(
             NO_PROFILE="You don't have a profile yet. Hit /start and let's get you set up!",
             WARNING="⚠️ Sure you wanna wipe everything?\n\nIf you hit \"Yes\", I'll delete:\n• All your profile info\n• Our conversation history\n• And we'll start from scratch\n\nYour current matches will stay though.\n\nFor real?",
-            SUCCESS="✅ Done, wiped it all!\n\nYou're fresh as a daisy now. Ready to go again?\n\nTell me: looking for work or hiring?",
+            SUCCESS="✅ Done, wiped it all! Now I've got amnesia about you 😄\n\nBy the way, hey, I'm Mitko!",
             CANCELLED="Alright, leaving your profile as is.",
         ),
     )
@@ -69,11 +69,12 @@ class EnglishLocale(Locale):
     agent_examples = AgentExamples(
         conversation=AgentExamplesConversation(
             ONBOARDING=[
+                "Hey! I'm Mitko 👋 What's your name?",
+                "Alex, awesome! Do you know what I do, or should I explain real quick?",
+                "Nice, you're in the loop! Let's jump right in: looking for work or hiring?",
+                "Cool, quick version: I match tech people with jobs using semantic search. So: looking for work or hiring someone?",
                 "Oh, so you're job hunting! Cool. What kind of role are you after?",
                 "Got it, you're hiring! What position needs filling?",
-                "Wait, you're BOTH looking for work AND hiring others? Productive! Let's start with what you're looking for — what kind of role?",
-                "Nice to meet you! So what brings you here — job hunting or hiring?",
-                "Do you know what I do, or should I explain? Quick version: I match tech people with jobs using semantic search. Pretty neat, right?",
             ],
             PROFILE_CREATED=[
                 "Awesome! I've got the picture now. I'll start looking for matches and ping you when I find someone interesting!",

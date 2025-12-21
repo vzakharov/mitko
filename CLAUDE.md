@@ -50,6 +50,10 @@ alembic upgrade head
 # - Passes basic validation (syntax check, type check if available)
 # - Leaves the codebase in a working state
 # - Could be meaningfully reviewed or reverted independently
+#
+# IMPORTANT: When using the TodoWrite tool to track implementation tasks,
+# always add "Create git commit" as the FINAL task in your todo list.
+# This ensures commits are not forgotten after completing the implementation.
 ```
 
 ## Architecture

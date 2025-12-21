@@ -251,8 +251,25 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
         profiler = ProfileService(session)
         await profiler.reset_profile(user, conversation)
 
-        # Send success message
+        # Send playful amnesia message
         await callback.message.edit_text(L.commands.reset.SUCCESS)
+
+        # Trigger agent to start onboarding conversation
+        if conversation:
+            # Add a marker message to indicate fresh start
+            conversation.messages.append({"role": "user", "content": "/reset"})
+            await session.commit()
+
+            # Get agent's personalized greeting for fresh start
+            conversation_agent = ConversationAgent(get_model_name())
+            response = await conversation_agent.chat(conversation.messages, None)
+
+            # Send agent's onboarding greeting
+            await callback.message.answer(response.utterance)
+
+            # Store assistant response in history
+            conversation.messages.append({"role": "assistant", "content": response.utterance})
+            await session.commit()
 
         await callback.answer()
 
