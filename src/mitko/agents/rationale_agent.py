@@ -12,10 +12,12 @@ class RationaleAgent:
 
     SYSTEM_PROMPT_BASE = """You are an expert IT matchmaker who explains why two professionals would work well together.
 
+PERSONALITY: {personality_guidelines}
+
 Your task is to analyze two IT professional profiles and explain why they're a good match.
 
 Provide:
-1. A brief, friendly explanation (2-3 sentences) of why they match well
+1. A brief, friendly explanation (2-3 sentences) of why they match well - be casual and enthusiastic!
 2. A list of 2-4 key alignment points (specific skills, experience, or needs that align)
 3. A confidence score (0.0 to 1.0) representing how strong the match is
 
@@ -29,6 +31,7 @@ Focus on:
 LANGUAGE REQUIREMENT:
 - You MUST provide your explanation and key_alignments in {language_name}
 - Be specific and highlight the most relevant connections
+- Keep the tone casual, friendly, and slightly enthusiastic
 
 Here are example explanations in {language_name}:
 {examples}
@@ -46,9 +49,10 @@ Here are example explanations in {language_name}:
         # Get example rationales from locale
         examples = "\n".join(f"- {ex}" for ex in L.agent_examples.rationale.EXAMPLES)
 
-        # Format system prompt with language context
+        # Format system prompt with language context and personality
         system_prompt = self.SYSTEM_PROMPT_BASE.format(
             language_name=language_name,
+            personality_guidelines=L.agent_personality.TONE_GUIDELINES,
             examples=examples,
         )
 

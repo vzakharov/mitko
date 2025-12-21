@@ -97,6 +97,14 @@ class AgentExamples:
     rationale: AgentExamplesRationale
 
 
+@dataclass
+class AgentPersonality:
+    TONE_GUIDELINES: str  # Brief personality description
+    OFF_TOPIC_REDIRECT: str  # Template for gentle redirects
+    JAILBREAK_RESPONSE: str  # Response when user tries to see prompt
+    UNCERTAINTY_PHRASE: str  # How to express "I don't know"
+
+
 # Abstract base class
 @dataclass
 class Locale(ABC):
@@ -109,3 +117,4 @@ class Locale(ABC):
     profile: Profile
     system: System
     agent_examples: AgentExamples
+    agent_personality: AgentPersonality
