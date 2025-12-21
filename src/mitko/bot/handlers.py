@@ -6,10 +6,10 @@ from aiogram.filters import Command
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from ..models import User, Conversation, UserState, get_db
+from ..models import User, Conversation, get_db
 from ..services.profiler import ProfileService
 from ..agents import ConversationAgent, ProfileData, get_model_name
-from .keyboards import match_consent_keyboard, reset_confirmation_keyboard
+from .keyboards import reset_confirmation_keyboard, MatchAction, ResetAction
 
 router = Router()
 
@@ -162,10 +162,9 @@ async def handle_message(message: Message) -> None:
         await session.commit()
 
 
-@router.callback_query(F.data.startswith("match_accept:"))
-async def handle_match_accept(callback: CallbackQuery) -> None:
-    match_id_str = callback.data.split(":", 1)[1]
-    match_id = UUID(match_id_str)
+@router.callback_query(MatchAction.filter(F.action == "accept"))
+async def handle_match_accept(callback: CallbackQuery, callback_data: MatchAction) -> None:
+    match_id = UUID(callback_data.match_id)
 
     async for session in get_db():
         from ..models import Match, MatchStatus
@@ -221,10 +220,9 @@ async def handle_match_accept(callback: CallbackQuery) -> None:
             await callback.answer("This match is already processed", show_alert=True)
 
 
-@router.callback_query(F.data.startswith("match_reject:"))
-async def handle_match_reject(callback: CallbackQuery) -> None:
-    match_id_str = callback.data.split(":", 1)[1]
-    match_id = UUID(match_id_str)
+@router.callback_query(MatchAction.filter(F.action == "reject"))
+async def handle_match_reject(callback: CallbackQuery, callback_data: MatchAction) -> None:
+    match_id = UUID(callback_data.match_id)
 
     async for session in get_db():
         from ..models import Match, MatchStatus
@@ -240,11 +238,10 @@ async def handle_match_reject(callback: CallbackQuery) -> None:
         await callback.answer("Noted. We'll find better matches for you!")
 
 
-@router.callback_query(F.data.startswith("reset_confirm:"))
-async def handle_reset_confirm(callback: CallbackQuery) -> None:
+@router.callback_query(ResetAction.filter(F.action == "confirm"))
+async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetAction) -> None:
     """Handler for reset confirmation button"""
-    telegram_id_str = callback.data.split(":", 1)[1]
-    telegram_id = int(telegram_id_str)
+    telegram_id = callback_data.telegram_id
 
     # Authorization check
     if callback.from_user.id != telegram_id:
@@ -285,11 +282,10 @@ async def handle_reset_confirm(callback: CallbackQuery) -> None:
         await callback.answer()
 
 
-@router.callback_query(F.data.startswith("reset_cancel:"))
-async def handle_reset_cancel(callback: CallbackQuery) -> None:
+@router.callback_query(ResetAction.filter(F.action == "cancel"))
+async def handle_reset_cancel(callback: CallbackQuery, callback_data: ResetAction) -> None:
     """Handler for reset cancellation button"""
-    telegram_id_str = callback.data.split(":", 1)[1]
-    telegram_id = int(telegram_id_str)
+    telegram_id = callback_data.telegram_id
 
     # Authorization check
     if callback.from_user.id != telegram_id:

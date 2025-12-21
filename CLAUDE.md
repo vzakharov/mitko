@@ -44,6 +44,12 @@ alembic upgrade head
 # - docs: documentation changes
 # - test: test additions/changes
 # - chore: maintenance tasks
+#
+# Commit when you've completed a self-contained, logical unit of work that:
+# - Implements a complete feature or fix
+# - Passes basic validation (syntax check, type check if available)
+# - Leaves the codebase in a working state
+# - Could be meaningfully reviewed or reverted independently
 ```
 
 ## Architecture
