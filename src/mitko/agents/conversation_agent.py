@@ -4,10 +4,22 @@ import os
 from textwrap import dedent
 
 from pydantic_ai import Agent
+from pydantic_ai.messages import ModelRequest, ModelResponse, UserPromptPart, TextPart
 from pydantic_ai.models import KnownModelName
 
 from .models import ConversationResponse, ProfileData
 from ..i18n import L
+
+
+def _to_pydantic_messages(messages: list[dict[str, str]]) -> list[ModelRequest | ModelResponse]:
+    """Convert stored messages to PydanticAI format."""
+    result: list[ModelRequest | ModelResponse] = []
+    for msg in messages:
+        if msg["role"] == "user":
+            result.append(ModelRequest(parts=[UserPromptPart(content=msg["content"])]))
+        else:  # assistant
+            result.append(ModelResponse(parts=[TextPart(content=msg["content"])]))
+    return result
 
 
 class ConversationAgent:
@@ -162,12 +174,10 @@ class ConversationAgent:
         Returns:
             ConversationResponse with utterance and optional profile
         """
-        conversation_text = "\n".join(
-            f"{msg['role']}: {msg['content']}" for msg in conversation_messages
-        )
+        message_history = _to_pydantic_messages(conversation_messages)
 
         if existing_profile:
-            prompt = dedent(f"""\
+            instruction = dedent(f"""\
                 The user already has this profile:
 
                 is_seeker: {existing_profile.is_seeker}
@@ -175,19 +185,9 @@ class ConversationAgent:
                 summary: {existing_profile.summary}
 
                 Continue the conversation. If the user requests changes, return an updated profile.
-
-                Conversation:
-                {conversation_text}
-
                 Respond now with your utterance and updated profile (if changes were requested).""")
         else:
-            prompt = dedent(f"""\
-                This is a new user. Have a natural conversation to understand their profile.
+            instruction = "This is a new user. Have a natural conversation to understand their profile. Respond now with your utterance and profile (if you have enough information)."
 
-                Conversation:
-                {conversation_text}
-
-                Respond now with your utterance and profile (if you have enough information).""")
-
-        result = await self._agent.run(prompt)
+        result = await self._agent.run(instruction, message_history=message_history)
         return result.data
