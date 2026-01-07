@@ -1,6 +1,7 @@
 """English locale implementation"""
 
 from dataclasses import dataclass
+from textwrap import dedent
 
 from .base import (
     Locale,
@@ -28,12 +29,30 @@ class EnglishLocale(Locale):
     language = "en"
     commands = Commands(
         start=CommandsStart(
-            GREETING="Oh hey! I'm Mitko 👋\n\nBasically I'm like a matchmaker, except I match tech folks with jobs (and vice versa). We'll chat a bit so I understand what you're after, then I'll find you some great matches.\n\nSo, what's up: looking for work or hiring someone?"
+            GREETING=dedent("""\
+                Oh hey! I'm Mitko 👋
+
+                Basically I'm like a matchmaker, except I match tech folks with jobs (and vice versa). We'll chat a bit so I understand what you're after, then I'll find you some great matches.
+
+                So, what's up: looking for work or hiring someone?""")
         ),
         reset=CommandsReset(
             NO_PROFILE="You don't have a profile yet. Hit /start and let's get you set up!",
-            WARNING="⚠️ Sure you wanna wipe everything?\n\nIf you hit \"Yes\", I'll delete:\n• All your profile info\n• Our conversation history\n• And we'll start from scratch\n\nYour current matches will stay though.\n\nFor real?",
-            SUCCESS="✅ Done, wiped it all! Now I've got amnesia about you 😄\n\nBy the way, hey, I'm Mitko!",
+            WARNING=dedent("""\
+                ⚠️ Sure you wanna wipe everything?
+
+                If you hit "Yes", I'll delete:
+                • All your profile info
+                • Our conversation history
+                • And we'll start from scratch
+
+                Your current matches will stay though.
+
+                For real?"""),
+            SUCCESS=dedent("""\
+                ✅ Done, wiped it all! Now I've got amnesia about you 😄
+
+                By the way, hey, I'm Mitko!"""),
             CANCELLED="Alright, leaving your profile as is.",
         ),
     )
@@ -42,10 +61,22 @@ class EnglishLocale(Locale):
         reset=KeyboardsReset(CONFIRM="Yep, wipe it", CANCEL="Nah, keep it"),
     )
     matching = Matching(
-        FOUND="🎯 Hey, I think I found someone!\n\n{profile}\n\n💡 Why I think it's a fit: {rationale}\n\nWanna connect?",
+        FOUND=dedent("""\
+            🎯 Hey, I think I found someone!
+
+            {profile}
+
+            💡 Why I think it's a fit: {rationale}
+
+            Wanna connect?"""),
         ACCEPT_WAITING="Got it! Now waiting to hear from the other side.",
         ACCEPT_CONNECTED="We're on! Check your messages.",
-        CONNECTION_MADE="🎉 Boom, matched! Here's the details:\n\n{profile}\n\nYou can reach out to them directly now.",
+        CONNECTION_MADE=dedent("""\
+            🎉 Boom, matched! Here's the details:
+
+            {profile}
+
+            You can reach out to them directly now."""),
         REJECT_NOTED="Cool, got it. I'll find someone better!",
         errors=MatchingErrors(
             NOT_FOUND="Match not found",

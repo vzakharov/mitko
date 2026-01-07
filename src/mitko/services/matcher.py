@@ -1,3 +1,5 @@
+from textwrap import dedent
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func, text
 
@@ -41,7 +43,7 @@ class MatcherService:
 
         embedding_str = "[" + ",".join(str(x) for x in seeker.embedding) + "]"
 
-        query = text("""
+        query = text(dedent("""
             SELECT u.telegram_id, 1 - (u.embedding <=> :seeker_embedding::vector) as similarity
             FROM users u
             WHERE u.is_provider = true
@@ -51,7 +53,7 @@ class MatcherService:
             AND 1 - (u.embedding <=> :seeker_embedding::vector) >= :threshold
             ORDER BY similarity DESC
             LIMIT :limit
-        """)
+        """))
 
         result = await self.session.execute(
             query,

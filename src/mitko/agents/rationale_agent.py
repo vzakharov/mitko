@@ -1,5 +1,7 @@
 """Match rationale generation agent using PydanticAI"""
 
+from textwrap import dedent
+
 from pydantic_ai import Agent
 from pydantic_ai.models import KnownModelName
 
@@ -10,7 +12,7 @@ from ..i18n import L
 class RationaleAgent:
     """Agent for generating structured match rationales"""
 
-    SYSTEM_PROMPT_BASE = """You are an expert IT matchmaker who explains why two professionals would work well together.
+    SYSTEM_PROMPT_BASE = dedent("""You are an expert IT matchmaker who explains why two professionals would work well together.
 
 PERSONALITY: {personality_guidelines}
 
@@ -35,7 +37,7 @@ LANGUAGE REQUIREMENT:
 
 Here are example explanations in {language_name}:
 {examples}
-"""
+""")
 
     def __init__(self, model_name: KnownModelName):
         """
@@ -80,18 +82,18 @@ Here are example explanations in {language_name}:
         Raises:
             ValueError: If rationale generation fails or produces invalid output
         """
-        prompt = f"""Analyze these two profiles and explain why they're a good match:
+        prompt = dedent(f"""Analyze these two profiles and explain why they're a good match:
 
-Seeker Profile:
-{seeker_summary}
+            Seeker Profile:
+            {seeker_summary}
 
-Provider Profile:
-{provider_summary}
+            Provider Profile:
+            {provider_summary}
 
-Generate a structured match rationale with:
-- explanation: A brief, friendly 2-3 sentence explanation
-- key_alignments: A list of 2-4 specific points where they align
-- confidence_score: A score from 0.0 to 1.0 (where 1.0 is a perfect match)"""
+            Generate a structured match rationale with:
+            - explanation: A brief, friendly 2-3 sentence explanation
+            - key_alignments: A list of 2-4 specific points where they align
+            - confidence_score: A score from 0.0 to 1.0 (where 1.0 is a perfect match)""")
 
         result = await self._agent.run(prompt)
         return result.data
