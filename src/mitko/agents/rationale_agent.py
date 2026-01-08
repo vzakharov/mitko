@@ -59,7 +59,7 @@ class RationaleAgent:
 
         self._agent = Agent(
             model_name,
-            result_type=MatchRationale,
+            output_type=MatchRationale,
             system_prompt=system_prompt,
         )
 
@@ -95,4 +95,4 @@ class RationaleAgent:
             - confidence_score: A score from 0.0 to 1.0 (where 1.0 is a perfect match)""")
 
         result = await self._agent.run(prompt)
-        return result.data
+        return result.output

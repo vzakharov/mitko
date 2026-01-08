@@ -18,6 +18,6 @@ def get_model_name() -> KnownModelName:
     if settings.llm_provider == "openai":
         return "openai:gpt-4o-mini"
     elif settings.llm_provider == "anthropic":
-        return "anthropic:claude-3-5-sonnet-20241022"
+        return "anthropic:claude-3-7-sonnet-latest"
     else:
         raise ValueError(f"Unknown LLM provider: {settings.llm_provider}")

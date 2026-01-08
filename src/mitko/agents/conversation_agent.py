@@ -164,7 +164,7 @@ class ConversationAgent:
 
         self._agent = Agent(
             model_name,
-            result_type=ConversationResponse,
+            output_type=ConversationResponse,
             system_prompt=system_prompt,
         )
 
@@ -204,4 +204,4 @@ class ConversationAgent:
             )
 
         result = await self._agent.run(instruction, message_history=message_history)
-        return result.data
+        return result.output
