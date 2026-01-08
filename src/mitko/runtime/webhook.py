@@ -14,6 +14,9 @@ class WebhookRuntime:
 
     async def startup(self, bot: Bot, dp: Dispatcher) -> None:
         """Set webhook with Telegram"""
+        if settings.telegram_webhook_url is None:
+            raise ValueError("TELEGRAM_WEBHOOK_URL is required for webhook mode")
+
         await bot.set_webhook(
             url=settings.telegram_webhook_url,
             secret_token=settings.telegram_webhook_secret,
