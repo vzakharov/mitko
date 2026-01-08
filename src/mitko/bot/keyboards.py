@@ -1,7 +1,8 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters.callback_data import CallbackData
-from uuid import UUID
 from typing import Literal
+from uuid import UUID
+
+from aiogram.filters.callback_data import CallbackData
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from ..i18n import L
 

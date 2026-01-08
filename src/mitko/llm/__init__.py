@@ -1,9 +1,8 @@
-from .base import LLMProvider
-from .openai import OpenAIProvider
-from .anthropic import AnthropicProvider
-from .embeddings import get_embedding_provider
-
 from ..config import settings
+from .anthropic import AnthropicProvider
+from .base import LLMProvider
+from .embeddings import get_embedding_provider as get_embedding_provider
+from .openai import OpenAIProvider
 
 
 def get_llm_provider() -> LLMProvider:

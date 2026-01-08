@@ -1,7 +1,7 @@
 """Base dataclasses and abstract Locale for type-safe i18n"""
 
-from dataclasses import dataclass
 from abc import ABC
+from dataclasses import dataclass
 
 
 # Nested dataclasses for logical grouping

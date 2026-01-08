@@ -1,8 +1,9 @@
-from sqlmodel import SQLModel, Field, Relationship, Column
-from sqlalchemy import BigInteger, DateTime, Text, func
-from pgvector.sqlalchemy import Vector
 from datetime import datetime
-from typing import Literal, TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
+
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import BigInteger, DateTime, Text, func
+from sqlmodel import Column, Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .conversation import Conversation
@@ -29,8 +30,8 @@ class User(SQLModel, table=True):
     embedding: Any = Field(default=None, sa_type=Vector(1536))
     is_complete: bool = Field(default=False)
 
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now())
+    created_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )
 
     conversations: list["Conversation"] = Relationship(back_populates="user")

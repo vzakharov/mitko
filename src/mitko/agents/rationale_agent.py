@@ -5,44 +5,46 @@ from textwrap import dedent
 from pydantic_ai import Agent
 from pydantic_ai.models import KnownModelName
 
-from .models import MatchRationale
 from ..i18n import L
+from .models import MatchRationale
 
 
 class RationaleAgent:
     """Agent for generating structured match rationales"""
 
-    SYSTEM_PROMPT_BASE = dedent("""You are an expert IT matchmaker who explains why two professionals would work well together.
+    SYSTEM_PROMPT_BASE = dedent("""\
+        You are an expert IT matchmaker who explains why two professionals would work well
+        together.
 
-Your task is to analyze two IT professional profiles and explain why they're a good match.
+        Your task is to analyze two IT professional profiles and explain why they're a good match.
 
-Provide:
-1. A brief, friendly explanation (2-3 sentences) of why they match well - be casual and enthusiastic!
-2. A list of 2-4 key alignment points (specific skills, experience, or needs that align)
-3. A confidence score (0.0 to 1.0) representing how strong the match is
+        Provide:
+        1. A brief, friendly explanation (2-3 sentences) of why they match well - be casual!
+        2. A list of 2-4 key alignment points (skills, experience, or needs that align)
+        3. A confidence score (0.0 to 1.0) representing how strong the match is
 
-Focus on:
-- Complementary skills and needs
-- Matching experience levels or requirements
-- Location or availability alignment
-- Technology stack overlap
-- Role compatibility (seeker ↔ provider)
+        Focus on:
+        - Complementary skills and needs
+        - Matching experience levels or requirements
+        - Location or availability alignment
+        - Technology stack overlap
+        - Role compatibility (seeker ↔ provider)
 
-LANGUAGE REQUIREMENT:
-- You MUST provide your explanation and key_alignments in {language_name}
-- Be specific and highlight the most relevant connections
-- Keep the tone casual, friendly, and slightly enthusiastic
+        LANGUAGE REQUIREMENT:
+        - You MUST provide your explanation and key_alignments in {language_name}
+        - Be specific and highlight the most relevant connections
+        - Keep the tone casual, friendly, and slightly enthusiastic
 
-Here are example explanations in {language_name}:
-{examples}
-""")
+        Here are example explanations in {language_name}:
+        {examples}
+        """)
 
     def __init__(self, model_name: KnownModelName):
         """
         Initialize the rationale generation agent.
 
         Args:
-            model_name: The LLM model to use (e.g., "openai:gpt-4o-mini", "anthropic:claude-3-5-sonnet-20241022")
+            model_name: The LLM model to use (e.g., "openai:gpt-4o-mini")
         """
         language_name = "English" if L.language == "en" else "Russian"
 

@@ -1,16 +1,16 @@
 from uuid import UUID
 
-from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
-from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import User, Conversation, get_db
-from ..services.profiler import ProfileService
 from ..agents import ConversationAgent, ProfileData, get_model_name
-from .keyboards import reset_confirmation_keyboard, MatchAction, ResetAction
 from ..i18n import L
+from ..models import Conversation, User, get_db
+from ..services.profiler import ProfileService
+from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
 router = Router()
 
@@ -54,14 +54,18 @@ async def get_or_create_conversation(telegram_id: int, session: AsyncSession) ->
 
 @router.message(Command("start"))
 async def cmd_start(message: Message) -> None:
+    if message.from_user is None:
+        return
     async for session in get_db():
-        user = await get_or_create_user(message.from_user.id, session)
+        await get_or_create_user(message.from_user.id, session)
         await message.answer(L.commands.start.GREETING)
 
 
 @router.message(Command("reset"))
 async def cmd_reset(message: Message) -> None:
     """Handler for /reset command - shows confirmation dialog"""
+    if message.from_user is None:
+        return
     async for session in get_db():
         result = await session.execute(
             select(User).where(User.telegram_id == message.from_user.id)
@@ -98,7 +102,7 @@ def _format_profile_card(profile: ProfileData) -> str:
 
 @router.message()
 async def handle_message(message: Message) -> None:
-    if not message.text:
+    if not message.text or message.from_user is None:
         return
 
     async for session in get_db():
@@ -152,7 +156,7 @@ async def handle_match_accept(callback: CallbackQuery, callback_data: MatchActio
     match_id = UUID(callback_data.match_id)
 
     async for session in get_db():
-        from ..models import Match, MatchStatus
+        from ..models import Match
 
         result = await session.execute(select(Match).where(Match.id == match_id))
         match = result.scalar_one_or_none()
@@ -170,19 +174,17 @@ async def handle_match_accept(callback: CallbackQuery, callback_data: MatchActio
         user_b = user_b_result.scalar_one()
 
         current_user = None
-        other_user = None
         if user_a.telegram_id == callback.from_user.id:
             current_user = user_a
-            other_user = user_b
         elif user_b.telegram_id == callback.from_user.id:
             current_user = user_b
-            other_user = user_a
         else:
             await callback.answer(L.matching.errors.UNAUTHORIZED, show_alert=True)
             return
 
         if match.status == "pending":
-            match.status = "a_accepted" if current_user.telegram_id == user_a.telegram_id else "b_accepted"
+            is_user_a = current_user.telegram_id == user_a.telegram_id
+            match.status = "a_accepted" if is_user_a else "b_accepted"
             await session.commit()
             await callback.answer(L.matching.ACCEPT_WAITING)
         elif match.status in ("a_accepted", "b_accepted"):
@@ -208,7 +210,7 @@ async def handle_match_reject(callback: CallbackQuery, callback_data: MatchActio
     match_id = UUID(callback_data.match_id)
 
     async for session in get_db():
-        from ..models import Match, MatchStatus
+        from ..models import Match
 
         result = await session.execute(select(Match).where(Match.id == match_id))
         match = result.scalar_one_or_none()

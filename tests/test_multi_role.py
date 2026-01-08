@@ -1,7 +1,8 @@
 """Tests for multi-role support"""
 
 import pytest
-from src.mitko.utils.validation import validate_profile_roles, ProfileValidationError
+
+from src.mitko.utils.validation import ProfileValidationError, validate_profile_roles
 
 
 class TestRoleValidation:

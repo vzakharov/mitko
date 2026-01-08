@@ -1,7 +1,7 @@
-from .base import engine, async_session_maker, get_db, init_db
-from .user import User, UserState
+from .base import async_session_maker, engine, get_db, init_db
 from .conversation import Conversation
 from .match import Match, MatchStatus
+from .user import User, UserState
 
 __all__ = [
     "engine",

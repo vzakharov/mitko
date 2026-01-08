@@ -1,5 +1,5 @@
+
 from openai import AsyncOpenAI
-from typing import TYPE_CHECKING
 
 from ..config import settings
 

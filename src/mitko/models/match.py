@@ -1,9 +1,10 @@
-from sqlmodel import SQLModel, Field, Relationship, Column
-from sqlalchemy import DateTime, func, Text, Float, String
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from datetime import datetime
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING, Literal
+
+from sqlalchemy import DateTime, Float, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlmodel import Column, Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .user import User
@@ -23,8 +24,8 @@ class Match(SQLModel, table=True):
     similarity_score: float = Field(sa_column=Column(Float))
     match_rationale: str = Field(sa_column=Column(Text))
     status: MatchStatus = Field(default="pending", sa_column=Column(String(20)))
-    created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), server_default=func.now())
+    created_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )
 
     user_a: "User" = Relationship(

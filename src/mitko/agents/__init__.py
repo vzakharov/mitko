@@ -1,9 +1,9 @@
 """PydanticAI-powered agents for LLM interactions"""
 
-from .models import ProfileData, MatchRationale, SummaryResult, ConversationResponse
-from .conversation_agent import ConversationAgent
-from .rationale_agent import RationaleAgent
 from .config import get_model_name
+from .conversation_agent import ConversationAgent
+from .models import ConversationResponse, MatchRationale, ProfileData, SummaryResult
+from .rationale_agent import RationaleAgent
 
 __all__ = [
     "ProfileData",

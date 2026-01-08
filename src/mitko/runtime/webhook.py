@@ -1,8 +1,8 @@
 from contextlib import asynccontextmanager
 
-from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.types import Update
+from aiohttp import web
 from fastapi import FastAPI, Request
 
 from ..config import settings

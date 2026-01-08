@@ -1,11 +1,11 @@
 from textwrap import dedent
 
+from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func, text
 
-from ..models import User, Match, MatchStatus
-from ..config import settings
 from ..agents import RationaleAgent, get_model_name
+from ..config import settings
+from ..models import Match, User
 
 
 class MatcherService:
@@ -16,8 +16,8 @@ class MatcherService:
         seeker_users = await self.session.execute(
             select(User).where(
                 and_(
-                    User.is_seeker == True,
-                    User.is_complete == True,
+                    User.is_seeker.is_(True),
+                    User.is_complete.is_(True),
                     User.embedding.isnot(None),
                 )
             )

@@ -1,13 +1,13 @@
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from aiogram import Bot
-from sqlalchemy.ext.asyncio import AsyncSession
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import async_session_maker, Match, Profile
-from ..services.matcher import MatcherService
-from ..config import settings
 from ..bot.keyboards import match_consent_keyboard
+from ..config import settings
 from ..i18n import L
+from ..models import Match, Profile, async_session_maker
+from ..services.matcher import MatcherService
 
 scheduler = AsyncIOScheduler()
 

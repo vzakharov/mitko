@@ -1,7 +1,7 @@
 """Pydantic models for structured LLM outputs"""
 
+
 from pydantic import BaseModel, field_validator, model_validator
-from typing import Any
 
 
 class ProfileData(BaseModel):
@@ -15,7 +15,9 @@ class ProfileData(BaseModel):
     def validate_roles(self) -> "ProfileData":
         """Ensure at least one role is enabled"""
         if not (self.is_seeker or self.is_provider):
-            raise ValueError("Profile must have at least one role enabled (is_seeker or is_provider)")
+            raise ValueError(
+                "Profile must have at least one role enabled (is_seeker or is_provider)"
+            )
         return self
 
     @field_validator("summary")

@@ -89,6 +89,7 @@ alembic upgrade head
 - `i18n.py`: Type-safe internationalization with nested dataclasses (EN/RU support)
 
 **Important**:
+- **NEVER add `# type: ignore`, `# pyright: ignore`, `# noqa`, or similar suppression comments without explicit user approval** - always ask first and discuss the root cause
 - PostgreSQL requires `pgvector` extension
 - Embeddings are 1536-dim vectors (stored in User.embedding)
 - Conversation history stored as JSON, full context passed to LLM

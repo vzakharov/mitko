@@ -3,11 +3,11 @@ import logging
 
 from fastapi import FastAPI
 
-from .config import settings
 from .bot.core import initialize_bot
-from .runtime.webhook import WebhookRuntime
-from .runtime.polling import PollingRuntime
+from .config import settings
 from .jobs.matching import start_matching_scheduler, stop_matching_scheduler
+from .runtime.polling import PollingRuntime
+from .runtime.webhook import WebhookRuntime
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,11 @@
-from sqlmodel import SQLModel, Field, Relationship, Column
-from sqlalchemy import DateTime, func
-from sqlalchemy.dialects.postgresql import JSON, UUID as PGUUID
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
-import uuid
+
+from sqlalchemy import DateTime, func
+from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlmodel import Column, Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .user import User
@@ -20,7 +22,8 @@ class Conversation(SQLModel, table=True):
         default_factory=list,
         sa_column=Column(JSON)
     )
-    updated_at: datetime = Field(
+    updated_at: datetime | None = Field(
+        default=None,
         sa_column=Column(
             DateTime(timezone=True),
             server_default=func.now(),
