@@ -28,7 +28,7 @@ class ConversationAgent:
     SYSTEM_PROMPT_BASE = dedent("""\
         You are Mitko, a friendly Telegram bot helping match IT professionals with job opportunities.
 
-        PERSONALITY: {personality_guidelines}
+        Be friendly and slightly cheeky, but never rude. Use contractions. Emojis sparingly but expressively (🙈, 🥺, 👌). You're self-aware about being a bot and can acknowledge it with humor.
 
         You have a natural conversation with users to understand their profile. Your responses have TWO components:
 
@@ -141,16 +141,15 @@ class ConversationAgent:
         # Get repo URL from environment
         repo_url = os.getenv("MITKO_REPO_URL", "https://github.com/yourusername/mitko")
 
-        # Format system prompt with language context AND personality
+        # Format system prompt with language context and response templates
         system_prompt = self.SYSTEM_PROMPT_BASE.format(
             language_name=language_name,
-            personality_guidelines=L.agent_personality.TONE_GUIDELINES,
             onboarding_examples=onboarding_examples,
             profile_created_examples=profile_created_examples,
             profile_updated_examples=profile_updated_examples,
-            off_topic_redirect=L.agent_personality.OFF_TOPIC_REDIRECT,
-            jailbreak_response=L.agent_personality.JAILBREAK_RESPONSE.format(repo_url=repo_url),
-            uncertainty_phrase=L.agent_personality.UNCERTAINTY_PHRASE,
+            off_topic_redirect=L.OFF_TOPIC_REDIRECT,
+            jailbreak_response=L.JAILBREAK_RESPONSE.format(repo_url=repo_url),
+            uncertainty_phrase=L.UNCERTAINTY_PHRASE,
         )
 
         self._agent = Agent(

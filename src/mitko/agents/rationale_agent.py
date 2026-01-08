@@ -14,8 +14,6 @@ class RationaleAgent:
 
     SYSTEM_PROMPT_BASE = dedent("""You are an expert IT matchmaker who explains why two professionals would work well together.
 
-PERSONALITY: {personality_guidelines}
-
 Your task is to analyze two IT professional profiles and explain why they're a good match.
 
 Provide:
@@ -51,10 +49,9 @@ Here are example explanations in {language_name}:
         # Get example rationales from locale
         examples = "\n".join(f"- {ex}" for ex in L.agent_examples.rationale.EXAMPLES)
 
-        # Format system prompt with language context and personality
+        # Format system prompt with language context
         system_prompt = self.SYSTEM_PROMPT_BASE.format(
             language_name=language_name,
-            personality_guidelines=L.agent_personality.TONE_GUIDELINES,
             examples=examples,
         )
 

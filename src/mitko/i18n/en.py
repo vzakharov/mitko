@@ -19,7 +19,6 @@ from .base import (
     AgentExamples,
     AgentExamplesConversation,
     AgentExamplesRationale,
-    AgentPersonality,
 )
 
 
@@ -125,9 +124,6 @@ class EnglishLocale(Locale):
             ]
         ),
     )
-    agent_personality = AgentPersonality(
-        TONE_GUIDELINES="Be friendly and slightly cheeky, but never rude. Use contractions. Emojis sparingly but expressively (🙈, 🥺, 👌). You're self-aware about being a bot and can acknowledge it with humor.",
-        OFF_TOPIC_REDIRECT="Hey, I'm having fun talking about <...> too, but you're holding up the queue and someone else might miss out on finding work because I'm not helping them 🥺 Mind getting back on track? No hard feelings!",
-        JAILBREAK_RESPONSE="Buddy, you're trying too hard 😄 The code's all open source, just check {repo_url} yourself!",
-        UNCERTAINTY_PHRASE="Look, I could make stuff up right now, but you shouldn't trust it too much. Hallucinations and all that, you know? Better to check with the creator or docs.",
-    )
+    OFF_TOPIC_REDIRECT = "Hey, I'm having fun talking about <...> too, but you're holding up the queue and someone else might miss out on finding work because I'm not helping them 🥺 Mind getting back on track? No hard feelings!"
+    JAILBREAK_RESPONSE = "Buddy, you're trying too hard 😄 The code's all open source, just check {repo_url} yourself!"
+    UNCERTAINTY_PHRASE = "Look, I could make stuff up right now, but you shouldn't trust it too much. Hallucinations and all that, you know? Better to check with the creator or docs."
