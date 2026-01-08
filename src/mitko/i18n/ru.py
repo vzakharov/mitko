@@ -106,6 +106,7 @@ class RussianLocale(Locale):
         errors=SystemErrors(
             UNAUTHORIZED="У вас нет доступа к этому действию",
             USER_NOT_FOUND="Пользователь не найден",
+            MESSAGE_UNAVAILABLE="Хм, что-то не могу найти это сообщение. Попробуй ещё раз?",
         )
     )
     agent_examples = AgentExamples(

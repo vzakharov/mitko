@@ -2,7 +2,7 @@ from uuid import UUID
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InaccessibleMessage, Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
@@ -27,6 +27,19 @@ def get_bot() -> Bot:
     if _bot_instance is None:
         raise RuntimeError("Bot instance not set")
     return _bot_instance
+
+
+async def validate_callback_message(callback: CallbackQuery) -> Message | None:
+    """
+    Validate callback.message is accessible and return it, or send error and return None.
+
+    Returns:
+        Message if accessible, None if inaccessible (error already sent to user)
+    """
+    if callback.message is None or isinstance(callback.message, InaccessibleMessage):
+        await callback.answer(L.system.errors.MESSAGE_UNAVAILABLE, show_alert=True)
+        return None
+    return callback.message
 
 
 async def get_or_create_user(telegram_id: int, session: AsyncSession) -> User:
@@ -234,6 +247,11 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
         await callback.answer(L.system.errors.UNAUTHORIZED, show_alert=True)
         return
 
+    # Validate callback.message is accessible
+    message = await validate_callback_message(callback)
+    if message is None:
+        return
+
     async for session in get_db():
         # Get user and conversation
         result = await session.execute(
@@ -255,7 +273,7 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
         await profiler.reset_profile(user, conversation)
 
         # Send playful amnesia message
-        await callback.message.edit_text(L.commands.reset.SUCCESS)
+        await message.edit_text(L.commands.reset.SUCCESS)
 
         # Trigger agent to start onboarding conversation
         if conversation:
@@ -268,7 +286,7 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
             response = await conversation_agent.chat(conversation.messages, None)
 
             # Send agent's onboarding greeting
-            await callback.message.answer(response.utterance)
+            await message.answer(response.utterance)
 
             # Store assistant response in history
             conversation.messages.append({"role": "assistant", "content": response.utterance})
@@ -287,6 +305,11 @@ async def handle_reset_cancel(callback: CallbackQuery, callback_data: ResetActio
         await callback.answer(L.system.errors.UNAUTHORIZED, show_alert=True)
         return
 
-    await callback.message.edit_text(L.commands.reset.CANCELLED)
+    # Validate callback.message is accessible
+    message = await validate_callback_message(callback)
+    if message is None:
+        return
+
+    await message.edit_text(L.commands.reset.CANCELLED)
     await callback.answer()
 

@@ -106,6 +106,7 @@ class EnglishLocale(Locale):
         errors=SystemErrors(
             UNAUTHORIZED="You're not authorized for this action",
             USER_NOT_FOUND="User not found",
+            MESSAGE_UNAVAILABLE="Hmm, can't access that message anymore. Try again?",
         )
     )
     agent_examples = AgentExamples(
