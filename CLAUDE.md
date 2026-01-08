@@ -12,7 +12,7 @@ Mitko is an LLM-powered Telegram bot that matches IT job seekers with employers 
 
 ```bash
 # Setup
-uv sync  # or: pip install -e .
+uv sync --extra dev  # Install with dev dependencies
 cp .env.example .env  # then edit with credentials
 alembic upgrade head
 
@@ -27,10 +27,11 @@ uvicorn src.mitko.main:app --reload --host 0.0.0.0 --port 8000
 TELEGRAM_MODE=webhook uvicorn src.mitko.main:app --host 0.0.0.0 --port 8000
 
 # Code quality
-black src/ tests/
-ruff check src/ tests/
-mypy src/
-pytest
+uv run black src/ tests/              # Format code
+uv run ruff check src/ tests/          # Lint code
+uv run ruff check --fix src/ tests/    # Auto-fix lint issues
+uv run pyright                         # Type check (replaces mypy)
+uv run pytest                          # Run tests
 
 # Database
 alembic revision --autogenerate -m "description"

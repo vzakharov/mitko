@@ -27,7 +27,7 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "black>=24.8.0",
     "ruff>=0.6.0",
-    "mypy>=1.11.0",
+    "pyright[nodejs]>=1.1.0",
 ]
 
 [build-system]
@@ -41,10 +41,19 @@ target-version = ["py311"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade (modernize code)
+    "B",   # flake8-bugbear (common bugs)
+    "SIM", # flake8-simplify
+]
+ignore = []
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+reportUnusedVariable = true
+reportUnusedImport = true
 
