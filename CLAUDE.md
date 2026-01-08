@@ -90,6 +90,7 @@ alembic upgrade head
 
 **Important**:
 - **NEVER add `# type: ignore`, `# pyright: ignore`, `# noqa`, or similar suppression comments without explicit user approval** - always ask first and discuss the root cause
+- **NEVER cast to `Any` type without explicit user approval** - always ask first and find a properly typed solution
 - PostgreSQL requires `pgvector` extension
 - Embeddings are 1536-dim vectors (stored in User.embedding)
 - Conversation history stored as JSON, full context passed to LLM

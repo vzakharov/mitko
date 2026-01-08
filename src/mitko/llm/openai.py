@@ -1,7 +1,13 @@
-
 from openai import AsyncOpenAI
+from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
 
 from ..config import settings
+from .base import LLMMessage
 
 
 class OpenAIProvider:
@@ -12,8 +18,35 @@ class OpenAIProvider:
         self.chat_model = "gpt-4o-mini"
         self.embedding_model = "text-embedding-3-small"
 
-    async def chat(self, messages: list[dict[str, str]], system: str) -> str:
-        formatted_messages = [{"role": "system", "content": system}] + messages
+    async def chat(self, messages: list[LLMMessage], system: str) -> str:
+        # Convert our LLMMessage format to OpenAI's typed message params
+        formatted_messages: list[ChatCompletionMessageParam] = []
+
+        # Add system message first
+        system_msg: ChatCompletionSystemMessageParam = {"role": "system", "content": system}
+        formatted_messages.append(system_msg)
+
+        # Add conversation messages with proper types
+        for msg in messages:
+            role = msg["role"]
+            content = msg["content"]
+
+            if role == "system":
+                typed_msg: ChatCompletionSystemMessageParam = {"role": "system", "content": content}
+                formatted_messages.append(typed_msg)
+            elif role == "user":
+                typed_msg_user: ChatCompletionUserMessageParam = {
+                    "role": "user",
+                    "content": content,
+                }
+                formatted_messages.append(typed_msg_user)
+            elif role == "assistant":
+                typed_msg_asst: ChatCompletionAssistantMessageParam = {
+                    "role": "assistant",
+                    "content": content,
+                }
+                formatted_messages.append(typed_msg_asst)
+
         response = await self.client.chat.completions.create(
             model=self.chat_model,
             messages=formatted_messages,
@@ -26,4 +59,3 @@ class OpenAIProvider:
             input=text,
         )
         return response.data[0].embedding
-
