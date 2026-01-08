@@ -1,6 +1,5 @@
 """Russian locale implementation"""
 
-from dataclasses import dataclass
 from textwrap import dedent
 
 from .base import (
@@ -23,7 +22,6 @@ from .base import (
 
 
 # Concrete Russian implementation
-@dataclass
 class RussianLocale(Locale):
     language = "ru"
     commands = Commands(

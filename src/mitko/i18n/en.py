@@ -1,6 +1,5 @@
 """English locale implementation"""
 
-from dataclasses import dataclass
 from textwrap import dedent
 
 from .base import (
@@ -23,7 +22,6 @@ from .base import (
 
 
 # Concrete English implementation
-@dataclass
 class EnglishLocale(Locale):
     language = "en"
     commands = Commands(

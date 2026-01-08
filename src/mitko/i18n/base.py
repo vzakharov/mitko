@@ -99,7 +99,6 @@ class AgentExamples:
 
 
 # Abstract base class
-@dataclass
 class Locale(ABC):
     """Abstract base for all locales"""
 
