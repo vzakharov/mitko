@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.dialects.postgresql import JSON
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .user import User
 
 class Conversation(SQLModel, table=True):
-    __tablename__ = "conversations"
+    __tablename__: ClassVar[Any] = "conversations"
 
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,

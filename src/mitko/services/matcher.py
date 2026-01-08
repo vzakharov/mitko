@@ -2,6 +2,7 @@ from textwrap import dedent
 
 from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col
 
 from ..agents import RationaleAgent, get_model_name
 from ..config import settings
@@ -16,9 +17,9 @@ class MatcherService:
         seeker_users = await self.session.execute(
             select(User).where(
                 and_(
-                    User.is_seeker.is_(True),
-                    User.is_complete.is_(True),
-                    User.embedding.isnot(None),
+                    col(User.is_seeker) == True,  # noqa: E712
+                    col(User.is_complete) == True,  # noqa: E712
+                    col(User.embedding) != None,  # noqa: E711
                 )
             )
         )
@@ -76,8 +77,14 @@ class MatcherService:
         existing = await self.session.execute(
             select(Match).where(
                 or_(
-                    and_(Match.user_a_id == user_a_id, Match.user_b_id == user_b_id),
-                    and_(Match.user_a_id == user_b_id, Match.user_b_id == user_a_id),
+                    and_(
+                        col(Match.user_a_id) == user_a_id,
+                        col(Match.user_b_id) == user_b_id,
+                    ),
+                    and_(
+                        col(Match.user_a_id) == user_b_id,
+                        col(Match.user_b_id) == user_a_id,
+                    ),
                 )
             )
         )

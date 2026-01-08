@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from sqlalchemy import DateTime, Float, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -13,7 +13,7 @@ MatchStatus = Literal["pending", "a_accepted", "b_accepted", "connected", "rejec
 
 
 class Match(SQLModel, table=True):
-    __tablename__ = "matches"
+    __tablename__: ClassVar[Any] = "matches"
 
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import BigInteger, DateTime, Text, func
@@ -14,7 +14,7 @@ UserState = Literal["onboarding", "profiling", "active", "paused"]
 
 
 class User(SQLModel, table=True):
-    __tablename__ = "users"
+    __tablename__: ClassVar[Any] = "users"
 
     telegram_id: int = Field(sa_type=BigInteger(), primary_key=True)
 

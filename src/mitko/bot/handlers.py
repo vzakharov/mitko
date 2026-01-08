@@ -5,6 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col
 
 from ..agents import ConversationAgent, ProfileData, get_model_name
 from ..i18n import L
@@ -29,7 +30,7 @@ def get_bot() -> Bot:
 
 
 async def get_or_create_user(telegram_id: int, session: AsyncSession) -> User:
-    result = await session.execute(select(User).where(User.telegram_id == telegram_id))
+    result = await session.execute(select(User).where(col(User.telegram_id) == telegram_id))
     user = result.scalar_one_or_none()
     if user is None:
         user = User(telegram_id=telegram_id, state="onboarding")
@@ -41,7 +42,7 @@ async def get_or_create_user(telegram_id: int, session: AsyncSession) -> User:
 
 async def get_or_create_conversation(telegram_id: int, session: AsyncSession) -> Conversation:
     result = await session.execute(
-        select(Conversation).where(Conversation.telegram_id == telegram_id)
+        select(Conversation).where(col(Conversation.telegram_id) == telegram_id)
     )
     conv = result.scalar_one_or_none()
     if conv is None:
@@ -68,7 +69,7 @@ async def cmd_reset(message: Message) -> None:
         return
     async for session in get_db():
         result = await session.execute(
-            select(User).where(User.telegram_id == message.from_user.id)
+            select(User).where(col(User.telegram_id) == message.from_user.id)
         )
         user = result.scalar_one_or_none()
 
@@ -158,17 +159,17 @@ async def handle_match_accept(callback: CallbackQuery, callback_data: MatchActio
     async for session in get_db():
         from ..models import Match
 
-        result = await session.execute(select(Match).where(Match.id == match_id))
+        result = await session.execute(select(Match).where(col(Match.id) == match_id))
         match = result.scalar_one_or_none()
         if not match:
             await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
             return
 
         user_a_result = await session.execute(
-            select(User).where(User.telegram_id == match.user_a_id)
+            select(User).where(col(User.telegram_id) == match.user_a_id)
         )
         user_b_result = await session.execute(
-            select(User).where(User.telegram_id == match.user_b_id)
+            select(User).where(col(User.telegram_id) == match.user_b_id)
         )
         user_a = user_a_result.scalar_one()
         user_b = user_b_result.scalar_one()
@@ -212,7 +213,7 @@ async def handle_match_reject(callback: CallbackQuery, callback_data: MatchActio
     async for session in get_db():
         from ..models import Match
 
-        result = await session.execute(select(Match).where(Match.id == match_id))
+        result = await session.execute(select(Match).where(col(Match.id) == match_id))
         match = result.scalar_one_or_none()
         if not match:
             await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
@@ -236,7 +237,7 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
     async for session in get_db():
         # Get user and conversation
         result = await session.execute(
-            select(User).where(User.telegram_id == telegram_id)
+            select(User).where(col(User.telegram_id) == telegram_id)
         )
         user = result.scalar_one_or_none()
 
@@ -245,7 +246,7 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
             return
 
         conv_result = await session.execute(
-            select(Conversation).where(Conversation.telegram_id == telegram_id)
+            select(Conversation).where(col(Conversation.telegram_id) == telegram_id)
         )
         conversation = conv_result.scalar_one_or_none()
 
