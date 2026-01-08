@@ -40,14 +40,14 @@ class User(SQLModel, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "Match.user_a_id",
             "cascade": "all, delete-orphan",
-        }
+        },
     )
     matches_b: list["Match"] = Relationship(
         back_populates="user_b",
         sa_relationship_kwargs={
             "foreign_keys": "Match.user_b_id",
             "cascade": "all, delete-orphan",
-        }
+        },
     )
 
     @property
@@ -69,5 +69,6 @@ class User(SQLModel, table=True):
 
     def can_match_with(self, other: "User") -> bool:
         """Check if this user can be matched with another (seeker ↔ provider only)"""
-        return (self.is_seeker and other.is_provider) or (self.is_provider and other.is_seeker)
-
+        return bool(
+            (self.is_seeker and other.is_provider) or (self.is_provider and other.is_seeker)
+        )

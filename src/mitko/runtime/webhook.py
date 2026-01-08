@@ -58,4 +58,7 @@ class WebhookRuntime:
         async def health_check():
             return {"status": "ok"}
 
+        # Reference decorated functions to satisfy pyright (they're used by FastAPI)
+        _ = (webhook_handler, health_check)
+
         return app

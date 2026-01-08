@@ -1,18 +1,22 @@
+import sys
 from logging.config import fileConfig
+from pathlib import Path
+
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-import sys
-from pathlib import Path
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from sqlmodel import SQLModel
-from mitko.models import User, Conversation, Match  # Import all models
+
 from mitko.config import settings
+from mitko.models import Conversation, Match, User  # Import all models
+
+# Ensure models are registered with SQLModel.metadata for Alembic auto-discovery
+_ = (User, Conversation, Match)
 
 config = context.config
 
@@ -67,4 +71,3 @@ else:
     import asyncio
 
     asyncio.run(run_migrations_online())
-
