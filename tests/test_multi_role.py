@@ -1,5 +1,7 @@
 """Tests for multi-role support"""
 
+from typing import Any
+
 import pytest
 
 from src.mitko.utils.validation import ProfileValidationError, validate_profile_roles
@@ -43,7 +45,7 @@ class TestRoleValidation:
 
     def test_missing_fields_default_to_false(self):
         """Test that missing role fields default to False and raise error"""
-        data = {}
+        data = dict[str, Any]()
         with pytest.raises(ProfileValidationError, match="at least one role"):
             validate_profile_roles(data)
 
