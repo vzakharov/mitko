@@ -91,8 +91,7 @@ async def cmd_reset(message: Message) -> None:
             return
 
         await message.answer(
-            L.commands.reset.WARNING,
-            reply_markup=reset_confirmation_keyboard(message.from_user.id)
+            L.commands.reset.WARNING, reply_markup=reset_confirmation_keyboard(message.from_user.id)
         )
 
 
@@ -101,7 +100,7 @@ def _format_profile_card(profile: ProfileData) -> str:
     card_parts = [L.profile.CARD_HEADER + "\n"]
 
     # Role
-    roles = []
+    roles = list[str]()
     if profile.is_seeker:
         roles.append(L.profile.ROLE_SEEKER)
     if profile.is_provider:
@@ -136,7 +135,7 @@ async def handle_message(message: Message) -> None:
             existing_profile = ProfileData(
                 is_seeker=user.is_seeker or False,
                 is_provider=user.is_provider or False,
-                summary=user.summary
+                summary=user.summary,
             )
 
         # Get response from agent
@@ -147,11 +146,7 @@ async def handle_message(message: Message) -> None:
             profiler = ProfileService(session)
             is_update = user.is_complete
 
-            await profiler.create_or_update_profile(
-                user,
-                response.profile,
-                is_update=is_update
-            )
+            await profiler.create_or_update_profile(user, response.profile, is_update=is_update)
 
             # Show profile card to user
             profile_card = _format_profile_card(response.profile)
@@ -254,9 +249,7 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
 
     async for session in get_db():
         # Get user and conversation
-        result = await session.execute(
-            select(User).where(col(User.telegram_id) == telegram_id)
-        )
+        result = await session.execute(select(User).where(col(User.telegram_id) == telegram_id))
         user = result.scalar_one_or_none()
 
         if not user:
@@ -312,4 +305,3 @@ async def handle_reset_cancel(callback: CallbackQuery, callback_data: ResetActio
 
     await message.edit_text(L.commands.reset.CANCELLED)
     await callback.answer()
-

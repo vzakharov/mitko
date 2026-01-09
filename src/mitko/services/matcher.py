@@ -25,7 +25,7 @@ class MatcherService:
         )
         seekers = seeker_users.scalars().all()
 
-        matches_created = []
+        matches_created = list[Match]()
         for seeker in seekers:
             provider_matches = await self._find_similar_providers(seeker)
             for provider, similarity in provider_matches:
@@ -36,25 +36,28 @@ class MatcherService:
         await self.session.commit()
         return matches_created
 
-    async def _find_similar_providers(
-        self, seeker: User
-    ) -> list[tuple[User, float]]:
+    async def _find_similar_providers(self, seeker: User) -> list[tuple[User, float]]:
         if not seeker.embedding:
             return []
 
         embedding_str = "[" + ",".join(str(x) for x in seeker.embedding) + "]"
 
-        query = text(dedent("""
-            SELECT u.telegram_id, 1 - (u.embedding <=> :seeker_embedding::vector) as similarity
-            FROM users u
-            WHERE u.is_provider = true
-            AND u.is_complete = true
-            AND u.embedding IS NOT NULL
-            AND u.telegram_id != :seeker_id
-            AND 1 - (u.embedding <=> :seeker_embedding::vector) >= :threshold
-            ORDER BY similarity DESC
-            LIMIT :limit
-        """))
+        query = text(
+            dedent(
+                """\
+                    SELECT u.telegram_id,
+                    1 - (u.embedding <=> :seeker_embedding::vector) as similarity
+                    FROM users u
+                    WHERE u.is_provider = true
+                    AND u.is_complete = true
+                    AND u.embedding IS NOT NULL
+                    AND u.telegram_id != :seeker_id
+                    AND 1 - (u.embedding <=> :seeker_embedding::vector) >= :threshold
+                    ORDER BY similarity DESC
+                    LIMIT :limit
+                """
+            )
+        )
 
         result = await self.session.execute(
             query,
@@ -66,7 +69,7 @@ class MatcherService:
             },
         )
 
-        matches = []
+        matches = list[tuple[User, float]]()
         for row in result:
             user = await self.session.get(User, row.telegram_id)
             if user:
@@ -90,9 +93,7 @@ class MatcherService:
         )
         return existing.scalar_one_or_none() is None
 
-    async def _create_match(
-        self, seeker: User, provider: User, similarity: float
-    ) -> Match:
+    async def _create_match(self, seeker: User, provider: User, similarity: float) -> Match:
         rationale = await self._generate_match_rationale(seeker, provider)
 
         match = Match(
@@ -119,4 +120,3 @@ class MatcherService:
                 message_parts.append(f"• {alignment}")
 
         return "".join(message_parts)
-
