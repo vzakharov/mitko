@@ -64,6 +64,7 @@ alembic upgrade head
 **Flow**: User chats with bot → ConversationAgent handles natural conversation and organically extracts/updates profile → Embedding generated → Background job matches profiles using vector similarity → Both parties accept → Contact details shared
 
 **Key Patterns**:
+
 - Async/await throughout (asyncpg, async sessions)
 - SQLModel for Pydantic-powered ORM models with automatic validation
 - Unified conversational agent: single PydanticAI agent handles both conversation and profile extraction/updates
@@ -79,6 +80,7 @@ alembic upgrade head
 - Type-safe i18n: nested dataclasses with full IDE autocomplete, single language per deployment via `MITKO_LANGUAGE` env var
 
 **Structure**:
+
 - `models/`: SQLModel ORM (User with embeddings, Conversation, Match) - Pydantic-powered validation
 - `agents/`: PydanticAI agents for structured outputs (ConversationAgent for chat+profiles, RationaleAgent for match explanations)
 - `bot/`: Telegram handlers, keyboards, and bot initialization
@@ -89,7 +91,8 @@ alembic upgrade head
 - `i18n.py`: Type-safe internationalization with nested dataclasses (EN/RU support)
 
 **Important**:
-- **NEVER add `# type: ignore`, `# pyright: ignore`, `# noqa`, or similar suppression comments without explicit user approval** - always ask first and discuss the root cause
+
+- **NEVER add `# pyright: ignore`, `# noqa`, or similar suppression comments without explicit user approval** - always ask first and discuss the root cause
 - **NEVER cast to `Any` type without explicit user approval** - always ask first and find a properly typed solution
 - PostgreSQL requires `pgvector` extension
 - Embeddings are 1536-dim vectors (stored in User.embedding)

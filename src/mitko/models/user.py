@@ -1,9 +1,10 @@
-from datetime import datetime
+from datetime import datetime  # noqa: I001
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import BigInteger, DateTime, Text, func
-from sqlmodel import Column, Field, Relationship, SQLModel
+from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
+from sqlmodel import Column, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .conversation import Conversation

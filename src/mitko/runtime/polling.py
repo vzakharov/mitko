@@ -14,7 +14,9 @@ class PollingRuntime:
 
     async def run(self, bot: Bot, dp: Dispatcher) -> None:
         """Start long polling (blocking)"""
-        await dp.start_polling(bot, handle_signals=True)
+        await dp.start_polling(  # pyright: ignore [reportUnknownMemberType]
+            bot, handle_signals=True
+        )
 
     async def shutdown(self, bot: Bot, dp: Dispatcher) -> None:
         """Close bot session"""

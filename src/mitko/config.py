@@ -40,7 +40,9 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    settings = Settings()  # type: ignore[call-overload]  # pydantic-settings loads required fields from .env
+    settings = (
+        Settings()
+    )  # pyright: ignore[reportCallIssue]  # pydantic-settings loads required fields from .env
     settings.validate_llm_keys()
     return settings
 

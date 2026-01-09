@@ -1,10 +1,11 @@
-import uuid
+import uuid  # noqa: I001
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from sqlalchemy import DateTime, Float, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlmodel import Column, Field, Relationship, SQLModel
+from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
+from sqlmodel import Column, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .user import User
@@ -16,8 +17,7 @@ class Match(SQLModel, table=True):
     __tablename__: ClassVar[Any] = "matches"
 
     id: uuid.UUID = Field(
-        default_factory=uuid.uuid4,
-        sa_column=Column(PGUUID(as_uuid=True), primary_key=True)
+        default_factory=uuid.uuid4, sa_column=Column(PGUUID(as_uuid=True), primary_key=True)
     )
     user_a_id: int = Field(foreign_key="users.telegram_id")
     user_b_id: int = Field(foreign_key="users.telegram_id")
@@ -29,11 +29,8 @@ class Match(SQLModel, table=True):
     )
 
     user_a: "User" = Relationship(
-        back_populates="matches_a",
-        sa_relationship_kwargs={"foreign_keys": "Match.user_a_id"}
+        back_populates="matches_a", sa_relationship_kwargs={"foreign_keys": "Match.user_a_id"}
     )
     user_b: "User" = Relationship(
-        back_populates="matches_b",
-        sa_relationship_kwargs={"foreign_keys": "Match.user_b_id"}
+        back_populates="matches_b", sa_relationship_kwargs={"foreign_keys": "Match.user_b_id"}
     )
-
