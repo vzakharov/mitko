@@ -72,7 +72,11 @@ async def cmd_start(message: Message) -> None:
         return
     async for session in get_db():
         await get_or_create_user(message.from_user.id, session)
+        conv = await get_or_create_conversation(message.from_user.id, session)
         await message.answer(L.commands.start.GREETING)
+        # Add greeting to conversation history so the LLM sees what it told the user
+        conv.messages.append({"role": "assistant", "content": L.commands.start.GREETING})
+        await session.commit()
 
 
 @router.message(Command("reset"))

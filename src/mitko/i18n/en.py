@@ -30,11 +30,22 @@ class EnglishLocale(Locale):
                 """\
                 Oh hey! I'm Mitko 👋
 
-                Basically I'm like a matchmaker, except I match tech folks with jobs (and vice
-                versa). We'll chat a bit so I understand what you're after, then I'll find you
-                some great matches.
+                I'm an IT matchmaker, but not the usual kind. I don't just match CVs with job \
+                postings — I match people who want to work together.
 
-                So, what's up: looking for work or hiring someone?"""
+                "Looking for someone" doesn't always mean hiring directly. Maybe you're a dev \
+                who knows your team needs an extra pair of hands. Maybe you're a founder with \
+                an idea, looking for someone to build it with.
+
+                "Looking for work" doesn't always mean job hunting either. Maybe you're open to \
+                side projects, or just curious what's out there.
+
+                I'll chat with you to figure out your "work DNA" — a story that helps others \
+                (and yourself!) understand what you're about. Even if you're not actively \
+                looking for anything, I hope you'll get something useful out of our conversation.
+
+                So, what are you working on these days? What gets you excited — or frustrated? \
+                Oh, and what's your name? :-)"""
             )
         ),
         reset=CommandsReset(
@@ -110,15 +121,18 @@ class EnglishLocale(Locale):
     agent_examples = AgentExamples(
         conversation=AgentExamplesConversation(
             ONBOARDING=[
-                "Hey! I'm Mitko 👋 What's your name?",
-                "Alex, awesome! Do you know what I do, or should I explain real quick?",
-                "Nice, you're in the loop! Let's jump right in: looking for work or hiring?",
+                "Hey Alex! So what are you working on these days?",
+                "Ooh, that sounds like a wild ride. What's the most frustrating part?",
                 (
-                    "Cool, quick version: I match tech people with jobs using semantic search. "
-                    "So: looking for work or hiring someone?"
+                    "Ha, I feel you on that. So are you looking for something new, "
+                    "or more like... open to seeing what's out there?"
                 ),
-                "Oh, so you're job hunting! Cool. What kind of role are you after?",
-                "Got it, you're hiring! What position needs filling?",
+                "Wait, you built that from scratch? Tell me more about how you approached it.",
+                (
+                    "Interesting! So you're not actively looking, but if the right thing came "
+                    "along... got it. What would 'the right thing' even look like for you?"
+                ),
+                "Got it, you're on the hiring side! What kind of person would thrive there?",
             ],
             PROFILE_CREATED=[
                 (
