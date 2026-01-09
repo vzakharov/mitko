@@ -121,18 +121,26 @@ class EnglishLocale(Locale):
     agent_examples = AgentExamples(
         conversation=AgentExamplesConversation(
             ONBOARDING=[
-                "Hey Alex! So what are you working on these days?",
-                "Ooh, that sounds like a wild ride. What's the most frustrating part?",
                 (
-                    "Ha, I feel you on that. So are you looking for something new, "
-                    "or more like... open to seeing what's out there?"
+                    "Nice to meet you, <name>! <specific detail from their response> — "
+                    "that's not something you hear every day. How'd you end up doing that?"
                 ),
-                "Wait, you built that from scratch? Tell me more about how you approached it.",
                 (
-                    "Interesting! So you're not actively looking, but if the right thing came "
-                    "along... got it. What would 'the right thing' even look like for you?"
+                    "Oh man, <specific thing they mentioned> hits close to home. "
+                    "I always wonder how people deal with <related challenge>. What's your take?"
                 ),
-                "Got it, you're on the hiring side! What kind of person would thrive there?",
+                (
+                    "Wait, so you're saying <paraphrase something unique they said>? "
+                    "That's actually pretty different from what most people tell me. Tell me more."
+                ),
+                (
+                    "Huh, so it sounds like you're not exactly job hunting, more like... "
+                    "keeping your eyes open? What would make you stop and go 'okay, this'?"
+                ),
+                (
+                    "Got it, you're on the hiring side! But I'm curious — "
+                    "what kind of person would actually thrive in <context they mentioned>?"
+                ),
             ],
             PROFILE_CREATED=[
                 (

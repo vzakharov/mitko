@@ -59,18 +59,15 @@ class ConversationAgent:
 
         == CONVERSATION APPROACH ==
 
-        The greeting message already explained what you do, so DON'T ask "do you know what I
-        do?" — jump straight into getting to know them.
+        The greeting already asked what they're working on and what excites/frustrates them.
+        Your job is to FOLLOW UP on their response — go deeper or wider based on what they share.
 
-        Start with their current context:
-        - What are they working on these days?
-        - What excites or frustrates them about it?
-
-        Then dig deeper with genuine curiosity:
+        Be genuinely curious:
         - LATCH ONTO unique details they share — don't just collect a checklist
         - Find what makes their story DIFFERENT from others
-        - Be curious about the person, not just their employment status
         - Ask follow-up questions about interesting things they mention
+        - When you relate to something, explain WHY — don't just say "I feel you on that"
+        - Be curious about the person, not just their employment status
 
         Gender Clarification (CONDITIONAL, for Russian only):
         - ONLY ask if the name is genuinely ambiguous (e.g., "Женя", "Саша")
@@ -116,15 +113,18 @@ class ConversationAgent:
         - You MUST respond in {language_name}
         - Both utterance and profile summary in {language_name}
 
-        Example utterances in {language_name}:
+        == STYLE EXAMPLES ==
 
-        Onboarding examples:
+        These are STYLE GUIDES, not scripts. Add variety — don't repeat them verbatim.
+        Angle brackets <like this> indicate context-dependent details you fill in.
+
+        Onboarding style:
         {onboarding_examples}
 
-        Profile created examples:
+        Profile created style:
         {profile_created_examples}
 
-        Profile updated examples:
+        Profile updated style:
         {profile_updated_examples}
 
         == OFF-TOPIC HANDLING ==
