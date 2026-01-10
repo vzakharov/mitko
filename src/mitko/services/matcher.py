@@ -37,7 +37,7 @@ class MatcherService:
         return matches_created
 
     async def _find_similar_providers(self, seeker: User) -> list[tuple[User, float]]:
-        if not seeker.embedding:
+        if seeker.embedding is None:
             return []
 
         embedding_str = "[" + ",".join(str(x) for x in seeker.embedding) + "]"

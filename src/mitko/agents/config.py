@@ -4,7 +4,7 @@ from pydantic_ai.models import KnownModelName
 
 from ..config import settings
 
-OPENA_MODEL_NAME = "openai:gpt-5-mini"
+OPENA_MODEL_NAME = "openai:gpt-5"
 ANTHROPIC_MODEL_NAME = "anthropic:claude-3-7-sonnet-latest"
 
 

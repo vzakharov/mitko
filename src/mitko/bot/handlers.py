@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from aiogram import Bot, F, Router
@@ -14,6 +15,7 @@ from ..services.profiler import ProfileService
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 _bot_instance: Bot | None = None
 
@@ -74,9 +76,15 @@ async def cmd_start(message: Message) -> None:
         await get_or_create_user(message.from_user.id, session)
         conv = await get_or_create_conversation(message.from_user.id, session)
         await message.answer(L.commands.start.GREETING)
-        # Add greeting to conversation history so the LLM sees what it told the user
-        conv.messages.append({"role": "assistant", "content": L.commands.start.GREETING})
+        # Replace conversation history with greeting to start fresh
+        conv.messages = [{"role": "assistant", "content": L.commands.start.GREETING}]
         await session.commit()
+        logger.info(
+            "Started conversation for user %d: %d messages, last: %s",
+            message.from_user.id,
+            len(conv.messages),
+            conv.messages[-1]["content"][:50] if conv.messages else "none",
+        )
 
 
 @router.message(Command("reset"))
@@ -120,6 +128,11 @@ async def handle_message(message: Message) -> None:
         # Add user message
         conv.messages.append({"role": "user", "content": message.text})
         await session.commit()
+        logger.debug(
+            "Stored user message for %d: %d total messages",
+            message.from_user.id,
+            len(conv.messages),
+        )
 
         # Use unified conversation agent
         conversation_agent = ConversationAgent(get_model_name())
@@ -153,6 +166,11 @@ async def handle_message(message: Message) -> None:
         # Store assistant response
         conv.messages.append({"role": "assistant", "content": response.utterance})
         await session.commit()
+        logger.info(
+            "Stored assistant response for %d: %d total messages",
+            message.from_user.id,
+            len(conv.messages),
+        )
 
 
 @router.callback_query(MatchAction.filter(F.action == "accept"))
@@ -257,9 +275,15 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
         # Send standard greeting (same as /start)
         if conversation:
             await message.answer(L.commands.start.GREETING)
-            # Add greeting to conversation history so the LLM sees what it told the user
-            conversation.messages.append({"role": "assistant", "content": L.commands.start.GREETING})
+            # Replace conversation history with greeting to start fresh
+            conversation.messages = [{"role": "assistant", "content": L.commands.start.GREETING}]
             await session.commit()
+            logger.info(
+                "Reset conversation for user %d: %d messages, last: %s",
+                telegram_id,
+                len(conversation.messages),
+                conversation.messages[-1]["content"][:50] if conversation.messages else "none",
+            )
 
         await callback.answer()
 
