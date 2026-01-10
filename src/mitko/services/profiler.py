@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agents import ProfileData
-from ..llm import get_embedding_provider
+from ..llm import get_embedding
 from ..models import Conversation, User
 
 
@@ -36,8 +36,7 @@ class ProfileService:
 
         # Re-generate embedding if summary changed or new profile
         if not is_update or summary_changed:
-            embedding_provider = await get_embedding_provider()
-            user.embedding = await embedding_provider.embed(profile_data.summary)
+            user.embedding = await get_embedding(profile_data.summary)
 
         # Mark as complete and active
         user.is_complete = True

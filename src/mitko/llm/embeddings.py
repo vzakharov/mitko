@@ -1,22 +1,27 @@
-from typing import TYPE_CHECKING
+"""Embeddings generation using OpenAI (regardless of chat provider)"""
+
+from openai import AsyncOpenAI
 
 from ..config import settings
 
-if TYPE_CHECKING:
-    from .base import LLMProvider
+_client: AsyncOpenAI | None = None
 
 
-_embedding_provider: "LLMProvider | None" = None
+async def get_embedding(text: str) -> list[float]:
+    """
+    Generate embedding for text using OpenAI.
 
+    Note: Always uses OpenAI embeddings regardless of LLM_PROVIDER setting.
+    This is intentional - embeddings require consistency for matching.
+    """
+    global _client
+    if _client is None:
+        if not settings.openai_api_key:
+            raise ValueError("OPENAI_API_KEY is required for embeddings")
+        _client = AsyncOpenAI(api_key=settings.openai_api_key)
 
-async def get_embedding_provider() -> "LLMProvider":
-    global _embedding_provider
-    if _embedding_provider is None:
-        if settings.llm_provider == "openai":
-            from .openai import OpenAIProvider
-            _embedding_provider = OpenAIProvider()
-        else:
-            from .openai import OpenAIProvider
-            _embedding_provider = OpenAIProvider()
-    return _embedding_provider
-
+    response = await _client.embeddings.create(
+        model="text-embedding-3-small",
+        input=text,
+    )
+    return response.data[0].embedding

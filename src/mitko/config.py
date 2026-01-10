@@ -29,17 +29,31 @@ class Settings(BaseSettings):
     mitko_repo_url: str = "https://github.com/vzakharov/mitko"
 
     def validate_llm_keys(self) -> None:
-        if self.llm_provider == "openai" and not self.openai_api_key:
-            raise ValueError("OPENAI_API_KEY is required when using OpenAI")
+        # OpenAI key always required (used for embeddings even with Anthropic)
+        if not self.openai_api_key:
+            raise ValueError("OPENAI_API_KEY is required (used for embeddings)")
+
+        # Anthropic key only needed if using Anthropic for chat
         if self.llm_provider == "anthropic" and not self.anthropic_api_key:
-            raise ValueError("ANTHROPIC_API_KEY is required when using Anthropic")
+            raise ValueError("ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic")
 
 
 def get_settings() -> Settings:
+    import os
+
     settings = (
         Settings()
     )  # pyright: ignore[reportCallIssue]  # pydantic-settings loads required fields from .env
     settings.validate_llm_keys()
+
+    # TODO: Handle this more gracefully - we're loading envs into settings to load them back into envs
+    # This is needed because PydanticAI expects API keys in os.environ, not in a Settings object.
+    # Possible solutions: use load_dotenv() at module init, or pass API keys explicitly to PydanticAI providers
+    if settings.openai_api_key:
+        os.environ["OPENAI_API_KEY"] = settings.openai_api_key
+    if settings.anthropic_api_key:
+        os.environ["ANTHROPIC_API_KEY"] = settings.anthropic_api_key
+
     return settings
 
 
