@@ -12,7 +12,8 @@ from .models import MatchRationale
 class RationaleAgent:
     """Agent for generating structured match rationales"""
 
-    SYSTEM_PROMPT_BASE = dedent("""\
+    SYSTEM_PROMPT_BASE = dedent(
+        """\
         You are an expert IT matchmaker who explains why two professionals would work well
         together.
 
@@ -37,14 +38,15 @@ class RationaleAgent:
 
         Here are example explanations in {language_name}:
         {examples}
-        """)
+        """
+    )
 
     def __init__(self, model_name: KnownModelName):
         """
         Initialize the rationale generation agent.
 
         Args:
-            model_name: The LLM model to use (e.g., "openai:gpt-4o-mini")
+            model_name: The LLM model to use (e.g., "openai:gpt-5-mini")
         """
         language_name = "English" if L.language == "en" else "Russian"
 
@@ -81,7 +83,8 @@ class RationaleAgent:
         Raises:
             ValueError: If rationale generation fails or produces invalid output
         """
-        prompt = dedent(f"""Analyze these two profiles and explain why they're a good match:
+        prompt = dedent(
+            f"""Analyze these two profiles and explain why they're a good match:
 
             Seeker Profile:
             {seeker_summary}
@@ -92,7 +95,8 @@ class RationaleAgent:
             Generate a structured match rationale with:
             - explanation: A brief, friendly 2-3 sentence explanation
             - key_alignments: A list of 2-4 specific points where they align
-            - confidence_score: A score from 0.0 to 1.0 (where 1.0 is a perfect match)""")
+            - confidence_score: A score from 0.0 to 1.0 (where 1.0 is a perfect match)"""
+        )
 
         result = await self._agent.run(prompt)
         return result.output
