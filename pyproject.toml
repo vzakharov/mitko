@@ -49,7 +49,9 @@ select = [
     "B",   # flake8-bugbear (common bugs)
     "SIM", # flake8-simplify
 ]
-ignore = []
+ignore = [
+    "E501", # line-too-long
+]
 
 [tool.pyright]
 pythonVersion = "3.11"

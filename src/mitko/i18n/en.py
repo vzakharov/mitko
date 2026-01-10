@@ -30,22 +30,15 @@ class EnglishLocale(Locale):
                 """\
                 Oh hey! I'm Mitko 👋
 
-                I'm an IT matchmaker, but not the usual kind. I don't just match CVs with job \
-                postings — I match people who want to work together.
+                I'm an IT matchmaker, but not the usual kind. I don't just match CVs with job postings — I match people who want to work together.
 
-                "Looking for someone" doesn't always mean hiring directly. Maybe you're a dev \
-                who knows your team needs an extra pair of hands. Maybe you're a founder with \
-                an idea, looking for someone to build it with.
+                "Looking for someone" doesn't always mean hiring directly. Maybe you're a dev who knows your team needs an extra pair of hands. Maybe you're a founder with an idea, looking for someone to build it with.
 
-                "Looking for work" doesn't always mean job hunting either. Maybe you're open to \
-                side projects, or just curious what's out there.
+                "Looking for work" doesn't always mean job hunting either. Maybe you're open to side projects, or just curious what's out there.
 
-                I'll chat with you to figure out your "work DNA" — a story that helps others \
-                (and yourself!) understand what you're about. Even if you're not actively \
-                looking for anything, I hope you'll get something useful out of our conversation.
+                I'll chat with you to figure out your "work DNA" — a story that helps others (and yourself!) understand what you're about. Even if you're not actively looking for anything, I hope you'll get something useful out of our conversation.
 
-                So, what are you working on these days? What gets you excited — or frustrated? \
-                Oh, and what's your name? :-)"""
+                So, what are you working on these days? What gets you excited — or frustrated? Oh, and what's your name? :-)"""
             )
         ),
         reset=CommandsReset(
