@@ -8,10 +8,11 @@ from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, UserProm
 from pydantic_ai.models import KnownModelName
 
 from ..i18n import L
+from ..models import LLMMessage
 from .models import ConversationResponse, ProfileData
 
 
-def _to_pydantic_messages(messages: list[dict[str, str]]) -> list[ModelRequest | ModelResponse]:
+def _to_pydantic_messages(messages: list[LLMMessage]) -> list[ModelRequest | ModelResponse]:
     """Convert stored messages to PydanticAI format."""
     result: list[ModelRequest | ModelResponse] = []
     for msg in messages:
@@ -175,7 +176,7 @@ class ConversationAgent:
 
     async def chat(
         self,
-        conversation_messages: list[dict[str, str]],
+        conversation_messages: list[LLMMessage],
         existing_profile: ProfileData | None = None,
     ) -> ConversationResponse:
         """

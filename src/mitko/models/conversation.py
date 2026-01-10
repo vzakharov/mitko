@@ -1,15 +1,23 @@
 import uuid  # noqa: I001
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypedDict
 
 from sqlalchemy import DateTime, func
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.ext.mutable import MutableList
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .user import User
+
+
+class LLMMessage(TypedDict):
+    """A message in a conversation with an LLM."""
+
+    role: Literal["user", "assistant", "system"]
+    content: str
 
 
 class Conversation(SQLModel, table=True):
@@ -19,7 +27,9 @@ class Conversation(SQLModel, table=True):
         default_factory=uuid.uuid4, sa_column=Column(PGUUID(as_uuid=True), primary_key=True)
     )
     telegram_id: int = Field(foreign_key="users.telegram_id")
-    messages: list[dict[str, str]] = Field(default_factory=list, sa_column=Column(JSON))
+    messages: list[LLMMessage] = Field(
+        default_factory=list, sa_column=Column(MutableList.as_mutable(JSON))
+    )
     updated_at: datetime | None = Field(
         default=None,
         sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()),
