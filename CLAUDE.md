@@ -14,17 +14,17 @@ Mitko is an LLM-powered Telegram bot that matches IT job seekers with employers 
 # Setup
 uv sync --extra dev  # Install with dev dependencies
 cp .env.example .env  # then edit with credentials
-alembic upgrade head
+uv run alembic upgrade head
 
 # Run (Development - Long Polling)
-python -m src.mitko.main
+uv run python -m src.mitko.main
 # Or explicitly:
-TELEGRAM_MODE=polling python -m src.mitko.main
+TELEGRAM_MODE=polling uv run python -m src.mitko.main
 
 # Run (Production - Webhook)
-uvicorn src.mitko.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn src.mitko.main:app --reload --host 0.0.0.0 --port 8000
 # Or explicitly:
-TELEGRAM_MODE=webhook uvicorn src.mitko.main:app --host 0.0.0.0 --port 8000
+TELEGRAM_MODE=webhook uv run uvicorn src.mitko.main:app --host 0.0.0.0 --port 8000
 
 # Code quality
 uv run black src/ tests/              # Format code
@@ -34,8 +34,8 @@ uv run pyright                         # Type check (replaces mypy)
 uv run pytest                          # Run tests
 
 # Database
-alembic revision --autogenerate -m "description"
-alembic upgrade head
+uv run alembic revision --autogenerate -m "description"
+uv run alembic upgrade head
 
 # Git commits
 # Use conventional commit prefixes:
@@ -76,7 +76,7 @@ alembic upgrade head
 - Vector matching: pgvector cosine similarity with configurable threshold
 - Two-phase matching: both parties must accept before connection
 - Summary-driven matching: all relevant info in text summary (no structured_data field)
-- Runtime modes: Webhook (production) or Long Polling (development) - auto-detected or explicit via `TELEGRAM_MODE`
+- Runtime modes: Webhook (production) or Long Polling (development) - controlled via `TELEGRAM_MODE` env var (defaults to "polling")
 - Type-safe i18n: nested dataclasses with full IDE autocomplete, single language per deployment via `MITKO_LANGUAGE` env var
 
 **Structure**:

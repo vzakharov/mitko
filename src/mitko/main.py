@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 
 def get_runtime():
     """Factory function to select runtime based on config"""
-    mode = settings.get_effective_mode()
-
-    if mode == "webhook":
+    if settings.telegram_mode == "webhook":
         if not settings.telegram_webhook_url:
             raise ValueError("Webhook mode requires TELEGRAM_WEBHOOK_URL")
         logger.info("Using webhook mode")
@@ -27,8 +25,9 @@ def get_runtime():
 
 
 # For webhook mode (uvicorn entry point)
+# Only initialize when imported by uvicorn, not when run directly
 app: FastAPI | None = None
-if settings.get_effective_mode() == "webhook":
+if settings.telegram_mode == "webhook" and __name__ != "__main__":
     bot, dp = initialize_bot()
     runtime = WebhookRuntime()
     app = runtime.create_app(bot, dp)

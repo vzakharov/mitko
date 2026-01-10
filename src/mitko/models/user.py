@@ -24,7 +24,7 @@ class User(SQLModel, table=True):
     is_provider: bool | None = Field(default=None)
 
     # State management
-    state: UserState = Field(default="onboarding", max_length=20)
+    state: UserState = Field(default="onboarding", sa_column=Column(Text))
 
     # Profile data (formerly in Profile model)
     summary: str | None = Field(default=None, sa_column=Column(Text))

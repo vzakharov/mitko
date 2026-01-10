@@ -2,8 +2,7 @@ from contextlib import asynccontextmanager
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import Update
-from aiohttp import web
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 
 from ..config import settings
 from ..jobs.matching import start_matching_scheduler, stop_matching_scheduler
@@ -45,14 +44,14 @@ class WebhookRuntime:
         app = FastAPI(lifespan=lifespan)
 
         @app.post("/webhook/{secret_path:str}")
-        async def webhook_handler(request: Request, secret_path: str) -> web.Response:
+        async def webhook_handler(request: Request, secret_path: str) -> Response:
             if settings.telegram_webhook_secret and secret_path != settings.telegram_webhook_secret:
-                return web.Response(status=403)
+                return Response(status_code=403)
 
             update_dict = await request.json()
             update = Update(**update_dict)
             await dp.feed_update(bot, update)
-            return web.Response(status=200)
+            return Response(status_code=200)
 
         @app.get("/health")
         async def health_check():
