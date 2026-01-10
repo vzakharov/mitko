@@ -42,7 +42,6 @@ class EnglishLocale(Locale):
             )
         ),
         reset=CommandsReset(
-            NO_PROFILE="You don't have a profile yet. Hit /start and let's get you set up!",
             WARNING=dedent(
                 """\
                 ⚠️ Sure you wanna wipe everything?
@@ -56,12 +55,7 @@ class EnglishLocale(Locale):
 
                 For real?"""
             ),
-            SUCCESS=dedent(
-                """\
-                ✅ Done, wiped it all! Now I've got amnesia about you 😄
-
-                By the way, hey, I'm Mitko!"""
-            ),
+            SUCCESS="✅ Done, wiped it all! Now I've got amnesia about you 😄",
             CANCELLED="Alright, leaving your profile as is.",
         ),
     )

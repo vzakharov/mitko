@@ -84,19 +84,10 @@ async def cmd_reset(message: Message) -> None:
     """Handler for /reset command - shows confirmation dialog"""
     if message.from_user is None:
         return
-    async for session in get_db():
-        result = await session.execute(
-            select(User).where(col(User.telegram_id) == message.from_user.id)
-        )
-        user = result.scalar_one_or_none()
-
-        if not user:
-            await message.answer(L.commands.reset.NO_PROFILE)
-            return
-
-        await message.answer(
-            L.commands.reset.WARNING, reply_markup=reset_confirmation_keyboard(message.from_user.id)
-        )
+    # Always show confirmation - conversation history exists even without profile
+    await message.answer(
+        L.commands.reset.WARNING, reply_markup=reset_confirmation_keyboard(message.from_user.id)
+    )
 
 
 def _format_profile_card(profile: ProfileData) -> str:
@@ -252,18 +243,9 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
         return
 
     async for session in get_db():
-        # Get user and conversation
-        result = await session.execute(select(User).where(col(User.telegram_id) == telegram_id))
-        user = result.scalar_one_or_none()
-
-        if not user:
-            await callback.answer(L.system.errors.USER_NOT_FOUND, show_alert=True)
-            return
-
-        conv_result = await session.execute(
-            select(Conversation).where(col(Conversation.telegram_id) == telegram_id)
-        )
-        conversation = conv_result.scalar_one_or_none()
+        # Get or create user and conversation (defensive programming)
+        user = await get_or_create_user(telegram_id, session)
+        conversation = await get_or_create_conversation(telegram_id, session)
 
         # Use ProfileService to reset
         profiler = ProfileService(session)
@@ -272,21 +254,11 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
         # Send playful amnesia message
         await message.edit_text(L.commands.reset.SUCCESS)
 
-        # Trigger agent to start onboarding conversation
+        # Send standard greeting (same as /start)
         if conversation:
-            # Add a marker message to indicate fresh start
-            conversation.messages.append({"role": "user", "content": "/reset"})
-            await session.commit()
-
-            # Get agent's personalized greeting for fresh start
-            conversation_agent = ConversationAgent(get_model_name())
-            response = await conversation_agent.chat(conversation.messages, None)
-
-            # Send agent's onboarding greeting
-            await message.answer(response.utterance)
-
-            # Store assistant response in history
-            conversation.messages.append({"role": "assistant", "content": response.utterance})
+            await message.answer(L.commands.start.GREETING)
+            # Add greeting to conversation history so the LLM sees what it told the user
+            conversation.messages.append({"role": "assistant", "content": L.commands.start.GREETING})
             await session.commit()
 
         await callback.answer()

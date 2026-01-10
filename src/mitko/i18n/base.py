@@ -12,7 +12,6 @@ class CommandsStart:
 
 @dataclass
 class CommandsReset:
-    NO_PROFILE: str
     WARNING: str
     SUCCESS: str
     CANCELLED: str
