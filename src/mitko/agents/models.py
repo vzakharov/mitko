@@ -1,6 +1,5 @@
 """Pydantic models for structured LLM outputs"""
 
-
 from pydantic import BaseModel, field_validator, model_validator
 
 

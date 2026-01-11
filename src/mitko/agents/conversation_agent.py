@@ -1,6 +1,8 @@
 """Unified conversational agent for profile extraction and updates"""
 
+import json
 import os
+from collections.abc import Sequence
 from textwrap import dedent
 
 from pydantic_ai import Agent
@@ -8,18 +10,31 @@ from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, UserProm
 from pydantic_ai.models import KnownModelName
 
 from ..i18n import L
-from ..models import LLMMessage
+from ..models.conversation import AssistantMessage, UserMessage
 from .models import ConversationResponse, ProfileData
 
 
-def _to_pydantic_messages(messages: list[LLMMessage]) -> list[ModelRequest | ModelResponse]:
-    """Convert stored messages to PydanticAI format."""
+def _to_pydantic_messages(
+    messages: Sequence[UserMessage | AssistantMessage],
+) -> list[ModelRequest | ModelResponse]:
+    """Convert stored messages to PydanticAI format.
+
+    For assistant messages, pass the full ConversationResponse as JSON
+    so the agent can see its past structured outputs (utterance + profile data).
+    """
     result: list[ModelRequest | ModelResponse] = []
     for msg in messages:
-        if msg["role"] == "user":
-            result.append(ModelRequest(parts=[UserPromptPart(content=msg["content"])]))
-        else:  # assistant
-            result.append(ModelResponse(parts=[TextPart(content=msg["content"])]))
+        if isinstance(msg, UserMessage):
+            result.append(ModelRequest(parts=[UserPromptPart(content=msg.content)]))
+        else:  # AssistantMessage
+            # Convert ConversationResponse to formatted JSON string
+            # Example output: {"utterance": "Nice to meet you...", "profile": {"is_seeker": true, ...}}
+            content_json = json.dumps(
+                msg.content.model_dump(exclude_none=True),  # Omit null values for cleaner output
+                ensure_ascii=False,
+                indent=2,  # Pretty-print for readability
+            )
+            result.append(ModelResponse(parts=[TextPart(content=content_json)]))
     return result
 
 
@@ -176,7 +191,7 @@ class ConversationAgent:
 
     async def chat(
         self,
-        conversation_messages: list[LLMMessage],
+        conversation_messages: Sequence[UserMessage | AssistantMessage],
         existing_profile: ProfileData | None = None,
     ) -> ConversationResponse:
         """

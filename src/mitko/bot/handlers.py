@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from ..agents import ConversationAgent, ProfileData, get_model_name
+from ..agents.models import ConversationResponse
 from ..i18n import L
 from ..models import Conversation, User, get_db
+from ..models.conversation import AssistantMessage, UserMessage
 from ..services.profiler import ProfileService
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
@@ -77,13 +79,27 @@ async def cmd_start(message: Message) -> None:
         conv = await get_or_create_conversation(message.from_user.id, session)
         await message.answer(L.commands.start.GREETING)
         # Replace conversation history with greeting to start fresh
-        conv.messages = [{"role": "assistant", "content": L.commands.start.GREETING}]
+        conv.messages = [
+            AssistantMessage(
+                role="assistant",
+                content=ConversationResponse(
+                    utterance=L.commands.start.GREETING,
+                    profile=None
+                )
+            )
+        ]
         await session.commit()
+        last_msg = conv.messages[-1] if conv.messages else None
+        last_text = (
+            last_msg.content.utterance[:50]
+            if isinstance(last_msg, AssistantMessage)
+            else "none"
+        )
         logger.info(
             "Started conversation for user %d: %d messages, last: %s",
             message.from_user.id,
             len(conv.messages),
-            conv.messages[-1]["content"][:50] if conv.messages else "none",
+            last_text,
         )
 
 
@@ -126,7 +142,7 @@ async def handle_message(message: Message) -> None:
         conv = await get_or_create_conversation(message.from_user.id, session)
 
         # Add user message
-        conv.messages.append({"role": "user", "content": message.text})
+        conv.messages.append(UserMessage(role="user", content=message.text))
         await session.commit()
         logger.debug(
             "Stored user message for %d: %d total messages",
@@ -163,8 +179,8 @@ async def handle_message(message: Message) -> None:
             # Just send the utterance
             await message.answer(response.utterance)
 
-        # Store assistant response
-        conv.messages.append({"role": "assistant", "content": response.utterance})
+        # Store assistant response (full ConversationResponse)
+        conv.messages.append(AssistantMessage(role="assistant", content=response))
         await session.commit()
         logger.info(
             "Stored assistant response for %d: %d total messages",
@@ -276,13 +292,27 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
         if conversation:
             await message.answer(L.commands.start.GREETING)
             # Replace conversation history with greeting to start fresh
-            conversation.messages = [{"role": "assistant", "content": L.commands.start.GREETING}]
+            conversation.messages = [
+                AssistantMessage(
+                    role="assistant",
+                    content=ConversationResponse(
+                        utterance=L.commands.start.GREETING,
+                        profile=None
+                    )
+                )
+            ]
             await session.commit()
+            last_msg = conversation.messages[-1] if conversation.messages else None
+            last_text = (
+                last_msg.content.utterance[:50]
+                if isinstance(last_msg, AssistantMessage)
+                else "none"
+            )
             logger.info(
                 "Reset conversation for user %d: %d messages, last: %s",
                 telegram_id,
                 len(conversation.messages),
-                conversation.messages[-1]["content"][:50] if conversation.messages else "none",
+                last_text,
             )
 
         await callback.answer()
