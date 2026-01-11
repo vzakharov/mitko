@@ -80,20 +80,14 @@ async def cmd_start(message: Message) -> None:
         await message.answer(L.commands.start.GREETING)
         # Replace conversation history with greeting to start fresh
         conv.messages = [
-            AssistantMessage(
-                role="assistant",
-                content=ConversationResponse(
-                    utterance=L.commands.start.GREETING,
-                    profile=None
-                )
+            AssistantMessage.create(
+                ConversationResponse(utterance=L.commands.start.GREETING, profile=None)
             )
         ]
         await session.commit()
         last_msg = conv.messages[-1] if conv.messages else None
         last_text = (
-            last_msg.content.utterance[:50]
-            if isinstance(last_msg, AssistantMessage)
-            else "none"
+            last_msg.content.utterance[:50] if isinstance(last_msg, AssistantMessage) else "none"
         )
         logger.info(
             "Started conversation for user %d: %d messages, last: %s",
@@ -142,7 +136,7 @@ async def handle_message(message: Message) -> None:
         conv = await get_or_create_conversation(message.from_user.id, session)
 
         # Add user message
-        conv.messages.append(UserMessage(role="user", content=message.text))
+        conv.messages.append(UserMessage.create(message.text))
         await session.commit()
         logger.debug(
             "Stored user message for %d: %d total messages",
@@ -180,7 +174,7 @@ async def handle_message(message: Message) -> None:
             await message.answer(response.utterance)
 
         # Store assistant response (full ConversationResponse)
-        conv.messages.append(AssistantMessage(role="assistant", content=response))
+        conv.messages.append(AssistantMessage.create(response))
         await session.commit()
         logger.info(
             "Stored assistant response for %d: %d total messages",
@@ -293,12 +287,8 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
             await message.answer(L.commands.start.GREETING)
             # Replace conversation history with greeting to start fresh
             conversation.messages = [
-                AssistantMessage(
-                    role="assistant",
-                    content=ConversationResponse(
-                        utterance=L.commands.start.GREETING,
-                        profile=None
-                    )
+                AssistantMessage.create(
+                    ConversationResponse(utterance=L.commands.start.GREETING, profile=None)
                 )
             ]
             await session.commit()

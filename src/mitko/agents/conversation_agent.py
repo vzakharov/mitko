@@ -6,16 +6,22 @@ from collections.abc import Sequence
 from textwrap import dedent
 
 from pydantic_ai import Agent
-from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelResponse,
+    SystemPromptPart,
+    TextPart,
+    UserPromptPart,
+)
 from pydantic_ai.models import KnownModelName
 
 from ..i18n import L
-from ..models.conversation import AssistantMessage, UserMessage
+from ..models.conversation import LLMMessage, SystemMessage, UserMessage
 from .models import ConversationResponse, ProfileData
 
 
 def _to_pydantic_messages(
-    messages: Sequence[UserMessage | AssistantMessage],
+    messages: Sequence[LLMMessage],
 ) -> list[ModelRequest | ModelResponse]:
     """Convert stored messages to PydanticAI format.
 
@@ -26,8 +32,10 @@ def _to_pydantic_messages(
     for msg in messages:
         if isinstance(msg, UserMessage):
             result.append(ModelRequest(parts=[UserPromptPart(content=msg.content)]))
-        else:  # AssistantMessage
-            # Convert ConversationResponse to formatted JSON string
+        elif isinstance(msg, SystemMessage):
+            result.append(ModelRequest(parts=[SystemPromptPart(content=msg.content)]))
+        else:
+            # AssistantMessage - convert ConversationResponse to formatted JSON string
             # Example output: {"utterance": "Nice to meet you...", "profile": {"is_seeker": true, ...}}
             content_json = json.dumps(
                 msg.content.model_dump(exclude_none=True),  # Omit null values for cleaner output
@@ -191,7 +199,7 @@ class ConversationAgent:
 
     async def chat(
         self,
-        conversation_messages: Sequence[UserMessage | AssistantMessage],
+        conversation_messages: Sequence[LLMMessage],
         existing_profile: ProfileData | None = None,
     ) -> ConversationResponse:
         """
