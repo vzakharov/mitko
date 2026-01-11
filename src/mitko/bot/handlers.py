@@ -75,37 +75,43 @@ async def cmd_start(message: Message) -> None:
     if message.from_user is None:
         return
     async for session in get_db():
-        await get_or_create_user(message.from_user.id, session)
+        user = await get_or_create_user(message.from_user.id, session)
         conv = await get_or_create_conversation(message.from_user.id, session)
-        await message.answer(L.commands.start.GREETING)
-        # Replace conversation history with greeting to start fresh
-        conv.messages = [
-            AssistantMessage.create(
-                ConversationResponse(utterance=L.commands.start.GREETING, profile=None)
+
+        # Check if user has ANY existing data
+        has_data = (
+            user.summary is not None
+            or user.is_seeker is not None
+            or user.is_provider is not None
+            or len(conv.messages) > 0
+        )
+
+        if has_data:
+            # Existing user - show reset warning with confirmation keyboard
+            await message.answer(
+                L.commands.reset.WARNING,
+                reply_markup=reset_confirmation_keyboard(message.from_user.id)
             )
-        ]
-        await session.commit()
-        last_msg = conv.messages[-1] if conv.messages else None
-        last_text = (
-            last_msg.content.utterance[:50] if isinstance(last_msg, AssistantMessage) else "none"
-        )
-        logger.info(
-            "Started conversation for user %d: %d messages, last: %s",
-            message.from_user.id,
-            len(conv.messages),
-            last_text,
-        )
-
-
-@router.message(Command("reset"))
-async def cmd_reset(message: Message) -> None:
-    """Handler for /reset command - shows confirmation dialog"""
-    if message.from_user is None:
-        return
-    # Always show confirmation - conversation history exists even without profile
-    await message.answer(
-        L.commands.reset.WARNING, reply_markup=reset_confirmation_keyboard(message.from_user.id)
-    )
+        else:
+            # New user - just send greeting and initialize
+            await message.answer(L.commands.start.GREETING)
+            # Replace conversation history with greeting to start fresh
+            conv.messages = [
+                AssistantMessage.create(
+                    ConversationResponse(utterance=L.commands.start.GREETING, profile=None)
+                )
+            ]
+            await session.commit()
+            last_msg = conv.messages[-1] if conv.messages else None
+            last_text = (
+                last_msg.content.utterance[:50] if isinstance(last_msg, AssistantMessage) else "none"
+            )
+            logger.info(
+                "Started conversation for user %d: %d messages, last: %s",
+                message.from_user.id,
+                len(conv.messages),
+                last_text,
+            )
 
 
 def _format_profile_card(profile: ProfileData) -> str:
