@@ -90,7 +90,7 @@ async def cmd_start(message: Message) -> None:
             # Existing user - show reset warning with confirmation keyboard
             await message.answer(
                 L.commands.reset.WARNING,
-                reply_markup=reset_confirmation_keyboard(message.from_user.id)
+                reply_markup=reset_confirmation_keyboard(message.from_user.id),
             )
         else:
             # New user - just send greeting and initialize
@@ -104,7 +104,9 @@ async def cmd_start(message: Message) -> None:
             await session.commit()
             last_msg = conv.messages[-1] if conv.messages else None
             last_text = (
-                last_msg.content.utterance[:50] if isinstance(last_msg, AssistantMessage) else "none"
+                last_msg.content.utterance[:50]
+                if isinstance(last_msg, AssistantMessage)
+                else "none"
             )
             logger.info(
                 "Started conversation for user %d: %d messages, last: %s",
@@ -153,17 +155,8 @@ async def handle_message(message: Message) -> None:
         # Use unified conversation agent
         conversation_agent = ConversationAgent(get_model_name())
 
-        # Prepare existing profile for updates
-        existing_profile = None
-        if user.is_complete and user.summary:
-            existing_profile = ProfileData(
-                is_seeker=user.is_seeker or False,
-                is_provider=user.is_provider or False,
-                summary=user.summary,
-            )
-
         # Get response from agent
-        response = await conversation_agent.chat(conv.messages, existing_profile)
+        response = await conversation_agent.run(conv.messages)
 
         # Handle profile creation/update
         if response.profile:

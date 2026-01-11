@@ -17,7 +17,7 @@ from pydantic_ai.models import KnownModelName
 
 from ..i18n import L
 from ..models.conversation import LLMMessage, SystemMessage, UserMessage
-from .models import ConversationResponse, ProfileData
+from .models import ConversationResponse
 
 
 def _to_pydantic_messages(
@@ -197,40 +197,28 @@ class ConversationAgent:
             system_prompt=system_prompt,
         )
 
-    async def chat(
-        self,
-        conversation_messages: Sequence[LLMMessage],
-        existing_profile: ProfileData | None = None,
-    ) -> ConversationResponse:
+    async def run(self, messages: Sequence[LLMMessage]) -> ConversationResponse:
         """
         Generate conversational response with optional profile data.
 
+        The agent automatically handles profile creation and updates by seeing
+        past ConversationResponse objects (including profiles) in message history.
+
         Args:
-            conversation_messages: Full conversation history
-            existing_profile: Current profile if user has one (for updates)
+            messages: Full conversation history (must end with UserMessage)
 
         Returns:
             ConversationResponse with utterance and optional profile
+
+        Raises:
+            ValueError: If messages doesn't end with UserMessage
         """
-        message_history = _to_pydantic_messages(conversation_messages)
-
-        if existing_profile:
-            instruction = dedent(
-                f"""\
-                The user already has this profile:
-
-                is_seeker: {existing_profile.is_seeker}
-                is_provider: {existing_profile.is_provider}
-                summary: {existing_profile.summary}
-
-                Continue the conversation. If the user requests changes, return an updated profile.
-                Respond now with your utterance and updated profile (if changes were requested)."""
-            )
+        last_message = messages[-1]
+        if isinstance(last_message, UserMessage):
+            user_prompt = last_message.content
         else:
-            instruction = (
-                "This is a new user. Have a natural conversation to understand their profile. "
-                "Respond now with your utterance and profile (if you have enough information)."
-            )
+            raise ValueError("Last message must be a UserMessage")
+        message_history = _to_pydantic_messages(messages[:-1])
 
-        result = await self._agent.run(instruction, message_history=message_history)
+        result = await self._agent.run(user_prompt, message_history=message_history)
         return result.output
