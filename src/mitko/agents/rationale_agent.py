@@ -53,8 +53,8 @@ class RationaleAgent:
         # Get example rationales from locale
         examples = "\n".join(f"- {ex}" for ex in L.agent_examples.rationale.EXAMPLES)
 
-        # Format system prompt with language context
-        system_prompt = self.SYSTEM_PROMPT_BASE.format(
+        # Format instructions with language context
+        instructions = self.SYSTEM_PROMPT_BASE.format(
             language_name=language_name,
             examples=examples,
         )
@@ -62,7 +62,7 @@ class RationaleAgent:
         self._agent = Agent(
             model_name,
             output_type=MatchRationale,
-            system_prompt=system_prompt,
+            instructions=instructions,
         )
 
     async def generate_rationale(

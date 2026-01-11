@@ -1,7 +1,6 @@
 """Unified conversational agent for profile extraction and updates"""
 
 import json
-import os
 from collections.abc import Sequence
 from textwrap import dedent
 
@@ -15,6 +14,7 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import KnownModelName
 
+from ..config import settings
 from ..i18n import L
 from ..models.conversation import LLMMessage, SystemMessage, UserMessage
 from .models import ConversationResponse
@@ -177,24 +177,21 @@ class ConversationAgent:
             f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_UPDATED
         )
 
-        # Get repo URL from environment
-        repo_url = os.getenv("MITKO_REPO_URL", "https://github.com/yourusername/mitko")
-
-        # Format system prompt with language context and response templates
-        system_prompt = self.SYSTEM_PROMPT_BASE.format(
+        # Format instructions with language context and response templates
+        instructions = self.SYSTEM_PROMPT_BASE.format(
             language_name=language_name,
             onboarding_examples=onboarding_examples,
             profile_created_examples=profile_created_examples,
             profile_updated_examples=profile_updated_examples,
             off_topic_redirect=L.OFF_TOPIC_REDIRECT,
-            jailbreak_response=L.JAILBREAK_RESPONSE.format(repo_url=repo_url),
+            jailbreak_response=L.JAILBREAK_RESPONSE.format(repo_url=settings.mitko_repo_url),
             uncertainty_phrase=L.UNCERTAINTY_PHRASE,
         )
 
         self._agent = Agent(
             model_name,
             output_type=ConversationResponse,
-            system_prompt=system_prompt,
+            instructions=instructions,
         )
 
     async def run(self, messages: Sequence[LLMMessage]) -> ConversationResponse:

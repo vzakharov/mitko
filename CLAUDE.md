@@ -72,6 +72,7 @@ uv run alembic upgrade head
 - Conversational profile updates: users can modify their profile naturally (e.g., "change my location to Berlin")
 - Type-safe validated outputs via Pydantic models (ConversationResponse with utterance + optional profile)
 - Automatic retry on invalid LLM responses
+- PydanticAI `instructions` parameter: ensures agent instructions are applied consistently across conversation turns (not `system_prompt` which gets ignored when message_history is provided)
 - Smart embedding regeneration: only when summary changes, not on every update
 - Vector matching: pgvector cosine similarity with configurable threshold
 - Two-phase matching: both parties must accept before connection
