@@ -12,11 +12,12 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import col
 
-from src.mitko.agents.models import ConversationResponse, ProfileData
 from src.mitko.i18n import L
-from src.mitko.models.conversation import (
+from src.mitko.models.conversation import Conversation
+from src.mitko.types.messages import (
     AssistantMessage,
-    Conversation,
+    ConversationResponse,
+    ProfileData,
     UserMessage,
 )
 

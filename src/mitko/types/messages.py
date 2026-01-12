@@ -5,13 +5,49 @@ to represent different roles in a conversation (user, system, assistant).
 These types are shared by both models (for storage) and agents (for processing).
 """
 
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 
-if TYPE_CHECKING:
-    from ..agents.models import ConversationResponse
+
+class ProfileData(BaseModel):
+    """Structured profile data extracted from conversation"""
+
+    is_seeker: bool
+    is_provider: bool
+    summary: str
+
+    @model_validator(mode="after")
+    def validate_roles(self) -> "ProfileData":
+        """Ensure at least one role is enabled"""
+        if not (self.is_seeker or self.is_provider):
+            raise ValueError(
+                "Profile must have at least one role enabled (is_seeker or is_provider)"
+            )
+        return self
+
+    @field_validator("summary")
+    @classmethod
+    def validate_summary(cls, v: str) -> str:
+        """Ensure summary is not empty"""
+        if not v or not v.strip():
+            raise ValueError("Summary cannot be empty")
+        return v.strip()
+
+
+class ConversationResponse(BaseModel):
+    """Unified response from conversational agent"""
+
+    utterance: str
+    profile: ProfileData | None = None
+
+    @field_validator("utterance")
+    @classmethod
+    def validate_utterance(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Utterance cannot be empty")
+        return v.strip()
 
 
 class UserMessage(BaseModel):
@@ -40,10 +76,10 @@ class AssistantMessage(BaseModel):
     """An assistant message with structured response."""
 
     role: Literal["assistant"]
-    content: "ConversationResponse"
+    content: ConversationResponse
 
     @staticmethod
-    def create(content: "ConversationResponse") -> "AssistantMessage":
+    def create(content: ConversationResponse) -> "AssistantMessage":
         return AssistantMessage(role="assistant", content=content)
 
 

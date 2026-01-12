@@ -10,13 +10,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from ..agents.models import ConversationResponse
 from ..config import settings
 from ..i18n import L
 from ..jobs.generation import nudge_processor
 from ..models import Conversation, User, get_db
 from ..services.profiler import ProfileService
 from ..types import AssistantMessage, UserMessage
+from ..types.messages import ConversationResponse
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
 router = Router()

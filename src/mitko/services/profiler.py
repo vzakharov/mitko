@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..agents import ProfileData
 from ..llm import get_embedding
 from ..models import Conversation, User
+from ..types.messages import ProfileData
 
 
 class ProfileService:

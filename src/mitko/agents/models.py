@@ -1,31 +1,6 @@
 """Pydantic models for structured LLM outputs"""
 
-from pydantic import BaseModel, field_validator, model_validator
-
-
-class ProfileData(BaseModel):
-    """Structured profile data extracted from conversation"""
-
-    is_seeker: bool
-    is_provider: bool
-    summary: str
-
-    @model_validator(mode="after")
-    def validate_roles(self) -> "ProfileData":
-        """Ensure at least one role is enabled"""
-        if not (self.is_seeker or self.is_provider):
-            raise ValueError(
-                "Profile must have at least one role enabled (is_seeker or is_provider)"
-            )
-        return self
-
-    @field_validator("summary")
-    @classmethod
-    def validate_summary(cls, v: str) -> str:
-        """Ensure summary is not empty"""
-        if not v or not v.strip():
-            raise ValueError("Summary cannot be empty")
-        return v.strip()
+from pydantic import BaseModel, field_validator
 
 
 class MatchRationale(BaseModel):
@@ -75,17 +50,3 @@ class SummaryResult(BaseModel):
         if len(v) < 20:
             raise ValueError("Summary is too short (minimum 20 characters)")
         return v
-
-
-class ConversationResponse(BaseModel):
-    """Unified response from conversational agent"""
-
-    utterance: str
-    profile: ProfileData | None = None
-
-    @field_validator("utterance")
-    @classmethod
-    def validate_utterance(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Utterance cannot be empty")
-        return v.strip()
