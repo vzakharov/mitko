@@ -18,15 +18,24 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     # Add profile fields to users table
     op.add_column("users", sa.Column("is_seeker", sa.Boolean(), nullable=True))
-    op.add_column("users", sa.Column("is_provider", sa.Boolean(), nullable=True))
+    op.add_column(
+        "users", sa.Column("is_provider", sa.Boolean(), nullable=True)
+    )
     op.add_column("users", sa.Column("summary", sa.Text(), nullable=True))
     op.add_column(
         "users",
-        sa.Column("structured_data", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "structured_data",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=True,
+        ),
     )
     op.add_column("users", sa.Column("embedding", Vector(1536), nullable=True))
     op.add_column(
-        "users", sa.Column("is_complete", sa.Boolean(), server_default="false", nullable=False)
+        "users",
+        sa.Column(
+            "is_complete", sa.Boolean(), server_default="false", nullable=False
+        ),
     )
 
     # Migrate data from profiles to users
@@ -46,8 +55,12 @@ def upgrade() -> None:
     )
 
     # Update matches table to reference users instead of profiles
-    op.add_column("matches", sa.Column("user_a_id", sa.BigInteger(), nullable=True))
-    op.add_column("matches", sa.Column("user_b_id", sa.BigInteger(), nullable=True))
+    op.add_column(
+        "matches", sa.Column("user_a_id", sa.BigInteger(), nullable=True)
+    )
+    op.add_column(
+        "matches", sa.Column("user_b_id", sa.BigInteger(), nullable=True)
+    )
 
     # Migrate match references from profile IDs to user telegram_ids
     op.execute(
@@ -65,10 +78,18 @@ def upgrade() -> None:
 
     # Add foreign keys for new columns
     op.create_foreign_key(
-        "matches_user_a_id_fkey", "matches", "users", ["user_a_id"], ["telegram_id"]
+        "matches_user_a_id_fkey",
+        "matches",
+        "users",
+        ["user_a_id"],
+        ["telegram_id"],
     )
     op.create_foreign_key(
-        "matches_user_b_id_fkey", "matches", "users", ["user_b_id"], ["telegram_id"]
+        "matches_user_b_id_fkey",
+        "matches",
+        "users",
+        ["user_b_id"],
+        ["telegram_id"],
     )
 
     # Add index on embedding for vector search
@@ -81,8 +102,12 @@ def upgrade() -> None:
     )
 
     # Drop old foreign keys and columns from matches
-    op.drop_constraint("matches_profile_a_id_fkey", "matches", type_="foreignkey")
-    op.drop_constraint("matches_profile_b_id_fkey", "matches", type_="foreignkey")
+    op.drop_constraint(
+        "matches_profile_a_id_fkey", "matches", type_="foreignkey"
+    )
+    op.drop_constraint(
+        "matches_profile_b_id_fkey", "matches", type_="foreignkey"
+    )
     op.drop_column("matches", "profile_a_id")
     op.drop_column("matches", "profile_b_id")
 
@@ -102,9 +127,15 @@ def downgrade() -> None:
         sa.Column("telegram_id", sa.BigInteger(), nullable=False),
         sa.Column("role", sa.String(length=20), nullable=False),
         sa.Column("summary", sa.Text(), nullable=False),
-        sa.Column("structured_data", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "structured_data",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+        ),
         sa.Column("embedding", Vector(1536), nullable=True),
-        sa.Column("is_complete", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column(
+            "is_complete", sa.Boolean(), server_default="false", nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -142,10 +173,12 @@ def downgrade() -> None:
 
     # Restore old matches columns
     op.add_column(
-        "matches", sa.Column("profile_a_id", postgresql.UUID(as_uuid=True), nullable=True)
+        "matches",
+        sa.Column("profile_a_id", postgresql.UUID(as_uuid=True), nullable=True),
     )
     op.add_column(
-        "matches", sa.Column("profile_b_id", postgresql.UUID(as_uuid=True), nullable=True)
+        "matches",
+        sa.Column("profile_b_id", postgresql.UUID(as_uuid=True), nullable=True),
     )
 
     # Migrate match references back
@@ -164,10 +197,18 @@ def downgrade() -> None:
 
     # Restore foreign keys
     op.create_foreign_key(
-        "matches_profile_a_id_fkey", "matches", "profiles", ["profile_a_id"], ["id"]
+        "matches_profile_a_id_fkey",
+        "matches",
+        "profiles",
+        ["profile_a_id"],
+        ["id"],
     )
     op.create_foreign_key(
-        "matches_profile_b_id_fkey", "matches", "profiles", ["profile_b_id"], ["id"]
+        "matches_profile_b_id_fkey",
+        "matches",
+        "profiles",
+        ["profile_b_id"],
+        ["id"],
     )
 
     # Drop new columns
@@ -177,7 +218,9 @@ def downgrade() -> None:
     op.drop_column("matches", "user_a_id")
 
     # Restore role column to users
-    op.add_column("users", sa.Column("role", sa.String(length=20), nullable=True))
+    op.add_column(
+        "users", sa.Column("role", sa.String(length=20), nullable=True)
+    )
     op.execute(
         """
         UPDATE users

@@ -14,7 +14,11 @@ from sqlmodel import col
 
 from src.mitko.agents.models import ConversationResponse, ProfileData
 from src.mitko.i18n import L
-from src.mitko.models.conversation import AssistantMessage, Conversation, UserMessage
+from src.mitko.models.conversation import (
+    AssistantMessage,
+    Conversation,
+    UserMessage,
+)
 
 
 @pytest.fixture
@@ -34,9 +38,13 @@ async def test_engine() -> AsyncGenerator[AsyncEngine, None]:
 
 
 @pytest.fixture
-async def test_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, None]:
+async def test_session(
+    test_engine: AsyncEngine,
+) -> AsyncGenerator[AsyncSession, None]:
     """Create test session"""
-    session_maker = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+    session_maker = async_sessionmaker(
+        test_engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with session_maker() as session:
         yield session
 
@@ -44,7 +52,9 @@ async def test_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession,
 class TestConversationPersistence:
     """Test that conversation message changes persist to database"""
 
-    async def test_start_creates_single_greeting(self, test_session: AsyncSession) -> None:
+    async def test_start_creates_single_greeting(
+        self, test_session: AsyncSession
+    ) -> None:
         """Test /start creates conversation with only greeting message"""
         # Create conversation
         conv = Conversation(telegram_id=123456789, messages=[])
@@ -56,7 +66,9 @@ class TestConversationPersistence:
         conv.messages = [
             AssistantMessage(
                 role="assistant",
-                content=ConversationResponse(utterance=L.commands.start.GREETING, profile=None),
+                content=ConversationResponse(
+                    utterance=L.commands.start.GREETING, profile=None
+                ),
             )
         ]
         await test_session.commit()
@@ -68,7 +80,9 @@ class TestConversationPersistence:
         assert conv.messages[0].content.utterance == L.commands.start.GREETING
         assert conv.messages[0].content.profile is None
 
-    async def test_start_replaces_existing_messages(self, test_session: AsyncSession) -> None:
+    async def test_start_replaces_existing_messages(
+        self, test_session: AsyncSession
+    ) -> None:
         """Test /start replaces existing conversation history"""
         # Create conversation with existing messages
         conv = Conversation(
@@ -76,12 +90,16 @@ class TestConversationPersistence:
             messages=[
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(utterance="Old greeting", profile=None),
+                    content=ConversationResponse(
+                        utterance="Old greeting", profile=None
+                    ),
                 ),
                 UserMessage(role="user", content="User message"),
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(utterance="Bot response", profile=None),
+                    content=ConversationResponse(
+                        utterance="Bot response", profile=None
+                    ),
                 ),
             ],
         )
@@ -96,7 +114,9 @@ class TestConversationPersistence:
         conv.messages = [
             AssistantMessage(
                 role="assistant",
-                content=ConversationResponse(utterance=L.commands.start.GREETING, profile=None),
+                content=ConversationResponse(
+                    utterance=L.commands.start.GREETING, profile=None
+                ),
             )
         ]
         await test_session.commit()
@@ -107,7 +127,9 @@ class TestConversationPersistence:
         assert conv.messages[0].role == "assistant"
         assert conv.messages[0].content.utterance == L.commands.start.GREETING
 
-    async def test_reset_replaces_messages(self, test_session: AsyncSession) -> None:
+    async def test_reset_replaces_messages(
+        self, test_session: AsyncSession
+    ) -> None:
         """Test reset confirmation replaces messages with greeting"""
         # Create conversation with existing messages
         conv = Conversation(
@@ -115,12 +137,16 @@ class TestConversationPersistence:
             messages=[
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(utterance="Greeting", profile=None),
+                    content=ConversationResponse(
+                        utterance="Greeting", profile=None
+                    ),
                 ),
                 UserMessage(role="user", content="I want to reset"),
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(utterance="Are you sure?", profile=None),
+                    content=ConversationResponse(
+                        utterance="Are you sure?", profile=None
+                    ),
                 ),
             ],
         )
@@ -132,7 +158,9 @@ class TestConversationPersistence:
         conv.messages = [
             AssistantMessage(
                 role="assistant",
-                content=ConversationResponse(utterance=L.commands.start.GREETING, profile=None),
+                content=ConversationResponse(
+                    utterance=L.commands.start.GREETING, profile=None
+                ),
             )
         ]
         await test_session.commit()
@@ -143,7 +171,9 @@ class TestConversationPersistence:
         assert conv.messages[0].role == "assistant"
         assert conv.messages[0].content.utterance == L.commands.start.GREETING
 
-    async def test_regular_messages_append(self, test_session: AsyncSession) -> None:
+    async def test_regular_messages_append(
+        self, test_session: AsyncSession
+    ) -> None:
         """Test regular conversation messages append correctly"""
         # Create conversation with greeting
         conv = Conversation(
@@ -151,7 +181,9 @@ class TestConversationPersistence:
             messages=[
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(utterance=L.commands.start.GREETING, profile=None),
+                    content=ConversationResponse(
+                        utterance=L.commands.start.GREETING, profile=None
+                    ),
                 )
             ],
         )
@@ -170,7 +202,10 @@ class TestConversationPersistence:
         # Append assistant response
         conv.messages.append(
             AssistantMessage(
-                role="assistant", content=ConversationResponse(utterance="Hello user", profile=None)
+                role="assistant",
+                content=ConversationResponse(
+                    utterance="Hello user", profile=None
+                ),
             )
         )
         await test_session.commit()
@@ -185,17 +220,23 @@ class TestConversationPersistence:
         assert conv.messages[2].role == "assistant"
         assert conv.messages[2].content.utterance == "Hello user"
 
-    async def test_persistence_across_sessions(self, test_engine: AsyncEngine) -> None:
+    async def test_persistence_across_sessions(
+        self, test_engine: AsyncEngine
+    ) -> None:
         """Verify messages persist when read from fresh session"""
         # Create session and conversation
-        session_maker = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+        session_maker = async_sessionmaker(
+            test_engine, class_=AsyncSession, expire_on_commit=False
+        )
         async with session_maker() as session1:
             conv = Conversation(
                 telegram_id=987654321,
                 messages=[
                     AssistantMessage(
                         role="assistant",
-                        content=ConversationResponse(utterance="Greeting", profile=None),
+                        content=ConversationResponse(
+                            utterance="Greeting", profile=None
+                        ),
                     ),
                     UserMessage(role="user", content="Test message"),
                 ],
@@ -220,7 +261,9 @@ class TestConversationPersistence:
             assert isinstance(msg1, UserMessage)
             assert msg1.content == "Test message"
 
-    async def test_assistant_message_with_profile_data(self, test_session: AsyncSession) -> None:
+    async def test_assistant_message_with_profile_data(
+        self, test_session: AsyncSession
+    ) -> None:
         """Test assistant message with profile data serializes/deserializes correctly"""
         # Create conversation with assistant message containing profile
         conv = Conversation(
@@ -251,4 +294,7 @@ class TestConversationPersistence:
         assert msg.content.profile is not None
         assert msg.content.profile.is_seeker is True
         assert msg.content.profile.is_provider is False
-        assert msg.content.profile.summary == "Senior Python developer with 5 years experience"
+        assert (
+            msg.content.profile.summary
+            == "Senior Python developer with 5 years experience"
+        )

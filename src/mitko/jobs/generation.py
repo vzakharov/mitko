@@ -44,7 +44,9 @@ def nudge_processor() -> None:
     event.set()
 
 
-async def _find_next_ripe_conversation(session: AsyncSession) -> Conversation | None:
+async def _find_next_ripe_conversation(
+    session: AsyncSession,
+) -> Conversation | None:
     """Find the conversation with earliest scheduled_for <= now."""
     now = datetime.now(UTC)
     result = await session.execute(
@@ -76,7 +78,9 @@ def _format_profile_card(profile: ProfileData) -> str:
         roles.append(L.profile.ROLE_SEEKER)
     if profile.is_provider:
         roles.append(L.profile.ROLE_PROVIDER)
-    card_parts.append(f"{L.profile.ROLE_LABEL}: {L.profile.ROLE_SEPARATOR.join(roles)}")
+    card_parts.append(
+        f"{L.profile.ROLE_LABEL}: {L.profile.ROLE_SEPARATOR.join(roles)}"
+    )
 
     # Summary
     card_parts.append(f"\n\n{profile.summary}")
@@ -84,13 +88,19 @@ def _format_profile_card(profile: ProfileData) -> str:
     return "".join(card_parts)
 
 
-async def _process_conversation(bot: Bot, conv: Conversation, session: AsyncSession) -> None:
+async def _process_conversation(
+    bot: Bot, conv: Conversation, session: AsyncSession
+) -> None:
     """Process a single conversation: generate response and send it."""
     # Get user for profile operations
-    result = await session.execute(select(User).where(col(User.telegram_id) == conv.telegram_id))
+    result = await session.execute(
+        select(User).where(col(User.telegram_id) == conv.telegram_id)
+    )
     user = result.scalar_one_or_none()
     if user is None:
-        logger.error("User %d not found for conversation %s", conv.telegram_id, conv.id)
+        logger.error(
+            "User %d not found for conversation %s", conv.telegram_id, conv.id
+        )
         return
 
     # Run conversation agent
@@ -101,11 +111,15 @@ async def _process_conversation(bot: Bot, conv: Conversation, session: AsyncSess
     if response.profile:
         profiler = ProfileService(session)
         is_update = user.is_complete
-        await profiler.create_or_update_profile(user, response.profile, is_update=is_update)
+        await profiler.create_or_update_profile(
+            user, response.profile, is_update=is_update
+        )
 
         # Send response with profile card
         profile_card = _format_profile_card(response.profile)
-        await bot.send_message(conv.telegram_id, f"{response.utterance}\n\n{profile_card}")
+        await bot.send_message(
+            conv.telegram_id, f"{response.utterance}\n\n{profile_card}"
+        )
     else:
         await bot.send_message(conv.telegram_id, response.utterance)
 
@@ -160,7 +174,9 @@ async def _processor_loop(bot: Bot) -> None:
                 if wait_seconds > 0:
                     event.clear()
                     with suppress(TimeoutError):
-                        await asyncio.wait_for(event.wait(), timeout=wait_seconds)
+                        await asyncio.wait_for(
+                            event.wait(), timeout=wait_seconds
+                        )
             else:
                 # No scheduled conversations - wait indefinitely for nudge
                 event.clear()

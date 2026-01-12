@@ -48,9 +48,13 @@ class ProfileService:
         self, user: User, conversation: Conversation, profile_data: ProfileData
     ) -> User:
         """Legacy method - redirects to create_or_update_profile"""
-        return await self.create_or_update_profile(user, profile_data, is_update=False)
+        return await self.create_or_update_profile(
+            user, profile_data, is_update=False
+        )
 
-    async def reset_profile(self, user: User, conversation: Conversation | None) -> None:
+    async def reset_profile(
+        self, user: User, conversation: Conversation | None
+    ) -> None:
         """
         Reset user profile and conversation to blank state.
 

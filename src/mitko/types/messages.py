@@ -48,4 +48,6 @@ class AssistantMessage(BaseModel):
 
 
 # Discriminated union using role field
-LLMMessage = Annotated[UserMessage | SystemMessage | AssistantMessage, Field(discriminator="role")]
+LLMMessage = Annotated[
+    UserMessage | SystemMessage | AssistantMessage, Field(discriminator="role")
+]

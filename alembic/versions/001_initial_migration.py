@@ -22,7 +22,12 @@ def upgrade() -> None:
         "users",
         sa.Column("telegram_id", sa.BigInteger(), nullable=False),
         sa.Column("role", sa.String(length=20), nullable=True),
-        sa.Column("state", sa.String(length=20), server_default="onboarding", nullable=False),
+        sa.Column(
+            "state",
+            sa.String(length=20),
+            server_default="onboarding",
+            nullable=False,
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -36,7 +41,9 @@ def upgrade() -> None:
         "conversations",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("telegram_id", sa.BigInteger(), nullable=False),
-        sa.Column("messages", postgresql.JSON(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "messages", postgresql.JSON(astext_type=sa.Text()), nullable=False
+        ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
@@ -56,9 +63,15 @@ def upgrade() -> None:
         sa.Column("telegram_id", sa.BigInteger(), nullable=False),
         sa.Column("role", sa.String(length=20), nullable=False),
         sa.Column("summary", sa.Text(), nullable=False),
-        sa.Column("structured_data", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "structured_data",
+            postgresql.JSONB(astext_type=sa.Text()),
+            nullable=False,
+        ),
         sa.Column("embedding", Vector(1536), nullable=True),
-        sa.Column("is_complete", sa.Boolean(), server_default="false", nullable=False),
+        sa.Column(
+            "is_complete", sa.Boolean(), server_default="false", nullable=False
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -84,11 +97,20 @@ def upgrade() -> None:
     op.create_table(
         "matches",
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("profile_a_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("profile_b_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column(
+            "profile_a_id", postgresql.UUID(as_uuid=True), nullable=False
+        ),
+        sa.Column(
+            "profile_b_id", postgresql.UUID(as_uuid=True), nullable=False
+        ),
         sa.Column("similarity_score", sa.Float(), nullable=False),
         sa.Column("match_rationale", sa.Text(), nullable=False),
-        sa.Column("status", sa.String(length=20), server_default="pending", nullable=False),
+        sa.Column(
+            "status",
+            sa.String(length=20),
+            server_default="pending",
+            nullable=False,
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

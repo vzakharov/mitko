@@ -5,7 +5,10 @@ from aiogram.types import Update
 from fastapi import FastAPI, Request, Response
 
 from ..config import settings
-from ..jobs.generation import start_generation_processor, stop_generation_processor
+from ..jobs.generation import (
+    start_generation_processor,
+    stop_generation_processor,
+)
 from ..jobs.matching import start_matching_scheduler, stop_matching_scheduler
 
 
@@ -15,7 +18,9 @@ class WebhookRuntime:
     async def startup(self, bot: Bot, dp: Dispatcher) -> None:
         """Set webhook with Telegram"""
         if settings.telegram_webhook_url is None:
-            raise ValueError("TELEGRAM_WEBHOOK_URL is required for webhook mode")
+            raise ValueError(
+                "TELEGRAM_WEBHOOK_URL is required for webhook mode"
+            )
 
         await bot.set_webhook(
             url=settings.telegram_webhook_url,
@@ -47,8 +52,13 @@ class WebhookRuntime:
         app = FastAPI(lifespan=lifespan)
 
         @app.post("/webhook/{secret_path:str}")
-        async def webhook_handler(request: Request, secret_path: str) -> Response:
-            if settings.telegram_webhook_secret and secret_path != settings.telegram_webhook_secret:
+        async def webhook_handler(
+            request: Request, secret_path: str
+        ) -> Response:
+            if (
+                settings.telegram_webhook_secret
+                and secret_path != settings.telegram_webhook_secret
+            ):
                 return Response(status_code=403)
 
             update_dict = await request.json()

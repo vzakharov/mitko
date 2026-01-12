@@ -23,7 +23,9 @@ def validate_profile_roles(profile_data: dict[str, Any]) -> None:
     is_provider = profile_data.get("is_provider", False)
 
     if not isinstance(is_seeker, bool):
-        raise ProfileValidationError(f"is_seeker must be boolean, got {type(is_seeker).__name__}")
+        raise ProfileValidationError(
+            f"is_seeker must be boolean, got {type(is_seeker).__name__}"
+        )
 
     if not isinstance(is_provider, bool):
         raise ProfileValidationError(
@@ -31,4 +33,6 @@ def validate_profile_roles(profile_data: dict[str, Any]) -> None:
         )
 
     if not (is_seeker or is_provider):
-        raise ProfileValidationError("Profile must have at least one role enabled")
+        raise ProfileValidationError(
+            "Profile must have at least one role enabled"
+        )

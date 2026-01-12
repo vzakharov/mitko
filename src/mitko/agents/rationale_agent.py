@@ -51,7 +51,9 @@ class RationaleAgent:
         language_name = "English" if L.language == "en" else "Russian"
 
         # Get example rationales from locale
-        examples = "\n".join(f"- {ex}" for ex in L.agent_examples.rationale.EXAMPLES)
+        examples = "\n".join(
+            f"- {ex}" for ex in L.agent_examples.rationale.EXAMPLES
+        )
 
         # Format instructions with language context
         instructions = self.SYSTEM_PROMPT_BASE.format(

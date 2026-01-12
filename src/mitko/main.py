@@ -5,7 +5,10 @@ from fastapi import FastAPI
 
 from .bot.core import initialize_bot
 from .config import settings
-from .jobs.generation import start_generation_processor, stop_generation_processor
+from .jobs.generation import (
+    start_generation_processor,
+    stop_generation_processor,
+)
 from .jobs.matching import start_matching_scheduler, stop_matching_scheduler
 from .runtime.polling import PollingRuntime
 from .runtime.webhook import WebhookRuntime

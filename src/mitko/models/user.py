@@ -32,7 +32,8 @@ class User(SQLModel, table=True):
     is_complete: bool = Field(default=False)
 
     created_at: datetime | None = Field(
-        default=None, sa_column=Column(DateTime(timezone=True), server_default=func.now())
+        default=None,
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
     )
 
     conversations: list["Conversation"] = Relationship(back_populates="user")
@@ -71,5 +72,6 @@ class User(SQLModel, table=True):
     def can_match_with(self, other: "User") -> bool:
         """Check if this user can be matched with another (seeker ↔ provider only)"""
         return bool(
-            (self.is_seeker and other.is_provider) or (self.is_provider and other.is_seeker)
+            (self.is_seeker and other.is_provider)
+            or (self.is_provider and other.is_seeker)
         )

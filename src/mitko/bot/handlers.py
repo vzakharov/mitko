@@ -43,14 +43,20 @@ async def validate_callback_message(callback: CallbackQuery) -> Message | None:
     Returns:
         Message if accessible, None if inaccessible (error already sent to user)
     """
-    if callback.message is None or isinstance(callback.message, InaccessibleMessage):
-        await callback.answer(L.system.errors.MESSAGE_UNAVAILABLE, show_alert=True)
+    if callback.message is None or isinstance(
+        callback.message, InaccessibleMessage
+    ):
+        await callback.answer(
+            L.system.errors.MESSAGE_UNAVAILABLE, show_alert=True
+        )
         return None
     return callback.message
 
 
 async def get_or_create_user(telegram_id: int, session: AsyncSession) -> User:
-    result = await session.execute(select(User).where(col(User.telegram_id) == telegram_id))
+    result = await session.execute(
+        select(User).where(col(User.telegram_id) == telegram_id)
+    )
     user = result.scalar_one_or_none()
     if user is None:
         user = User(telegram_id=telegram_id, state="onboarding")
@@ -60,7 +66,9 @@ async def get_or_create_user(telegram_id: int, session: AsyncSession) -> User:
     return user
 
 
-async def get_or_create_conversation(telegram_id: int, session: AsyncSession) -> Conversation:
+async def get_or_create_conversation(
+    telegram_id: int, session: AsyncSession
+) -> Conversation:
     result = await session.execute(
         select(Conversation).where(col(Conversation.telegram_id) == telegram_id)
     )
@@ -101,7 +109,9 @@ async def cmd_start(message: Message) -> None:
             # Replace conversation history with greeting to start fresh
             conv.messages = [
                 AssistantMessage.create(
-                    ConversationResponse(utterance=L.commands.start.GREETING, profile=None)
+                    ConversationResponse(
+                        utterance=L.commands.start.GREETING, profile=None
+                    )
                 )
             ]
             await session.commit()
@@ -121,7 +131,9 @@ async def cmd_start(message: Message) -> None:
 
 async def _get_max_scheduled_time(session: AsyncSession) -> datetime | None:
     """Get the maximum scheduled_for time across all conversations."""
-    result = await session.execute(select(sql_func.max(Conversation.scheduled_for)))
+    result = await session.execute(
+        select(sql_func.max(Conversation.scheduled_for))
+    )
     return result.scalar_one_or_none()
 
 
@@ -171,13 +183,17 @@ async def handle_message(message: Message) -> None:
 
 
 @router.callback_query(MatchAction.filter(F.action == "accept"))
-async def handle_match_accept(callback: CallbackQuery, callback_data: MatchAction) -> None:
+async def handle_match_accept(
+    callback: CallbackQuery, callback_data: MatchAction
+) -> None:
     match_id = UUID(callback_data.match_id)
 
     async for session in get_db():
         from ..models import Match
 
-        result = await session.execute(select(Match).where(col(Match.id) == match_id))
+        result = await session.execute(
+            select(Match).where(col(Match.id) == match_id)
+        )
         match = result.scalar_one_or_none()
         if not match:
             await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
@@ -198,7 +214,9 @@ async def handle_match_accept(callback: CallbackQuery, callback_data: MatchActio
         elif user_b.telegram_id == callback.from_user.id:
             current_user = user_b
         else:
-            await callback.answer(L.matching.errors.UNAUTHORIZED, show_alert=True)
+            await callback.answer(
+                L.matching.errors.UNAUTHORIZED, show_alert=True
+            )
             return
 
         if match.status == "pending":
@@ -221,17 +239,23 @@ async def handle_match_accept(callback: CallbackQuery, callback_data: MatchActio
             )
             await callback.answer(L.matching.ACCEPT_CONNECTED)
         else:
-            await callback.answer(L.matching.errors.ALREADY_PROCESSED, show_alert=True)
+            await callback.answer(
+                L.matching.errors.ALREADY_PROCESSED, show_alert=True
+            )
 
 
 @router.callback_query(MatchAction.filter(F.action == "reject"))
-async def handle_match_reject(callback: CallbackQuery, callback_data: MatchAction) -> None:
+async def handle_match_reject(
+    callback: CallbackQuery, callback_data: MatchAction
+) -> None:
     match_id = UUID(callback_data.match_id)
 
     async for session in get_db():
         from ..models import Match
 
-        result = await session.execute(select(Match).where(col(Match.id) == match_id))
+        result = await session.execute(
+            select(Match).where(col(Match.id) == match_id)
+        )
         match = result.scalar_one_or_none()
         if not match:
             await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
@@ -243,7 +267,9 @@ async def handle_match_reject(callback: CallbackQuery, callback_data: MatchActio
 
 
 @router.callback_query(ResetAction.filter(F.action == "confirm"))
-async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetAction) -> None:
+async def handle_reset_confirm(
+    callback: CallbackQuery, callback_data: ResetAction
+) -> None:
     """Handler for reset confirmation button"""
     telegram_id = callback_data.telegram_id
 
@@ -275,13 +301,17 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
             # Replace conversation history with greeting to start fresh
             conversation.messages = [
                 AssistantMessage.create(
-                    ConversationResponse(utterance=L.commands.start.GREETING, profile=None)
+                    ConversationResponse(
+                        utterance=L.commands.start.GREETING, profile=None
+                    )
                 )
             ]
             # Cancel any pending generation
             conversation.scheduled_for = None
             await session.commit()
-            last_msg = conversation.messages[-1] if conversation.messages else None
+            last_msg = (
+                conversation.messages[-1] if conversation.messages else None
+            )
             last_text = (
                 last_msg.content.utterance[:50]
                 if isinstance(last_msg, AssistantMessage)
@@ -298,7 +328,9 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
 
 
 @router.callback_query(ResetAction.filter(F.action == "cancel"))
-async def handle_reset_cancel(callback: CallbackQuery, callback_data: ResetAction) -> None:
+async def handle_reset_cancel(
+    callback: CallbackQuery, callback_data: ResetAction
+) -> None:
     """Handler for reset cancellation button"""
     telegram_id = callback_data.telegram_id
 

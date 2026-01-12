@@ -31,14 +31,20 @@ def _to_pydantic_messages(
     result: list[ModelRequest | ModelResponse] = []
     for msg in messages:
         if isinstance(msg, UserMessage):
-            result.append(ModelRequest(parts=[UserPromptPart(content=msg.content)]))
+            result.append(
+                ModelRequest(parts=[UserPromptPart(content=msg.content)])
+            )
         elif isinstance(msg, SystemMessage):
-            result.append(ModelRequest(parts=[SystemPromptPart(content=msg.content)]))
+            result.append(
+                ModelRequest(parts=[SystemPromptPart(content=msg.content)])
+            )
         else:
             # AssistantMessage - convert ConversationResponse to formatted JSON string
             # Example output: {"utterance": "Nice to meet you...", "profile": {"is_seeker": true, ...}}
             content_json = json.dumps(
-                msg.content.model_dump(exclude_none=True),  # Omit null values for cleaner output
+                msg.content.model_dump(
+                    exclude_none=True
+                ),  # Omit null values for cleaner output
                 ensure_ascii=False,
                 indent=2,  # Pretty-print for readability
             )
@@ -184,7 +190,9 @@ class ConversationAgent:
             profile_created_examples=profile_created_examples,
             profile_updated_examples=profile_updated_examples,
             off_topic_redirect=L.OFF_TOPIC_REDIRECT,
-            jailbreak_response=L.JAILBREAK_RESPONSE.format(repo_url=settings.mitko_repo_url),
+            jailbreak_response=L.JAILBREAK_RESPONSE.format(
+                repo_url=settings.mitko_repo_url
+            ),
             uncertainty_phrase=L.UNCERTAINTY_PHRASE,
         )
 
@@ -217,5 +225,7 @@ class ConversationAgent:
             raise ValueError("Last message must be a UserMessage")
         message_history = _to_pydantic_messages(messages[:-1])
 
-        result = await self._agent.run(user_prompt, message_history=message_history)
+        result = await self._agent.run(
+            user_prompt, message_history=message_history
+        )
         return result.output

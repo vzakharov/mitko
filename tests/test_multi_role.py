@@ -4,7 +4,10 @@ from typing import Any
 
 import pytest
 
-from src.mitko.utils.validation import ProfileValidationError, validate_profile_roles
+from src.mitko.utils.validation import (
+    ProfileValidationError,
+    validate_profile_roles,
+)
 
 
 class TestRoleValidation:
@@ -34,13 +37,17 @@ class TestRoleValidation:
     def test_invalid_is_seeker_type(self):
         """Test that non-boolean is_seeker raises error"""
         data = {"is_seeker": "yes", "is_provider": True}
-        with pytest.raises(ProfileValidationError, match="is_seeker must be boolean"):
+        with pytest.raises(
+            ProfileValidationError, match="is_seeker must be boolean"
+        ):
             validate_profile_roles(data)
 
     def test_invalid_is_provider_type(self):
         """Test that non-boolean is_provider raises error"""
         data = {"is_seeker": True, "is_provider": "no"}
-        with pytest.raises(ProfileValidationError, match="is_provider must be boolean"):
+        with pytest.raises(
+            ProfileValidationError, match="is_provider must be boolean"
+        ):
             validate_profile_roles(data)
 
     def test_missing_fields_default_to_false(self):

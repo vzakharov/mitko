@@ -37,7 +37,9 @@ class Settings(BaseSettings):
 
         # Anthropic key only needed if using Anthropic for chat
         if self.llm_provider == "anthropic" and not self.anthropic_api_key:
-            raise ValueError("ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic")
+            raise ValueError(
+                "ANTHROPIC_API_KEY is required when LLM_PROVIDER=anthropic"
+            )
 
 
 def get_settings() -> Settings:

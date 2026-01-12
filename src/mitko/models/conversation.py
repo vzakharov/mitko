@@ -9,7 +9,12 @@ from sqlalchemy.ext.mutable import MutableList
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
 
-from ..types.messages import AssistantMessage, LLMMessage, SystemMessage, UserMessage
+from ..types.messages import (
+    AssistantMessage,
+    LLMMessage,
+    SystemMessage,
+    UserMessage,
+)
 
 if TYPE_CHECKING:
     from .user import User
@@ -55,15 +60,21 @@ class Conversation(SQLModel, table=True):
     __tablename__: ClassVar[Any] = "conversations"
 
     id: uuid.UUID = Field(
-        default_factory=uuid.uuid4, sa_column=Column(PGUUID(as_uuid=True), primary_key=True)
+        default_factory=uuid.uuid4,
+        sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
     )
     telegram_id: int = Field(foreign_key="users.telegram_id")
     messages: list[LLMMessage] = Field(
-        default_factory=list, sa_column=Column(MutableList.as_mutable(PydanticJSONB))
+        default_factory=list,
+        sa_column=Column(MutableList.as_mutable(PydanticJSONB)),
     )
     updated_at: datetime | None = Field(
         default=None,
-        sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()),
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now(),
+        ),
     )
     scheduled_for: datetime | None = Field(
         default=None,

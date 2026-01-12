@@ -27,11 +27,15 @@ def match_consent_keyboard(match_id: UUID) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text=L.keyboards.match.ACCEPT,
-                    callback_data=MatchAction(action="accept", match_id=str(match_id)).pack(),
+                    callback_data=MatchAction(
+                        action="accept", match_id=str(match_id)
+                    ).pack(),
                 ),
                 InlineKeyboardButton(
                     text=L.keyboards.match.REJECT,
-                    callback_data=MatchAction(action="reject", match_id=str(match_id)).pack(),
+                    callback_data=MatchAction(
+                        action="reject", match_id=str(match_id)
+                    ).pack(),
                 ),
             ]
         ]
@@ -44,13 +48,17 @@ def reset_confirmation_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text=L.keyboards.reset.CONFIRM,
-                    callback_data=ResetAction(action="confirm", telegram_id=telegram_id).pack(),
+                    callback_data=ResetAction(
+                        action="confirm", telegram_id=telegram_id
+                    ).pack(),
                 ),
             ],
             [
                 InlineKeyboardButton(
                     text=L.keyboards.reset.CANCEL,
-                    callback_data=ResetAction(action="cancel", telegram_id=telegram_id).pack(),
+                    callback_data=ResetAction(
+                        action="cancel", telegram_id=telegram_id
+                    ).pack(),
                 ),
             ],
         ]

@@ -29,14 +29,20 @@ class MatcherService:
         for seeker in seekers:
             provider_matches = await self._find_similar_providers(seeker)
             for provider, similarity in provider_matches:
-                if await self._should_create_match(seeker.telegram_id, provider.telegram_id):
-                    match = await self._create_match(seeker, provider, similarity)
+                if await self._should_create_match(
+                    seeker.telegram_id, provider.telegram_id
+                ):
+                    match = await self._create_match(
+                        seeker, provider, similarity
+                    )
                     matches_created.append(match)
 
         await self.session.commit()
         return matches_created
 
-    async def _find_similar_providers(self, seeker: User) -> list[tuple[User, float]]:
+    async def _find_similar_providers(
+        self, seeker: User
+    ) -> list[tuple[User, float]]:
         if seeker.embedding is None:
             return []
 
@@ -76,7 +82,9 @@ class MatcherService:
                 matches.append((user, float(row.similarity)))
         return matches
 
-    async def _should_create_match(self, user_a_id: int, user_b_id: int) -> bool:
+    async def _should_create_match(
+        self, user_a_id: int, user_b_id: int
+    ) -> bool:
         existing = await self.session.execute(
             select(Match).where(
                 or_(
@@ -93,7 +101,9 @@ class MatcherService:
         )
         return existing.scalar_one_or_none() is None
 
-    async def _create_match(self, seeker: User, provider: User, similarity: float) -> Match:
+    async def _create_match(
+        self, seeker: User, provider: User, similarity: float
+    ) -> Match:
         rationale = await self._generate_match_rationale(seeker, provider)
 
         match = Match(
@@ -106,7 +116,9 @@ class MatcherService:
         self.session.add(match)
         return match
 
-    async def _generate_match_rationale(self, seeker: User, provider: User) -> str:
+    async def _generate_match_rationale(
+        self, seeker: User, provider: User
+    ) -> str:
         rationale_agent = RationaleAgent(get_model_name())
         rationale = await rationale_agent.generate_rationale(
             seeker_summary=seeker.summary or "",

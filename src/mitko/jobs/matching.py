@@ -32,9 +32,13 @@ async def notify_match(bot: Bot, match: Match, session: AsyncSession) -> None:
     user_a = user_a_result.scalar_one()
     user_b = user_b_result.scalar_one()
 
-    message_a = L.matching.FOUND.format(profile=user_b.summary, rationale=match.match_rationale)
+    message_a = L.matching.FOUND.format(
+        profile=user_b.summary, rationale=match.match_rationale
+    )
 
-    message_b = L.matching.FOUND.format(profile=user_a.summary, rationale=match.match_rationale)
+    message_b = L.matching.FOUND.format(
+        profile=user_a.summary, rationale=match.match_rationale
+    )
 
     keyboard = match_consent_keyboard(match.id)
 
