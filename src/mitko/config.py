@@ -43,9 +43,7 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     import os
 
-    settings = (
-        Settings()
-    )  # pyright: ignore[reportCallIssue]  # pydantic-settings loads required fields from .env
+    settings = Settings()  # pyright: ignore[reportCallIssue]  # pydantic-settings loads required fields from .env
     settings.validate_llm_keys()
 
     # TODO: Handle this more gracefully - we're loading envs into settings to load them back into envs

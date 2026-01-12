@@ -6,6 +6,7 @@ from apscheduler.job import Job
 
 class AsyncIOScheduler:
     """Async IO scheduler for APScheduler."""
+
     running: bool
     def __init__(self, **options: Any) -> None: ...
     def add_job(

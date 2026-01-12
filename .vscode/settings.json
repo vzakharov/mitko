@@ -11,9 +11,9 @@
     "source.organizeImports": "explicit"
   },
 
-  // Use Black as default formatter
+  // Use Ruff as default formatter
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true
   },
 

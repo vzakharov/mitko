@@ -56,10 +56,7 @@ class TestConversationPersistence:
         conv.messages = [
             AssistantMessage(
                 role="assistant",
-                content=ConversationResponse(
-                    utterance=L.commands.start.GREETING,
-                    profile=None
-                )
+                content=ConversationResponse(utterance=L.commands.start.GREETING, profile=None),
             )
         ]
         await test_session.commit()
@@ -79,12 +76,12 @@ class TestConversationPersistence:
             messages=[
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(utterance="Old greeting", profile=None)
+                    content=ConversationResponse(utterance="Old greeting", profile=None),
                 ),
                 UserMessage(role="user", content="User message"),
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(utterance="Bot response", profile=None)
+                    content=ConversationResponse(utterance="Bot response", profile=None),
                 ),
             ],
         )
@@ -99,10 +96,7 @@ class TestConversationPersistence:
         conv.messages = [
             AssistantMessage(
                 role="assistant",
-                content=ConversationResponse(
-                    utterance=L.commands.start.GREETING,
-                    profile=None
-                )
+                content=ConversationResponse(utterance=L.commands.start.GREETING, profile=None),
             )
         ]
         await test_session.commit()
@@ -121,12 +115,12 @@ class TestConversationPersistence:
             messages=[
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(utterance="Greeting", profile=None)
+                    content=ConversationResponse(utterance="Greeting", profile=None),
                 ),
                 UserMessage(role="user", content="I want to reset"),
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(utterance="Are you sure?", profile=None)
+                    content=ConversationResponse(utterance="Are you sure?", profile=None),
                 ),
             ],
         )
@@ -138,10 +132,7 @@ class TestConversationPersistence:
         conv.messages = [
             AssistantMessage(
                 role="assistant",
-                content=ConversationResponse(
-                    utterance=L.commands.start.GREETING,
-                    profile=None
-                )
+                content=ConversationResponse(utterance=L.commands.start.GREETING, profile=None),
             )
         ]
         await test_session.commit()
@@ -160,10 +151,7 @@ class TestConversationPersistence:
             messages=[
                 AssistantMessage(
                     role="assistant",
-                    content=ConversationResponse(
-                        utterance=L.commands.start.GREETING,
-                        profile=None
-                    )
+                    content=ConversationResponse(utterance=L.commands.start.GREETING, profile=None),
                 )
             ],
         )
@@ -182,8 +170,7 @@ class TestConversationPersistence:
         # Append assistant response
         conv.messages.append(
             AssistantMessage(
-                role="assistant",
-                content=ConversationResponse(utterance="Hello user", profile=None)
+                role="assistant", content=ConversationResponse(utterance="Hello user", profile=None)
             )
         )
         await test_session.commit()
@@ -208,7 +195,7 @@ class TestConversationPersistence:
                 messages=[
                     AssistantMessage(
                         role="assistant",
-                        content=ConversationResponse(utterance="Greeting", profile=None)
+                        content=ConversationResponse(utterance="Greeting", profile=None),
                     ),
                     UserMessage(role="user", content="Test message"),
                 ],
@@ -246,9 +233,9 @@ class TestConversationPersistence:
                         profile=ProfileData(
                             is_seeker=True,
                             is_provider=False,
-                            summary="Senior Python developer with 5 years experience"
-                        )
-                    )
+                            summary="Senior Python developer with 5 years experience",
+                        ),
+                    ),
                 )
             ],
         )

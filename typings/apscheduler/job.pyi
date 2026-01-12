@@ -3,5 +3,6 @@
 
 class Job:
     """APScheduler job class."""
+
     id: str
     name: str | None

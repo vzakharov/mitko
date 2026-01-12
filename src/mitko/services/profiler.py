@@ -10,10 +10,7 @@ class ProfileService:
         self.session = session
 
     async def create_or_update_profile(
-        self,
-        user: User,
-        profile_data: ProfileData,
-        is_update: bool = False
+        self, user: User, profile_data: ProfileData, is_update: bool = False
     ) -> User:
         """
         Create a new profile or update an existing one.
@@ -51,9 +48,7 @@ class ProfileService:
         self, user: User, conversation: Conversation, profile_data: ProfileData
     ) -> User:
         """Legacy method - redirects to create_or_update_profile"""
-        return await self.create_or_update_profile(
-            user, profile_data, is_update=False
-        )
+        return await self.create_or_update_profile(user, profile_data, is_update=False)
 
     async def reset_profile(self, user: User, conversation: Conversation | None) -> None:
         """
@@ -76,4 +71,3 @@ class ProfileService:
             conversation.messages = []
 
         await self.session.commit()
-

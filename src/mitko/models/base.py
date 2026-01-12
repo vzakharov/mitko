@@ -21,4 +21,3 @@ async def init_db():
     """Create all tables - useful for testing or first-time setup"""
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
-

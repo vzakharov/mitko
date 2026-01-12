@@ -5,6 +5,7 @@ from typing import Any
 
 class ProfileValidationError(ValueError):
     """Raised when profile data is invalid"""
+
     pass
 
 

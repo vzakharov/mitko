@@ -1,6 +1,6 @@
 """Add scheduled_for column to conversations for generation queue"""
 
-from typing import Sequence
+from typing import Sequence  # noqa: UP035
 
 import sqlalchemy as sa
 
