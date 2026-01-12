@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     similarity_threshold: float = 0.7
     max_matches_per_profile: int = 5
 
+    generation_interval_seconds: int = 180
+
     mitko_language: Literal["en", "ru"] = "en"
 
     mitko_repo_url: str = "https://github.com/vzakharov/mitko"

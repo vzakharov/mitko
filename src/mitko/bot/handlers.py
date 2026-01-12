@@ -1,16 +1,19 @@
 import logging
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InaccessibleMessage, Message
+from sqlalchemy import func as sql_func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from ..agents import ConversationAgent, ProfileData, get_model_name
 from ..agents.models import ConversationResponse
+from ..config import settings
 from ..i18n import L
+from ..jobs.generation import nudge_processor
 from ..models import Conversation, User, get_db
 from ..models.conversation import AssistantMessage, UserMessage
 from ..services.profiler import ProfileService
@@ -116,22 +119,10 @@ async def cmd_start(message: Message) -> None:
             )
 
 
-def _format_profile_card(profile: ProfileData) -> str:
-    """Format profile as a user-visible card"""
-    card_parts = [L.profile.CARD_HEADER + "\n"]
-
-    # Role
-    roles = list[str]()
-    if profile.is_seeker:
-        roles.append(L.profile.ROLE_SEEKER)
-    if profile.is_provider:
-        roles.append(L.profile.ROLE_PROVIDER)
-    card_parts.append(f"{L.profile.ROLE_LABEL}: {L.profile.ROLE_SEPARATOR.join(roles)}")
-
-    # Summary
-    card_parts.append(f"\n\n{profile.summary}")
-
-    return "".join(card_parts)
+async def _get_max_scheduled_time(session: AsyncSession) -> datetime | None:
+    """Get the maximum scheduled_for time across all conversations."""
+    result = await session.execute(select(sql_func.max(Conversation.scheduled_for)))
+    return result.scalar_one_or_none()
 
 
 @router.message()
@@ -140,46 +131,43 @@ async def handle_message(message: Message) -> None:
         return
 
     async for session in get_db():
-        user = await get_or_create_user(message.from_user.id, session)
+        await get_or_create_user(message.from_user.id, session)
         conv = await get_or_create_conversation(message.from_user.id, session)
 
         # Add user message
         conv.messages.append(UserMessage.create(message.text))
+
+        # Schedule generation if not already scheduled
+        if conv.scheduled_for is None:
+            now = datetime.now(UTC)
+            interval = timedelta(seconds=settings.generation_interval_seconds)
+
+            # Find max scheduled time to maintain queue order
+            max_scheduled = await _get_max_scheduled_time(session)
+
+            if max_scheduled is not None and max_scheduled > now:
+                # Queue after the last scheduled conversation
+                conv.scheduled_for = max_scheduled + interval
+            else:
+                # No queue or all in past - schedule for now + interval
+                conv.scheduled_for = now + interval
+
         await session.commit()
+
+        # Send acknowledgment with estimated reply time
+        # TODO: Better UX - link to explanation, handle near-instant cases differently
+        reply_time = conv.scheduled_for.strftime("%H:%M:%S")
+        await message.answer(L.system.SCHEDULED_REPLY.format(time=reply_time))
+
         logger.debug(
-            "Stored user message for %d: %d total messages",
+            "Stored user message for %d: %d total messages, scheduled_for=%s",
             message.from_user.id,
             len(conv.messages),
+            conv.scheduled_for,
         )
 
-        # Use unified conversation agent
-        conversation_agent = ConversationAgent(get_model_name())
-
-        # Get response from agent
-        response = await conversation_agent.run(conv.messages)
-
-        # Handle profile creation/update
-        if response.profile:
-            profiler = ProfileService(session)
-            is_update = user.is_complete
-
-            await profiler.create_or_update_profile(user, response.profile, is_update=is_update)
-
-            # Show profile card to user
-            profile_card = _format_profile_card(response.profile)
-            await message.answer(f"{response.utterance}\n\n{profile_card}")
-        else:
-            # Just send the utterance
-            await message.answer(response.utterance)
-
-        # Store assistant response (full ConversationResponse)
-        conv.messages.append(AssistantMessage.create(response))
-        await session.commit()
-        logger.info(
-            "Stored assistant response for %d: %d total messages",
-            message.from_user.id,
-            len(conv.messages),
-        )
+        # Nudge the processor (fire-and-forget)
+        nudge_processor()
 
 
 @router.callback_query(MatchAction.filter(F.action == "accept"))
@@ -290,6 +278,8 @@ async def handle_reset_confirm(callback: CallbackQuery, callback_data: ResetActi
                     ConversationResponse(utterance=L.commands.start.GREETING, profile=None)
                 )
             ]
+            # Cancel any pending generation
+            conversation.scheduled_for = None
             await session.commit()
             last_msg = conversation.messages[-1] if conversation.messages else None
             last_text = (

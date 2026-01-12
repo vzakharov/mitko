@@ -99,11 +99,12 @@ class EnglishLocale(Locale):
         ROLE_SEPARATOR=" & ",
     )
     system = System(
+        SCHEDULED_REPLY="Mitko will reply around {time}",
         errors=SystemErrors(
             UNAUTHORIZED="You're not authorized for this action",
             USER_NOT_FOUND="User not found",
             MESSAGE_UNAVAILABLE="Hmm, can't access that message anymore. Try again?",
-        )
+        ),
     )
     agent_examples = AgentExamples(
         conversation=AgentExamplesConversation(

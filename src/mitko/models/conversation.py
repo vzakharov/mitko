@@ -103,5 +103,9 @@ class Conversation(SQLModel, table=True):
         default=None,
         sa_column=Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()),
     )
+    scheduled_for: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
 
     user: "User" = Relationship(back_populates="conversations")

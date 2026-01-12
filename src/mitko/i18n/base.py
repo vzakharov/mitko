@@ -76,6 +76,7 @@ class SystemErrors:
 
 @dataclass
 class System:
+    SCHEDULED_REPLY: str  # Template with {time}
     errors: SystemErrors
 
 

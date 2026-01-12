@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from .bot.core import initialize_bot
 from .config import settings
+from .jobs.generation import start_generation_processor, stop_generation_processor
 from .jobs.matching import start_matching_scheduler, stop_matching_scheduler
 from .runtime.polling import PollingRuntime
 from .runtime.webhook import WebhookRuntime
@@ -42,8 +43,10 @@ async def main():
     try:
         await runtime.startup(bot, dp)
         start_matching_scheduler(bot)
+        start_generation_processor(bot)
         await runtime.run(bot, dp)
     finally:
+        await stop_generation_processor()
         stop_matching_scheduler()
         await runtime.shutdown(bot, dp)
 
@@ -51,4 +54,3 @@ async def main():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
-

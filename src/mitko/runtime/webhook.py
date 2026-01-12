@@ -5,6 +5,7 @@ from aiogram.types import Update
 from fastapi import FastAPI, Request, Response
 
 from ..config import settings
+from ..jobs.generation import start_generation_processor, stop_generation_processor
 from ..jobs.matching import start_matching_scheduler, stop_matching_scheduler
 
 
@@ -37,7 +38,9 @@ class WebhookRuntime:
         async def lifespan(app: FastAPI):
             await self.startup(bot, dp)
             start_matching_scheduler(bot)
+            start_generation_processor(bot)
             yield
+            await stop_generation_processor()
             stop_matching_scheduler()
             await self.shutdown(bot, dp)
 
