@@ -20,8 +20,8 @@ from sqlmodel import col
 from ..agents import ConversationAgent, ProfileData, get_model_name
 from ..i18n import L
 from ..models import Conversation, User, async_session_maker
-from ..models.conversation import AssistantMessage
 from ..services.profiler import ProfileService
+from ..types import AssistantMessage
 
 logger = logging.getLogger(__name__)
 

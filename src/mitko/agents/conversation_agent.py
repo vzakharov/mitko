@@ -16,7 +16,7 @@ from pydantic_ai.models import KnownModelName
 
 from ..config import settings
 from ..i18n import L
-from ..models.conversation import LLMMessage, SystemMessage, UserMessage
+from ..types.messages import LLMMessage, SystemMessage, UserMessage
 from .models import ConversationResponse
 
 

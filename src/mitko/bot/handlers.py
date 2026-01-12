@@ -15,8 +15,8 @@ from ..config import settings
 from ..i18n import L
 from ..jobs.generation import nudge_processor
 from ..models import Conversation, User, get_db
-from ..models.conversation import AssistantMessage, UserMessage
 from ..services.profiler import ProfileService
+from ..types import AssistantMessage, UserMessage
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
 router = Router()

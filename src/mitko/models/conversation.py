@@ -1,8 +1,7 @@
 import uuid  # noqa: I001
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar
 
-from pydantic import BaseModel
 from sqlalchemy import DateTime, TypeDecorator, func
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
@@ -10,47 +9,10 @@ from sqlalchemy.ext.mutable import MutableList
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
 
+from ..types.messages import AssistantMessage, LLMMessage, SystemMessage, UserMessage
+
 if TYPE_CHECKING:
     from .user import User
-
-from ..agents.models import ConversationResponse
-
-
-class UserMessage(BaseModel):
-    """A user message in the conversation."""
-
-    role: Literal["user"]
-    content: str
-
-    @staticmethod
-    def create(content: str) -> "UserMessage":
-        return UserMessage(role="user", content=content)
-
-
-class SystemMessage(BaseModel):
-    """A system message in the conversation."""
-
-    role: Literal["system"]
-    content: str
-
-    @staticmethod
-    def create(content: str) -> "SystemMessage":
-        return SystemMessage(role="system", content=content)
-
-
-class AssistantMessage(BaseModel):
-    """An assistant message with structured response."""
-
-    role: Literal["assistant"]
-    content: ConversationResponse
-
-    @staticmethod
-    def create(content: ConversationResponse) -> "AssistantMessage":
-        return AssistantMessage(role="assistant", content=content)
-
-
-# Discriminated union using role field
-LLMMessage = Annotated[UserMessage | SystemMessage | AssistantMessage, Field(discriminator="role")]
 
 
 class PydanticJSONB(TypeDecorator[list[LLMMessage]]):

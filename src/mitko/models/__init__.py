@@ -1,5 +1,5 @@
 from .base import async_session_maker, engine, get_db, init_db
-from .conversation import Conversation, LLMMessage
+from .conversation import Conversation
 from .match import Match, MatchStatus
 from .user import User, UserState
 
@@ -11,7 +11,6 @@ __all__ = [
     "User",
     "UserState",
     "Conversation",
-    "LLMMessage",
     "Match",
     "MatchStatus",
 ]
