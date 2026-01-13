@@ -2,7 +2,7 @@ import uuid  # noqa: I001
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from sqlalchemy import DateTime, TypeDecorator, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, TypeDecorator, func
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.mutable import MutableList
@@ -64,15 +64,20 @@ class Conversation(SQLModel, table=True):
         default_factory=uuid.uuid4,
         sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
     )
-    telegram_id: int = Field(foreign_key="users.telegram_id")
+    telegram_id: int = Field(
+        sa_column=Column(
+            BigInteger(), ForeignKey("users.telegram_id"), nullable=False
+        )
+    )
     messages: list[LLMMessage] = Field(
         default_factory=list,
-        sa_column=Column(MutableList.as_mutable(PydanticJSONB)),
+        sa_column=Column(MutableList.as_mutable(PydanticJSONB), nullable=False),
     )
-    updated_at: datetime | None = Field(
-        default=None,
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
         sa_column=Column(
             DateTime(timezone=True),
+            nullable=False,
             server_default=func.now(),
             onupdate=func.now(),
         ),

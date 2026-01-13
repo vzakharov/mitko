@@ -2,7 +2,16 @@ import uuid  # noqa: I001
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
-from sqlalchemy import DateTime, Float, String, Text, func
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
@@ -22,15 +31,30 @@ class Match(SQLModel, table=True):
         default_factory=uuid.uuid4,
         sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
     )
-    user_a_id: int = Field(foreign_key="users.telegram_id")
-    user_b_id: int = Field(foreign_key="users.telegram_id")
-    similarity_score: float = Field(sa_column=Column(Float))
-    match_rationale: str = Field(sa_column=Column(Text))
-    status: MatchStatus = Field(default="pending", sa_column=Column(String(20)))
-    created_at: datetime | None = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    user_a_id: int = Field(
+        sa_column=Column(
+            BigInteger(), ForeignKey("users.telegram_id"), nullable=False
+        )
     )
+    user_b_id: int = Field(
+        sa_column=Column(
+            BigInteger(), ForeignKey("users.telegram_id"), nullable=False
+        )
+    )
+    similarity_score: float = Field(sa_column=Column(Float, nullable=False))
+    match_rationale: str = Field(sa_column=Column(Text, nullable=False))
+    status: MatchStatus = Field(
+        default="pending",
+        sa_column=Column(String(20), nullable=False, server_default="pending"),
+    )
+    created_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column=Column(
+            DateTime(timezone=True), nullable=False, server_default=func.now()
+        ),
+    )
+
+    __table_args__ = (Index("ix_matches_status", "status"),)
 
     user_a: "User" = Relationship(
         back_populates="matches_a",

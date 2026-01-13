@@ -17,6 +17,8 @@ cp .env.example .env  # then edit with credentials
 uv run alembic upgrade head
 
 # Run (Development - Long Polling)
+# IMPORTANT: This runs indefinitely - there is NO timeout command available in this environment
+# DO NOT attempt to run with timeout/background - just inform the user if they need to test
 uv run python -m src.mitko.main
 # Or explicitly:
 TELEGRAM_MODE=polling uv run python -m src.mitko.main

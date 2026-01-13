@@ -2,7 +2,8 @@ from datetime import datetime  # noqa: I001
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, DateTime, Text, func
+from sqlalchemy import BigInteger, DateTime, Index, Text, VARCHAR, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
 
@@ -17,23 +18,50 @@ UserState = Literal["onboarding", "profiling", "active", "paused"]
 class User(SQLModel, table=True):
     __tablename__: ClassVar[Any] = "users"
 
-    telegram_id: int = Field(sa_type=BigInteger(), primary_key=True)
+    telegram_id: int = Field(sa_column=Column(BigInteger(), primary_key=True))
 
     # Role flags
     is_seeker: bool | None = Field(default=None)
     is_provider: bool | None = Field(default=None)
 
     # State management
-    state: UserState = Field(default="onboarding", sa_column=Column(Text))
+    state: UserState = Field(
+        default="onboarding",
+        sa_column=Column(
+            VARCHAR(20), nullable=False, server_default="onboarding"
+        ),
+    )
 
     # Profile data (formerly in Profile model)
     summary: str | None = Field(default=None, sa_column=Column(Text))
-    embedding: Any = Field(default=None, sa_type=Vector(1536))
+
+    # TODO: Remove this deprecated field via migration
+    # All profile info now in 'summary' for semantic matching (see CLAUDE.md)
+    # Migration needed: alembic revision -m "remove structured_data column"
+    structured_data: dict[str, Any] | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
+    )
+
+    embedding: Any = Field(
+        default=None, sa_column=Column(Vector(1536), nullable=True)
+    )
     is_complete: bool = Field(default=False)
 
-    created_at: datetime | None = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    created_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column=Column(
+            DateTime(timezone=True), nullable=False, server_default=func.now()
+        ),
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_users_embedding",
+            "embedding",
+            postgresql_using="ivfflat",
+            postgresql_with={"lists": 100},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
     conversations: list["Conversation"] = Relationship(back_populates="user")
