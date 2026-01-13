@@ -57,8 +57,6 @@ class EnglishLocale(Locale):
                 • Our conversation history
                 • And we'll start from scratch
 
-                Your current matches will stay though.
-
                 For real?"""
             ),
             SUCCESS="✅ Done, wiped it all! Now I've got amnesia about you 😄",

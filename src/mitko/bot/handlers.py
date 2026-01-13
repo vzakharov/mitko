@@ -148,6 +148,12 @@ async def handle_message(message: Message) -> None:
         # Add user message
         conv.messages.append(UserMessage.create(message.text))
 
+        # Acquire exclusive lock on conversation row to prevent race conditions
+        # when multiple messages arrive simultaneously (e.g., long messages split by Telegram)
+        await session.execute(
+            select(Conversation).where(col(Conversation.id) == conv.id).with_for_update()
+        )
+
         # Check if there's already a pending generation for this conversation
         has_pending = await _has_pending_generation(conv.id, session)
 
