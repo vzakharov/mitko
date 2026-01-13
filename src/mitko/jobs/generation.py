@@ -100,6 +100,11 @@ async def _process_generation(
             col(Conversation.id) == generation.conversation_id
         )
     )
+    logger.info(
+        "Processing generation %s for conversation %s",
+        generation.id,
+        generation.conversation_id,
+    )
     conv = conv_result.scalar_one_or_none()
     if conv is None:
         logger.error(
@@ -145,9 +150,9 @@ async def _process_generation(
     await session.commit()
 
     logger.info(
-        "Processed generation %s for user %d: %d total messages",
+        "Processed generation %s for conversation %s: %d total messages",
         generation.id,
-        conv.telegram_id,
+        generation.conversation_id,
         len(conv.messages),
     )
 

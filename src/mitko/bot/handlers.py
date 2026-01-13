@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -21,6 +22,10 @@ from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
 router = Router()
 logger = logging.getLogger(__name__)
+
+# Delay before nudging processor to allow rapid successive messages to be processed
+# (e.g., long messages split by Telegram into multiple parts)
+NUDGE_DELAY_SECONDS = 1.0
 
 _bot_instance: Bot | None = None
 
@@ -136,6 +141,12 @@ async def _has_pending_generation(
     return result.scalar_one_or_none() is not None
 
 
+async def _delayed_nudge() -> None:
+    """Delay nudge to allow rapid successive messages to be processed first."""
+    await asyncio.sleep(NUDGE_DELAY_SECONDS)
+    nudge_processor()
+
+
 @router.message()
 async def handle_message(message: Message) -> None:
     if not message.text or message.from_user is None:
@@ -151,7 +162,9 @@ async def handle_message(message: Message) -> None:
         # Acquire exclusive lock on conversation row to prevent race conditions
         # when multiple messages arrive simultaneously (e.g., long messages split by Telegram)
         await session.execute(
-            select(Conversation).where(col(Conversation.id) == conv.id).with_for_update()
+            select(Conversation)
+            .where(col(Conversation.id) == conv.id)
+            .with_for_update()
         )
 
         # Check if there's already a pending generation for this conversation
@@ -160,7 +173,7 @@ async def handle_message(message: Message) -> None:
         if has_pending:
             # Message will be included in the pending generation's context
             await session.commit()
-            logger.debug(
+            logger.info(
                 "Stored user message for %d: %d total messages (pending generation exists)",
                 message.from_user.id,
                 len(conv.messages),
@@ -193,15 +206,16 @@ async def handle_message(message: Message) -> None:
                 L.system.SCHEDULED_REPLY.format(time=reply_time)
             )
 
-            logger.debug(
+            logger.info(
                 "Stored user message for %d: %d total messages, scheduled_for=%s",
                 message.from_user.id,
                 len(conv.messages),
                 scheduled_for,
             )
 
-        # Nudge the processor (fire-and-forget)
-        nudge_processor()
+            # Nudge processor after a short delay to allow rapid successive messages
+            # to be processed first (e.g., long messages split by Telegram)
+            asyncio.create_task(_delayed_nudge())
 
 
 @router.callback_query(MatchAction.filter(F.action == "accept"))
