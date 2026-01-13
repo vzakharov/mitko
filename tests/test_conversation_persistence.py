@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import col
 
-from src.mitko.i18n import L
 from src.mitko.models.conversation import Conversation
 from src.mitko.types.messages import (
     AssistantMessage,
@@ -53,38 +52,28 @@ async def test_session(
 class TestConversationPersistence:
     """Test that conversation message changes persist to database"""
 
-    async def test_start_creates_single_greeting(
+    async def test_start_creates_empty_conversation(
         self, test_session: AsyncSession
     ) -> None:
-        """Test /start creates conversation with only greeting message"""
+        """Test /start creates conversation with empty message history"""
         # Create conversation
         conv = Conversation(telegram_id=123456789, messages=[])
         test_session.add(conv)
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Simulate /start: replace messages with greeting
-        conv.messages = [
-            AssistantMessage(
-                role="assistant",
-                content=ConversationResponse(
-                    utterance=L.commands.start.GREETING, profile=None
-                ),
-            )
-        ]
+        # Simulate /start: initialize with empty messages (greeting in system prompt)
+        conv.messages = []
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify: should have exactly 1 message
-        assert len(conv.messages) == 1
-        assert conv.messages[0].role == "assistant"
-        assert conv.messages[0].content.utterance == L.commands.start.GREETING
-        assert conv.messages[0].content.profile is None
+        # Verify: should have empty message history
+        assert len(conv.messages) == 0
 
-    async def test_start_replaces_existing_messages(
+    async def test_start_clears_existing_messages(
         self, test_session: AsyncSession
     ) -> None:
-        """Test /start replaces existing conversation history"""
+        """Test /start clears existing conversation history"""
         # Create conversation with existing messages
         conv = Conversation(
             telegram_id=123456789,
@@ -111,27 +100,18 @@ class TestConversationPersistence:
         # Verify initial state
         assert len(conv.messages) == 3
 
-        # Simulate /start: replace all messages with new greeting
-        conv.messages = [
-            AssistantMessage(
-                role="assistant",
-                content=ConversationResponse(
-                    utterance=L.commands.start.GREETING, profile=None
-                ),
-            )
-        ]
+        # Simulate /start: clear all messages (greeting in system prompt)
+        conv.messages = []
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify: should have exactly 1 message (not 4)
-        assert len(conv.messages) == 1
-        assert conv.messages[0].role == "assistant"
-        assert conv.messages[0].content.utterance == L.commands.start.GREETING
+        # Verify: should have empty message history
+        assert len(conv.messages) == 0
 
-    async def test_reset_replaces_messages(
+    async def test_reset_clears_messages(
         self, test_session: AsyncSession
     ) -> None:
-        """Test reset confirmation replaces messages with greeting"""
+        """Test reset confirmation clears message history"""
         # Create conversation with existing messages
         conv = Conversation(
             telegram_id=123456789,
@@ -155,39 +135,20 @@ class TestConversationPersistence:
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Simulate reset confirmation: replace messages with greeting
-        conv.messages = [
-            AssistantMessage(
-                role="assistant",
-                content=ConversationResponse(
-                    utterance=L.commands.start.GREETING, profile=None
-                ),
-            )
-        ]
+        # Simulate reset confirmation: clear messages (greeting in system prompt)
+        conv.messages = []
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify: should have exactly 1 message
-        assert len(conv.messages) == 1
-        assert conv.messages[0].role == "assistant"
-        assert conv.messages[0].content.utterance == L.commands.start.GREETING
+        # Verify: should have empty message history
+        assert len(conv.messages) == 0
 
     async def test_regular_messages_append(
         self, test_session: AsyncSession
     ) -> None:
         """Test regular conversation messages append correctly"""
-        # Create conversation with greeting
-        conv = Conversation(
-            telegram_id=123456789,
-            messages=[
-                AssistantMessage(
-                    role="assistant",
-                    content=ConversationResponse(
-                        utterance=L.commands.start.GREETING, profile=None
-                    ),
-                )
-            ],
-        )
+        # Create conversation with empty history (greeting in system prompt)
+        conv = Conversation(telegram_id=123456789, messages=[])
         test_session.add(conv)
         await test_session.commit()
         await test_session.refresh(conv)
@@ -197,8 +158,8 @@ class TestConversationPersistence:
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify: should have 2 messages
-        assert len(conv.messages) == 2
+        # Verify: should have 1 message
+        assert len(conv.messages) == 1
 
         # Append assistant response
         conv.messages.append(
@@ -212,14 +173,12 @@ class TestConversationPersistence:
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify: should have 3 messages in correct order
-        assert len(conv.messages) == 3
-        assert conv.messages[0].role == "assistant"
-        assert conv.messages[0].content.utterance == L.commands.start.GREETING
-        assert conv.messages[1].role == "user"
-        assert conv.messages[1].content == "Hello bot"
-        assert conv.messages[2].role == "assistant"
-        assert conv.messages[2].content.utterance == "Hello user"
+        # Verify: should have 2 messages in correct order
+        assert len(conv.messages) == 2
+        assert conv.messages[0].role == "user"
+        assert conv.messages[0].content == "Hello bot"
+        assert conv.messages[1].role == "assistant"
+        assert conv.messages[1].content.utterance == "Hello user"
 
     async def test_persistence_across_sessions(
         self, test_engine: AsyncEngine

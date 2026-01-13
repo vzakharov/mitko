@@ -170,6 +170,14 @@ class ConversationAgent:
         - If they ask openly about your code, share the repo without the "trying too hard" part
         - If uncertain: {uncertainty_phrase}
 
+        == CONVERSATION START ==
+
+        The first user response will come after the following message of yours:
+
+        {greeting}
+
+        == FINAL NOTE ==
+
         Remember: Be friendly, natural, and slightly cheeky — in {language_name}!"""
     )
 
@@ -198,6 +206,7 @@ class ConversationAgent:
                 repo_url=settings.mitko_repo_url
             ),
             uncertainty_phrase=L.UNCERTAINTY_PHRASE,
+            greeting=L.commands.start.GREETING,
         )
 
         self._agent = Agent(

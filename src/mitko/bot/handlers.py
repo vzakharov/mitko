@@ -16,8 +16,7 @@ from ..i18n import L
 from ..jobs.generation import nudge_processor
 from ..models import Conversation, Generation, User, get_db
 from ..services.profiler import ProfileService
-from ..types import AssistantMessage, UserMessage
-from ..types.messages import ConversationResponse
+from ..types import UserMessage
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
 router = Router()
@@ -105,28 +104,14 @@ async def cmd_start(message: Message) -> None:
                 reply_markup=reset_confirmation_keyboard(message.from_user.id),
             )
         else:
-            # New user - just send greeting and initialize
+            # New user - just send greeting and initialize with empty history
             await message.answer(L.commands.start.GREETING)
-            # Replace conversation history with greeting to start fresh
-            conv.messages = [
-                AssistantMessage.create(
-                    ConversationResponse(
-                        utterance=L.commands.start.GREETING, profile=None
-                    )
-                )
-            ]
+            # Start with empty conversation history (greeting is in system prompt)
+            conv.messages = []
             await session.commit()
-            last_msg = conv.messages[-1] if conv.messages else None
-            last_text = (
-                last_msg.content.utterance[:50]
-                if isinstance(last_msg, AssistantMessage)
-                else "none"
-            )
             logger.info(
-                "Started conversation for user %d: %d messages, last: %s",
+                "Started conversation for user %d: empty history",
                 message.from_user.id,
-                len(conv.messages),
-                last_text,
             )
 
 
@@ -329,14 +314,8 @@ async def handle_reset_confirm(
         # Send standard greeting (same as /start)
         if conversation:
             await message.answer(L.commands.start.GREETING)
-            # Replace conversation history with greeting to start fresh
-            conversation.messages = [
-                AssistantMessage.create(
-                    ConversationResponse(
-                        utterance=L.commands.start.GREETING, profile=None
-                    )
-                )
-            ]
+            # Start with empty conversation history (greeting is in system prompt)
+            conversation.messages = []
             # Cancel any pending generations for this conversation
             pending_gens = (
                 (
@@ -354,19 +333,9 @@ async def handle_reset_confirm(
             for gen in pending_gens:
                 gen.status = "failed"
             await session.commit()
-            last_msg = (
-                conversation.messages[-1] if conversation.messages else None
-            )
-            last_text = (
-                last_msg.content.utterance[:50]
-                if isinstance(last_msg, AssistantMessage)
-                else "none"
-            )
             logger.info(
-                "Reset conversation for user %d: %d messages, last: %s",
+                "Reset conversation for user %d: empty history",
                 telegram_id,
-                len(conversation.messages),
-                last_text,
             )
 
         await callback.answer()

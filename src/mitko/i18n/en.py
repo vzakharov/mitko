@@ -30,15 +30,21 @@ class EnglishLocale(Locale):
                 """\
                 Oh hey! I'm Mitko 👋
 
-                I'm an IT matchmaker, but not the usual kind. I don't just match CVs with job postings — I match people who want to work together.
+                I'm an IT matchmaker, so to speak — I don't just match CVs with job postings — I match people who want to work together.
 
-                "Looking for someone" doesn't always mean hiring directly. Maybe you're a dev who knows your team needs an extra pair of hands. Maybe you're a founder with an idea, looking for someone to build it with.
+                A few important notes before we start:
 
-                "Looking for work" doesn't always mean job hunting either. Maybe you're open to side projects, or just curious what's out there.
+                "Looking for someone" isn't just about hiring per se. Maybe you're a dev who sees your team needs an extra pair of hands. Maybe you're a founder with an idea, looking for someone to help bring it to life.
 
-                I'll chat with you to figure out your "work DNA" — a story that helps others (and yourself!) understand what you're about. Even if you're not actively looking for anything, I hope you'll get something useful out of our conversation.
+                Even if the whole process ends up going through your HR, wouldn't it be better to meet your future colleague BEFORE they're hired, rather than after (and hey, maybe there's a referral bonus in it for you ;-)?
 
-                So, what are you working on these days? What gets you excited — or frustrated? Oh, and what's your name? :-)"""
+                "Looking for work" isn't necessarily about employment either. Maybe you're open to side projects, or just curious what's out there.
+
+                I'll chat with you to understand your "work DNA" — a story that helps others (and you!) understand what you're about. Even if you're not actively looking for anything (or anyone) right now, I think our conversation will be useful for you.
+
+                Technical note: I can't look at images, read files, or browse the internet yet, even though I might sometimes hallucinate and say I can. All in due time, yeah?
+
+                So, let's get started: what's your name, what do you do, what makes you happy, what frustrates you? :-)"""
             )
         ),
         reset=CommandsReset(
