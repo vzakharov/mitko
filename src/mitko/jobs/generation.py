@@ -161,46 +161,42 @@ async def _process_generation(
         new_messages_arrived,
     )
 
-    # Handle status message and send response
-    if conv.status_message_id:
+    # Handle placeholder message and send response
+    if generation.placeholder_message_id:
         if new_messages_arrived:
-            # Edit status message with final response
+            # Edit placeholder message with final response
             try:
                 await bot.edit_message_text(
                     text=response_text,
                     chat_id=conv.telegram_id,
-                    message_id=conv.status_message_id,
+                    message_id=generation.placeholder_message_id,
                 )
-                conv.status_message_id = None  # Clear after use
             except Exception as e:
                 logger.warning(
-                    "Failed to edit status message %d: %s, sending as new message",
-                    conv.status_message_id,
+                    "Failed to edit placeholder message %d: %s, sending as new message",
+                    generation.placeholder_message_id,
                     e,
                 )
-                conv.status_message_id = None  # Clear even on failure
                 # Fallback: send as new message
                 await bot.send_message(conv.telegram_id, response_text)
         else:
-            # Delete status message and send response as new message (user gets notification)
+            # Delete placeholder message and send response as new message (user gets notification)
             try:
                 await bot.delete_message(
                     chat_id=conv.telegram_id,
-                    message_id=conv.status_message_id,
+                    message_id=generation.placeholder_message_id,
                 )
-                conv.status_message_id = None  # Clear after successful delete
             except Exception as e:
                 logger.warning(
-                    "Failed to delete status message %d: %s",
-                    conv.status_message_id,
+                    "Failed to delete placeholder message %d: %s",
+                    generation.placeholder_message_id,
                     e,
                 )
-                conv.status_message_id = None  # Clear even on failure
 
             # Send final response as new message
             await bot.send_message(conv.telegram_id, response_text)
     else:
-        # No status message (old generation) - just send response
+        # No placeholder message (old generation) - just send response
         await bot.send_message(conv.telegram_id, response_text)
 
     # Insert assistant message at correct position in history
@@ -243,22 +239,30 @@ async def _processor_loop(bot: Bot) -> None:
                     conv = conv_result.scalar_one_or_none()
                     telegram_id = conv.telegram_id if conv else None
 
-                    # Mark as started
+                    # Mark as started and transfer status message
                     generation.status = "started"
+
+                    # Transfer status message from conversation to generation
+                    if conv and conv.status_message_id:
+                        generation.placeholder_message_id = (
+                            conv.status_message_id
+                        )
+                        conv.status_message_id = None
+
                     await session.commit()
 
-                    # Update status message to thinking emoji and send typing indicator
-                    if conv and conv.status_message_id and telegram_id:
+                    # Update placeholder message to thinking emoji and send typing indicator
+                    if generation.placeholder_message_id and telegram_id:
                         try:
                             await bot.edit_message_text(
                                 text=L.system.THINKING,
                                 chat_id=telegram_id,
-                                message_id=conv.status_message_id,
+                                message_id=generation.placeholder_message_id,
                             )
                         except Exception as e:
                             logger.warning(
-                                "Failed to edit status message %d: %s",
-                                conv.status_message_id,
+                                "Failed to edit placeholder message %d: %s",
+                                generation.placeholder_message_id,
                                 e,
                             )
 
@@ -273,8 +277,8 @@ async def _processor_loop(bot: Bot) -> None:
                             )
 
                         logger.info(
-                            "Processing started, status_msg_id=%s",
-                            conv.status_message_id,
+                            "Processing started, placeholder_msg_id=%s",
+                            generation.placeholder_message_id,
                         )
 
                     # Process the generation

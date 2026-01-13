@@ -103,10 +103,9 @@ class EnglishLocale(Locale):
         ROLE_SEPARATOR=" & ",
     )
     system = System(
-        SCHEDULED_REPLY="Mitko will reply around {time}",
-        SCHEDULED_REPLY_SOON="Mitko will reply very soon",
-        SCHEDULED_REPLY_SHORTLY="Mitko will in a minute",
-        SCHEDULED_REPLY_IN="⏱️ Mitko will reply in around {duration}",
+        SCHEDULED_REPLY_SOON="Mitko will start replying very soon",
+        SCHEDULED_REPLY_SHORTLY="Mitko will start replying in a minute",
+        SCHEDULED_REPLY_IN="⏱️ Mitko will start replying in around {duration}",
         THINKING="💭",
         TIME_UNIT_HOUR="h",
         TIME_UNIT_MINUTE="min",

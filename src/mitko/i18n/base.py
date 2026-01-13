@@ -77,9 +77,6 @@ class SystemErrors:
 
 @dataclass
 class System:
-    SCHEDULED_REPLY: (
-        str  # Template with {time} - kept for backwards compatibility
-    )
     SCHEDULED_REPLY_SOON: str  # "will reply very soon"
     SCHEDULED_REPLY_SHORTLY: str  # "will reply shortly"
     SCHEDULED_REPLY_IN: (
