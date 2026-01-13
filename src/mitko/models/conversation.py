@@ -82,6 +82,10 @@ class Conversation(SQLModel, table=True):
             onupdate=func.now(),
         ),
     )
+    status_message_id: int | None = Field(
+        default=None,
+        description="Telegram message ID for status updates (edit/delete)",
+    )
 
     user: "User" = Relationship(back_populates="conversations")
     generations: list["Generation"] = Relationship(

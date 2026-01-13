@@ -106,7 +106,7 @@ class RussianLocale(Locale):
         SCHEDULED_REPLY="Митко ответит примерно в {time}",
         SCHEDULED_REPLY_SOON="Митко ответит совсем скоро",
         SCHEDULED_REPLY_SHORTLY="Митко ответит через минутку",
-        SCHEDULED_REPLY_IN="Митко ответит примерно через {duration}",
+        SCHEDULED_REPLY_IN="⏱️ Митко ответит примерно через {duration}",
         THINKING="💭",
         TIME_UNIT_HOUR="ч",
         TIME_UNIT_MINUTE="мин",

@@ -141,6 +141,19 @@ async def _has_pending_generation(
     return result.scalar_one_or_none() is not None
 
 
+async def _has_started_generation(
+    conversation_id: uuid.UUID, session: AsyncSession
+) -> bool:
+    """Check if conversation has a generation that has started processing."""
+    result = await session.execute(
+        select(Generation)
+        .where(col(Generation.conversation_id) == conversation_id)
+        .where(col(Generation.status) == "started")
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 def _format_time_delta(scheduled_for: datetime) -> str:
     """Format time delta with rounding and i18n support."""
     now = datetime.now(UTC)
@@ -204,6 +217,45 @@ async def handle_message(message: Message) -> None:
         has_pending = await _has_pending_generation(conv.id, session)
 
         if has_pending:
+            # Re-send status message if exists and no generation started yet
+            if conv.status_message_id and not await _has_started_generation(
+                conv.id, session
+            ):
+                bot = get_bot()
+                # Delete old status message
+                try:
+                    await bot.delete_message(
+                        chat_id=conv.telegram_id,
+                        message_id=conv.status_message_id,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to delete old status message %d: %s",
+                        conv.status_message_id,
+                        e,
+                    )
+
+                # Get earliest pending generation for timeline calculation
+                result = await session.execute(
+                    select(Generation)
+                    .where(col(Generation.conversation_id) == conv.id)
+                    .where(col(Generation.status) == "pending")
+                    .order_by(col(Generation.scheduled_for).asc())
+                    .limit(1)
+                )
+                pending_gen = result.scalar_one()
+
+                # Send new status message with updated timeline
+                status_text = _format_time_delta(pending_gen.scheduled_for)
+                status_msg = await message.answer(status_text)
+                conv.status_message_id = status_msg.message_id
+
+                logger.info(
+                    "Re-sent status message: new_msg_id=%d, scheduled_for=%s",
+                    status_msg.message_id,
+                    pending_gen.scheduled_for,
+                )
+
             # Message will be included in the pending generation's context
             await session.commit()
             logger.info(
@@ -236,8 +288,8 @@ async def handle_message(message: Message) -> None:
             status_text = _format_time_delta(scheduled_for)
             status_msg = await message.answer(status_text)
 
-            # Store status message ID for later editing/deleting
-            generation.status_message_id = status_msg.message_id
+            # Store status message ID in conversation (not generation)
+            conv.status_message_id = status_msg.message_id
             await session.commit()
 
             logger.info(

@@ -162,21 +162,23 @@ async def _process_generation(
     )
 
     # Handle status message and send response
-    if generation.status_message_id:
+    if conv.status_message_id:
         if new_messages_arrived:
             # Edit status message with final response
             try:
                 await bot.edit_message_text(
                     text=response_text,
                     chat_id=conv.telegram_id,
-                    message_id=generation.status_message_id,
+                    message_id=conv.status_message_id,
                 )
+                conv.status_message_id = None  # Clear after use
             except Exception as e:
                 logger.warning(
                     "Failed to edit status message %d: %s, sending as new message",
-                    generation.status_message_id,
+                    conv.status_message_id,
                     e,
                 )
+                conv.status_message_id = None  # Clear even on failure
                 # Fallback: send as new message
                 await bot.send_message(conv.telegram_id, response_text)
         else:
@@ -184,14 +186,16 @@ async def _process_generation(
             try:
                 await bot.delete_message(
                     chat_id=conv.telegram_id,
-                    message_id=generation.status_message_id,
+                    message_id=conv.status_message_id,
                 )
+                conv.status_message_id = None  # Clear after successful delete
             except Exception as e:
                 logger.warning(
                     "Failed to delete status message %d: %s",
-                    generation.status_message_id,
+                    conv.status_message_id,
                     e,
                 )
+                conv.status_message_id = None  # Clear even on failure
 
             # Send final response as new message
             await bot.send_message(conv.telegram_id, response_text)
@@ -244,17 +248,17 @@ async def _processor_loop(bot: Bot) -> None:
                     await session.commit()
 
                     # Update status message to thinking emoji and send typing indicator
-                    if generation.status_message_id and telegram_id:
+                    if conv and conv.status_message_id and telegram_id:
                         try:
                             await bot.edit_message_text(
                                 text=L.system.THINKING,
                                 chat_id=telegram_id,
-                                message_id=generation.status_message_id,
+                                message_id=conv.status_message_id,
                             )
                         except Exception as e:
                             logger.warning(
                                 "Failed to edit status message %d: %s",
-                                generation.status_message_id,
+                                conv.status_message_id,
                                 e,
                             )
 
@@ -268,10 +272,10 @@ async def _processor_loop(bot: Bot) -> None:
                                 "Failed to send typing indicator: %s", e
                             )
 
-                    logger.info(
-                        "Processing started, status_msg_id=%s",
-                        generation.status_message_id,
-                    )
+                        logger.info(
+                            "Processing started, status_msg_id=%s",
+                            conv.status_message_id,
+                        )
 
                     # Process the generation
                     try:
