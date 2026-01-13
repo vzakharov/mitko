@@ -1,4 +1,5 @@
 import logging
+import uuid
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -13,7 +14,7 @@ from sqlmodel import col
 from ..config import settings
 from ..i18n import L
 from ..jobs.generation import nudge_processor
-from ..models import Conversation, User, get_db
+from ..models import Conversation, Generation, User, get_db
 from ..services.profiler import ProfileService
 from ..types import AssistantMessage, UserMessage
 from ..types.messages import ConversationResponse
@@ -130,11 +131,24 @@ async def cmd_start(message: Message) -> None:
 
 
 async def _get_max_scheduled_time(session: AsyncSession) -> datetime | None:
-    """Get the maximum scheduled_for time across all conversations."""
+    """Get the maximum scheduled_for time across all generations."""
     result = await session.execute(
-        select(sql_func.max(Conversation.scheduled_for))
+        select(sql_func.max(Generation.scheduled_for))
     )
     return result.scalar_one_or_none()
+
+
+async def _has_pending_generation(
+    conversation_id: uuid.UUID, session: AsyncSession
+) -> bool:
+    """Check if conversation has a pending generation."""
+    result = await session.execute(
+        select(Generation)
+        .where(col(Generation.conversation_id) == conversation_id)
+        .where(col(Generation.status) == "pending")
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
 
 
 @router.message()
@@ -149,34 +163,51 @@ async def handle_message(message: Message) -> None:
         # Add user message
         conv.messages.append(UserMessage.create(message.text))
 
-        # Schedule generation if not already scheduled
-        if conv.scheduled_for is None:
+        # Check if there's already a pending generation for this conversation
+        has_pending = await _has_pending_generation(conv.id, session)
+
+        if has_pending:
+            # Message will be included in the pending generation's context
+            await session.commit()
+            logger.debug(
+                "Stored user message for %d: %d total messages (pending generation exists)",
+                message.from_user.id,
+                len(conv.messages),
+            )
+        else:
+            # Create a new generation
             now = datetime.now(UTC)
             interval = timedelta(seconds=settings.generation_interval_seconds)
 
-            # Find max scheduled time to maintain queue order
+            # Find max scheduled time to maintain global queue order
             max_scheduled = await _get_max_scheduled_time(session)
 
-            if max_scheduled is not None and max_scheduled > now:
-                # Queue after the last scheduled conversation
-                conv.scheduled_for = max_scheduled + interval
+            if max_scheduled is not None:
+                # Add interval to max (even if in the past - for budget control)
+                scheduled_for = max_scheduled + interval
             else:
-                # No queue or all in past - schedule for now + interval
-                conv.scheduled_for = now + interval
+                # No generations exist - schedule for now
+                scheduled_for = now
 
-        await session.commit()
+            generation = Generation(
+                conversation_id=conv.id,
+                scheduled_for=scheduled_for,
+            )
+            session.add(generation)
+            await session.commit()
 
-        # Send acknowledgment with estimated reply time
-        # TODO: Better UX - link to explanation, handle near-instant cases differently
-        reply_time = conv.scheduled_for.strftime("%H:%M:%S")
-        await message.answer(L.system.SCHEDULED_REPLY.format(time=reply_time))
+            # Send acknowledgment with estimated reply time
+            reply_time = scheduled_for.strftime("%H:%M:%S")
+            await message.answer(
+                L.system.SCHEDULED_REPLY.format(time=reply_time)
+            )
 
-        logger.debug(
-            "Stored user message for %d: %d total messages, scheduled_for=%s",
-            message.from_user.id,
-            len(conv.messages),
-            conv.scheduled_for,
-        )
+            logger.debug(
+                "Stored user message for %d: %d total messages, scheduled_for=%s",
+                message.from_user.id,
+                len(conv.messages),
+                scheduled_for,
+            )
 
         # Nudge the processor (fire-and-forget)
         nudge_processor()
@@ -306,8 +337,22 @@ async def handle_reset_confirm(
                     )
                 )
             ]
-            # Cancel any pending generation
-            conversation.scheduled_for = None
+            # Cancel any pending generations for this conversation
+            pending_gens = (
+                (
+                    await session.execute(
+                        select(Generation)
+                        .where(
+                            col(Generation.conversation_id) == conversation.id
+                        )
+                        .where(col(Generation.status) == "pending")
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for gen in pending_gens:
+                gen.status = "failed"
             await session.commit()
             last_msg = (
                 conversation.messages[-1] if conversation.messages else None

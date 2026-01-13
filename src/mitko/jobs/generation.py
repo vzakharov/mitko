@@ -1,8 +1,8 @@
 """Generation processor for scheduled LLM response generation.
 
 This module implements a sequential queue system for LLM generation:
-- User messages are stored with a scheduled_for timestamp
-- The processor awaits the earliest scheduled_for, generates a response, then repeats
+- Generations are scheduled with a scheduled_for timestamp
+- The processor awaits the earliest pending scheduled_for, generates a response, then repeats
 - Only one generation happens at a time (sequential, not parallel)
 """
 
@@ -19,7 +19,7 @@ from sqlmodel import col
 
 from ..agents import ConversationAgent, get_model_name
 from ..i18n import L
-from ..models import Conversation, User, async_session_maker
+from ..models import Conversation, Generation, User, async_session_maker
 from ..services.profiler import ProfileService
 from ..types import AssistantMessage
 from ..types.messages import ProfileData
@@ -45,25 +45,26 @@ def nudge_processor() -> None:
     event.set()
 
 
-async def _find_next_ripe_conversation(
+async def _find_next_ripe_generation(
     session: AsyncSession,
-) -> Conversation | None:
-    """Find the conversation with earliest scheduled_for <= now."""
+) -> Generation | None:
+    """Find the pending generation with earliest scheduled_for <= now."""
     now = datetime.now(UTC)
     result = await session.execute(
-        select(Conversation)
-        .where(col(Conversation.scheduled_for) <= now)
-        .order_by(col(Conversation.scheduled_for).asc())
+        select(Generation)
+        .where(col(Generation.status) == "pending")
+        .where(col(Generation.scheduled_for) <= now)
+        .order_by(col(Generation.scheduled_for).asc())
         .limit(1)
     )
     return result.scalar_one_or_none()
 
 
 async def _get_next_scheduled_time(session: AsyncSession) -> datetime | None:
-    """Get the earliest scheduled_for time (for wait calculation)."""
+    """Get the earliest pending scheduled_for time (for wait calculation)."""
     result = await session.execute(
-        select(sql_func.min(Conversation.scheduled_for)).where(
-            col(Conversation.scheduled_for).is_not(None)
+        select(sql_func.min(Generation.scheduled_for)).where(
+            col(Generation.status) == "pending"
         )
     )
     return result.scalar_one_or_none()
@@ -89,10 +90,25 @@ def _format_profile_card(profile: ProfileData) -> str:
     return "".join(card_parts)
 
 
-async def _process_conversation(
-    bot: Bot, conv: Conversation, session: AsyncSession
+async def _process_generation(
+    bot: Bot, generation: Generation, session: AsyncSession
 ) -> None:
-    """Process a single conversation: generate response and send it."""
+    """Process a single generation: generate response and send it."""
+    # Fetch conversation
+    conv_result = await session.execute(
+        select(Conversation).where(
+            col(Conversation.id) == generation.conversation_id
+        )
+    )
+    conv = conv_result.scalar_one_or_none()
+    if conv is None:
+        logger.error(
+            "Conversation %s not found for generation %s",
+            generation.conversation_id,
+            generation.id,
+        )
+        return
+
     # Get user for profile operations
     result = await session.execute(
         select(User).where(col(User.telegram_id) == conv.telegram_id)
@@ -129,43 +145,61 @@ async def _process_conversation(
     await session.commit()
 
     logger.info(
-        "Processed conversation for user %d: %d total messages",
+        "Processed generation %s for user %d: %d total messages",
+        generation.id,
         conv.telegram_id,
         len(conv.messages),
     )
 
 
 async def _processor_loop(bot: Bot) -> None:
-    """Main processor loop - runs indefinitely, processing one conversation at a time."""
+    """Main processor loop - runs indefinitely, processing one generation at a time."""
     event = _get_nudge_event()
 
     while True:
         try:
             async with async_session_maker() as session:
-                # Find next ripe conversation
-                conv = await _find_next_ripe_conversation(session)
+                # Find next ripe generation
+                generation = await _find_next_ripe_generation(session)
 
-                if conv is not None:
-                    # Mark as processing (clear scheduled_for)
-                    conv.scheduled_for = None
+                if generation is not None:
+                    # Fetch conversation for error handling
+                    conv_result = await session.execute(
+                        select(Conversation).where(
+                            col(Conversation.id) == generation.conversation_id
+                        )
+                    )
+                    conv = conv_result.scalar_one_or_none()
+                    telegram_id = conv.telegram_id if conv else None
+
+                    # Mark as started
+                    generation.status = "started"
                     await session.commit()
 
-                    # Process the conversation
+                    # Process the generation
                     try:
-                        await _process_conversation(bot, conv, session)
+                        await _process_generation(bot, generation, session)
+                        generation.status = "completed"
+                        await session.commit()
                     except Exception as e:
                         logger.exception(
-                            "Error processing conversation %s for user %d: %s",
-                            conv.id,
-                            conv.telegram_id,
+                            "Error processing generation %s: %s",
+                            generation.id,
                             e,
                         )
-                        # Continue to next iteration - don't let one error stop the processor
+                        # Mark as failed and notify user
+                        generation.status = "failed"
+                        await session.commit()
+                        if telegram_id is not None:
+                            await bot.send_message(
+                                telegram_id,
+                                L.system.errors.GENERATION_FAILED,
+                            )
 
                     # Immediately check for more work (no wait)
                     continue
 
-                # No ripe conversation - calculate wait time
+                # No ripe generation - calculate wait time
                 next_time = await _get_next_scheduled_time(session)
 
             # Wait logic (outside session context)
@@ -179,7 +213,7 @@ async def _processor_loop(bot: Bot) -> None:
                             event.wait(), timeout=wait_seconds
                         )
             else:
-                # No scheduled conversations - wait indefinitely for nudge
+                # No pending generations - wait indefinitely for nudge
                 event.clear()
                 await event.wait()
 

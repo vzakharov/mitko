@@ -17,6 +17,7 @@ from ..types.messages import (
 )
 
 if TYPE_CHECKING:
+    from .generation import Generation
     from .user import User
 
 
@@ -76,9 +77,8 @@ class Conversation(SQLModel, table=True):
             onupdate=func.now(),
         ),
     )
-    scheduled_for: datetime | None = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True),
-    )
 
     user: "User" = Relationship(back_populates="conversations")
+    generations: list["Generation"] = Relationship(
+        back_populates="conversation"
+    )

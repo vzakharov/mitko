@@ -13,10 +13,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from sqlmodel import SQLModel
 
 from mitko.config import settings
-from mitko.models import Conversation, Match, User  # Import all models
+from mitko.models import (
+    Conversation,
+    Generation,
+    Match,
+    User,
+)  # Import all models
 
 # Ensure models are registered with SQLModel.metadata for Alembic auto-discovery
-_ = (User, Conversation, Match)
+_ = (User, Conversation, Generation, Match)
 
 config = context.config
 

@@ -104,6 +104,7 @@ class RussianLocale(Locale):
             UNAUTHORIZED="У вас нет доступа к этому действию",
             USER_NOT_FOUND="Пользователь не найден",
             MESSAGE_UNAVAILABLE="Хм, что-то не могу найти это сообщение. Попробуй ещё раз?",
+            GENERATION_FAILED="Упс, у меня что-то пошло не так. Попробуй ещё раз!",
         ),
     )
     agent_examples = AgentExamples(

@@ -72,6 +72,7 @@ class SystemErrors:
     UNAUTHORIZED: str
     USER_NOT_FOUND: str
     MESSAGE_UNAVAILABLE: str
+    GENERATION_FAILED: str  # Shown when LLM generation fails
 
 
 @dataclass
