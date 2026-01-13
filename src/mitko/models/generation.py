@@ -35,6 +35,14 @@ class Generation(SQLModel, table=True):
         default="pending",
         sa_column=Column(String(20), nullable=False),
     )
+    status_message_id: int | None = Field(
+        default=None,
+        description="Telegram message ID for status updates (edit/delete)",
+    )
+    message_count_at_start: int = Field(
+        default=0,
+        description="Count of messages in conversation when generation started",
+    )
     created_at: datetime | None = Field(
         default=None,
         sa_column=Column(DateTime(timezone=True), server_default=func.now()),

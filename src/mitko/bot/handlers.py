@@ -141,6 +141,39 @@ async def _has_pending_generation(
     return result.scalar_one_or_none() is not None
 
 
+def _format_time_delta(scheduled_for: datetime) -> str:
+    """Format time delta with rounding and i18n support."""
+    now = datetime.now(UTC)
+    delta = scheduled_for - now
+    total_seconds = delta.total_seconds()
+
+    # Past or very soon
+    if total_seconds <= 0:
+        return L.system.SCHEDULED_REPLY_SOON
+
+    # Less than 1 minute
+    if total_seconds < 60:
+        return L.system.SCHEDULED_REPLY_SHORTLY
+
+    # Format with hours and minutes
+    total_minutes = int(total_seconds / 60)
+    # Round up to nearest 5
+    total_minutes = ((total_minutes + 4) // 5) * 5
+
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+
+    # Build duration string
+    parts = list[str]()
+    if hours > 0:
+        parts.append(f"{hours} {L.system.TIME_UNIT_HOUR}")
+    if minutes > 0:
+        parts.append(f"{minutes} {L.system.TIME_UNIT_MINUTE}")
+
+    duration = " ".join(parts)
+    return L.system.SCHEDULED_REPLY_IN.format(duration=duration)
+
+
 async def _delayed_nudge() -> None:
     """Delay nudge to allow rapid successive messages to be processed first."""
     await asyncio.sleep(NUDGE_DELAY_SECONDS)
@@ -196,21 +229,23 @@ async def handle_message(message: Message) -> None:
             generation = Generation(
                 conversation_id=conv.id,
                 scheduled_for=scheduled_for,
+                message_count_at_start=len(conv.messages),
             )
             session.add(generation)
-            await session.commit()
 
             # Send acknowledgment with estimated reply time
-            reply_time = scheduled_for.strftime("%H:%M:%S")
-            await message.answer(
-                L.system.SCHEDULED_REPLY.format(time=reply_time)
-            )
+            status_text = _format_time_delta(scheduled_for)
+            status_msg = await message.answer(status_text)
+
+            # Store status message ID for later editing/deleting
+            generation.status_message_id = status_msg.message_id
+            await session.commit()
 
             logger.info(
-                "Stored user message for %d: %d total messages, scheduled_for=%s",
-                message.from_user.id,
-                len(conv.messages),
+                "Status message sent: msg_id=%d, scheduled_for=%s, count=%d",
+                status_msg.message_id,
                 scheduled_for,
+                len(conv.messages),
             )
 
             # Nudge processor after a short delay to allow rapid successive messages

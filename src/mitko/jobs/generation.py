@@ -137,22 +137,84 @@ async def _process_generation(
             user, response.profile, is_update=is_update
         )
 
-        # Send response with profile card
+        # Prepare response text
         profile_card = _format_profile_card(response.profile)
-        await bot.send_message(
-            conv.telegram_id, f"{response.utterance}\n\n{profile_card}"
-        )
+        response_text = f"{response.utterance}\n\n{profile_card}"
     else:
-        await bot.send_message(conv.telegram_id, response.utterance)
+        response_text = response.utterance
 
-    # Store assistant response
-    conv.messages.append(AssistantMessage.create(response))
+    # Re-fetch conversation to get latest message count
+    await session.refresh(conv)
+    current_count = len(conv.messages)
+
+    # Determine if new messages arrived during processing
+    new_messages_arrived = current_count != generation.message_count_at_start
+
+    logger.info(
+        "Completion phase: expected=%d, actual=%d, new_messages=%s",
+        generation.message_count_at_start,
+        current_count,
+        new_messages_arrived,
+    )
+
+    # Handle status message and send response
+    if generation.status_message_id:
+        if new_messages_arrived:
+            # Edit status message with final response
+            try:
+                await bot.edit_message_text(
+                    text=response_text,
+                    chat_id=conv.telegram_id,
+                    message_id=generation.status_message_id,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to edit status message %d: %s, sending as new message",
+                    generation.status_message_id,
+                    e,
+                )
+                # Fallback: send as new message
+                await bot.send_message(conv.telegram_id, response_text)
+        else:
+            # Delete status message and send response as new message (user gets notification)
+            try:
+                await bot.delete_message(
+                    chat_id=conv.telegram_id,
+                    message_id=generation.status_message_id,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to delete status message %d: %s",
+                    generation.status_message_id,
+                    e,
+                )
+
+            # Send final response as new message
+            await bot.send_message(conv.telegram_id, response_text)
+    else:
+        # No status message (old generation) - just send response
+        await bot.send_message(conv.telegram_id, response_text)
+
+    # Insert assistant message at correct position in history
+    if current_count == generation.message_count_at_start:
+        # No new messages - append to end
+        conv.messages.append(AssistantMessage.create(response))
+        insert_index = current_count
+    else:
+        # New messages arrived - insert after triggering message
+        conv.messages.insert(
+            generation.message_count_at_start, AssistantMessage.create(response)
+        )
+        insert_index = generation.message_count_at_start
+
+    # NOTE: MutableList automatically detects .insert() and .append() - no flag_modified needed!
+
     await session.commit()
 
     logger.info(
-        "Processed generation %s for conversation %s: %d total messages",
+        "Processed generation %s: assistant message inserted at index=%d, total_messages=%d",
         generation.id,
-        generation.conversation_id,
+        insert_index,
         len(conv.messages),
     )
 
@@ -180,6 +242,37 @@ async def _processor_loop(bot: Bot) -> None:
                     # Mark as started
                     generation.status = "started"
                     await session.commit()
+
+                    # Update status message to thinking emoji and send typing indicator
+                    if generation.status_message_id and telegram_id:
+                        try:
+                            await bot.edit_message_text(
+                                text=L.system.THINKING,
+                                chat_id=telegram_id,
+                                message_id=generation.status_message_id,
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to edit status message %d: %s",
+                                generation.status_message_id,
+                                e,
+                            )
+
+                        # TODO: Consider periodic refresh every 4s to keep typing indicator alive
+                        try:
+                            await bot.send_chat_action(
+                                chat_id=telegram_id, action="typing"
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to send typing indicator: %s", e
+                            )
+
+                    logger.info(
+                        "Processing started, status_msg_id=%s, count_at_start=%d",
+                        generation.status_message_id,
+                        generation.message_count_at_start,
+                    )
 
                     # Process the generation
                     try:

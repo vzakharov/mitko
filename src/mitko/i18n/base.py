@@ -77,7 +77,17 @@ class SystemErrors:
 
 @dataclass
 class System:
-    SCHEDULED_REPLY: str  # Template with {time}
+    SCHEDULED_REPLY: (
+        str  # Template with {time} - kept for backwards compatibility
+    )
+    SCHEDULED_REPLY_SOON: str  # "will reply very soon"
+    SCHEDULED_REPLY_SHORTLY: str  # "will reply shortly"
+    SCHEDULED_REPLY_IN: (
+        str  # Template with {duration} - "will reply in around {duration}"
+    )
+    THINKING: str  # Thinking emoji (💭)
+    TIME_UNIT_HOUR: str  # "h" (EN) / "ч" (RU)
+    TIME_UNIT_MINUTE: str  # "min" (EN) / "мин" (RU)
     errors: SystemErrors
 
 
