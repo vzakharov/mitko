@@ -38,6 +38,9 @@ uv run pytest                          # Run tests
 # DEFAULT: Use autogenerate for schema changes (add/remove columns, tables, indexes)
 uv run alembic revision --autogenerate -m "description"
 
+# IMPORTANT: After autogeneration, rename migration file to incremental numbering
+# Example: abc123_add_field.py → 007_add_field.py
+
 # ONLY when needed: Manual migration for data transformations or PostgreSQL-specific features
 uv run alembic revision -m "description"  # Creates blank migration to edit manually
 

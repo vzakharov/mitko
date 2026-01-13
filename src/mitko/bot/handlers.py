@@ -229,7 +229,6 @@ async def handle_message(message: Message) -> None:
             generation = Generation(
                 conversation_id=conv.id,
                 scheduled_for=scheduled_for,
-                message_count_at_start=len(conv.messages),
             )
             session.add(generation)
 

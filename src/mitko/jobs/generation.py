@@ -125,6 +125,10 @@ async def _process_generation(
         )
         return
 
+    # Capture message count at generation START time (not creation time)
+    # This ensures accurate detection of concurrent messages during processing
+    message_count_at_start = len(conv.messages)
+
     # Run conversation agent
     conversation_agent = ConversationAgent(get_model_name())
     response = await conversation_agent.run(conv.messages)
@@ -148,11 +152,11 @@ async def _process_generation(
     current_count = len(conv.messages)
 
     # Determine if new messages arrived during processing
-    new_messages_arrived = current_count != generation.message_count_at_start
+    new_messages_arrived = current_count != message_count_at_start
 
     logger.info(
         "Completion phase: expected=%d, actual=%d, new_messages=%s",
-        generation.message_count_at_start,
+        message_count_at_start,
         current_count,
         new_messages_arrived,
     )
@@ -196,25 +200,21 @@ async def _process_generation(
         await bot.send_message(conv.telegram_id, response_text)
 
     # Insert assistant message at correct position in history
-    if current_count == generation.message_count_at_start:
-        # No new messages - append to end
-        conv.messages.append(AssistantMessage.create(response))
-        insert_index = current_count
-    else:
-        # New messages arrived - insert after triggering message
-        conv.messages.insert(
-            generation.message_count_at_start, AssistantMessage.create(response)
-        )
-        insert_index = generation.message_count_at_start
+    # Using .insert() works for both cases:
+    # - No new messages: insert at end (index == length)
+    # - New messages: insert after triggering message
+    conv.messages.insert(
+        message_count_at_start, AssistantMessage.create(response)
+    )
 
-    # NOTE: MutableList automatically detects .insert() and .append() - no flag_modified needed!
+    # NOTE: MutableList automatically detects .insert() - no flag_modified needed!
 
     await session.commit()
 
     logger.info(
         "Processed generation %s: assistant message inserted at index=%d, total_messages=%d",
         generation.id,
-        insert_index,
+        message_count_at_start,
         len(conv.messages),
     )
 
@@ -269,9 +269,8 @@ async def _processor_loop(bot: Bot) -> None:
                             )
 
                     logger.info(
-                        "Processing started, status_msg_id=%s, count_at_start=%d",
+                        "Processing started, status_msg_id=%s",
                         generation.status_message_id,
-                        generation.message_count_at_start,
                     )
 
                     # Process the generation
