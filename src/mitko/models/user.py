@@ -2,8 +2,7 @@ from datetime import datetime  # noqa: I001
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import BigInteger, DateTime, Index, Text, VARCHAR, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import VARCHAR, BigInteger, DateTime, Index, Text, func
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
 
@@ -34,13 +33,6 @@ class User(SQLModel, table=True):
 
     # Profile data (formerly in Profile model)
     summary: str | None = Field(default=None, sa_column=Column(Text))
-
-    # TODO: Remove this deprecated field via migration
-    # All profile info now in 'summary' for semantic matching (see CLAUDE.md)
-    # Migration needed: alembic revision -m "remove structured_data column"
-    structured_data: dict[str, Any] | None = Field(
-        default=None, sa_column=Column(JSONB, nullable=True)
-    )
 
     embedding: Any = Field(
         default=None, sa_column=Column(Vector(1536), nullable=True)
