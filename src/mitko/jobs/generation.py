@@ -12,6 +12,7 @@ from contextlib import suppress
 from datetime import UTC, datetime
 
 from aiogram import Bot
+from pydantic import HttpUrl
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 from sqlalchemy import func as sql_func
 from sqlalchemy import select
@@ -19,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from ..agents.conversation_agent import CONVERSATION_AGENT
+from ..config import SETTINGS
 from ..i18n import L
 from ..models import Conversation, Generation, User, async_session_maker
 from ..services.profiler import ProfileService
@@ -147,7 +149,7 @@ async def _process_generation(
     result = await CONVERSATION_AGENT.run(
         user_prompt, message_history=message_history
     )
-    response = result.output  # Extract ConversationResponse
+    response = result.output
 
     # Handle profile creation/update
     if response.profile:
@@ -210,8 +212,26 @@ async def _process_generation(
         # No placeholder message (old generation) - just send response
         await bot.send_message(conv.telegram_id, response_text)
 
-    # Update message history using PydanticAI serialization
     conv.message_history_json = result.all_messages_json()
+
+    usage = result.usage()
+    generation.cached_input_tokens = usage.cache_read_tokens
+    generation.uncached_input_tokens = (
+        usage.input_tokens - usage.cache_read_tokens
+    )
+    generation.output_tokens = usage.output_tokens
+
+    model_response = result.response
+    if (
+        model_response.provider_response_id
+        and SETTINGS.llm_provider == "openai"
+    ):
+        generation.provider_response_id = model_response.provider_response_id
+
+        if SETTINGS.llm_provider == "openai":
+            generation.log_url = HttpUrl(
+                f"https://platform.openai.com/logs/{model_response.provider_response_id}"
+            )
 
     await session.commit()
 

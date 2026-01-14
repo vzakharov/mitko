@@ -3,8 +3,10 @@
 import json
 from typing import Any
 
+from pydantic import HttpUrl
 from sqlalchemy import Dialect, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.types import String
 
 
 class SQLiteReadyJSONB(TypeDecorator[bytes]):
@@ -71,3 +73,40 @@ class SQLiteReadyJSONB(TypeDecorator[bytes]):
                 value if isinstance(value, str) else json.dumps(value)
             ).encode("utf-8")
         )
+
+
+class HttpUrlType(TypeDecorator[Any]):
+    """Custom SQLAlchemy type for Pydantic HttpUrl validation.
+
+    Stores URLs as strings in the database while providing Pydantic validation
+    in Python layer. Supports nullable URLs.
+    """
+
+    impl = String(2083)  # Max URL length
+    cache_ok = True
+
+    def process_bind_param(self, value: Any, dialect: Dialect) -> str | None:
+        """Convert HttpUrl to string for database storage.
+
+        Args:
+            value: HttpUrl instance from Python
+            dialect: SQLAlchemy dialect object
+
+        Returns:
+            String representation of URL or None
+        """
+        return str(value) if value is not None else None
+
+    def process_result_value(
+        self, value: Any, dialect: Dialect
+    ) -> HttpUrl | None:
+        """Convert string from database to HttpUrl.
+
+        Args:
+            value: String value from database
+            dialect: SQLAlchemy dialect object
+
+        Returns:
+            HttpUrl instance or None
+        """
+        return HttpUrl(url=value) if value is not None else None

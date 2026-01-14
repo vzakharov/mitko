@@ -2,10 +2,13 @@ import uuid  # noqa: I001
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
+from pydantic import HttpUrl
 from sqlalchemy import DateTime, Index, String, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
+
+from .types import HttpUrlType
 
 if TYPE_CHECKING:
     from .conversation import Conversation
@@ -42,6 +45,28 @@ class Generation(SQLModel, table=True):
     created_at: datetime | None = Field(
         default=None,
         sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )
+
+    cached_input_tokens: int | None = Field(
+        default=None,
+        description="Number of tokens read from cache during generation",
+    )
+    uncached_input_tokens: int | None = Field(
+        default=None,
+        description="Number of non-cached input tokens (input_tokens - cache_read_tokens)",
+    )
+    output_tokens: int | None = Field(
+        default=None,
+        description="Number of output/completion tokens generated",
+    )
+    provider_response_id: str | None = Field(
+        default=None,
+        description="Provider's unique response identifier for tracking",
+    )
+    log_url: HttpUrl | None = Field(
+        default=None,
+        sa_type=HttpUrlType,
+        description="URL to view logs in provider platform (OpenAI only)",
     )
 
     conversation: "Conversation" = Relationship(back_populates="generations")
