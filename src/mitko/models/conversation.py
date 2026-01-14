@@ -2,11 +2,10 @@ import uuid  # noqa: I001
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, func, select
+from sqlalchemy import BigInteger, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
-from sqlmodel import Column, Relationship, SQLModel, col
+from sqlmodel import Column, Relationship, SQLModel
 
 from .types import SQLiteReadyJSONB
 
@@ -36,6 +35,10 @@ class Conversation(SQLModel, table=True):
         default=None,
         description="Pending user input to be processed in next generation",
     )
+    last_responses_api_response_id: str | None = Field(
+        default=None,
+        description="OpenAI Responses API response ID for conversation continuation. Only used when USE_OPENAI_RESPONSES_API=true. Cleared on conversation reset.",
+    )
     updated_at: datetime = Field(
         default_factory=datetime.now,
         sa_column=Column(
@@ -54,17 +57,3 @@ class Conversation(SQLModel, table=True):
     generations: list["Generation"] = Relationship(
         back_populates="conversation"
     )
-
-    async def get_latest_response_id(self, session: AsyncSession) -> str | None:
-        """Get the provider_response_id from the latest completed generation."""
-        from .generation import Generation
-
-        result = await session.execute(
-            select(Generation)
-            .where(col(Generation.conversation_id) == self.id)
-            .where(col(Generation.status) == "completed")
-            .order_by(col(Generation.created_at).desc())
-            .limit(1)
-        )
-        generation = result.scalar_one_or_none()
-        return generation.provider_response_id if generation else None

@@ -2,7 +2,7 @@
 
 from textwrap import dedent
 
-from pydantic_ai import Agent
+from pydantic_ai import Agent, NativeOutput
 
 from ..i18n import LANGUAGE_NAME, L
 from .config import LANGUAGE_MODEL
@@ -43,6 +43,6 @@ SYSTEM_PROMPT = dedent(
 # Global agent instance
 RATIONALE_AGENT = Agent(
     LANGUAGE_MODEL,
-    output_type=MatchRationale,
+    output_type=NativeOutput(MatchRationale),
     instructions=SYSTEM_PROMPT,
 )

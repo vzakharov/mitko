@@ -154,11 +154,12 @@ async def _process_generation(
         model_settings = OpenAIResponsesModelSettings(
             openai_prompt_cache_retention="24h",
         )
-        if (
-            last_response_id := await conv.get_latest_response_id(session)
-        ) and last_response_id.startswith("resp"):
-            model_settings["openai_previous_response_id"] = last_response_id
-            message_history = None  # can't have both
+        if conv.last_responses_api_response_id:
+            model_settings["openai_previous_response_id"] = (
+                conv.last_responses_api_response_id
+            )
+            message_history = None  # Responses API maintains server-side state
+
         result = await CONVERSATION_AGENT.run(
             user_prompt,
             message_history=message_history,
@@ -283,6 +284,8 @@ async def _process_generation(
             generation.log_url = HttpUrl(
                 f"https://platform.openai.com/logs/{response_id}"
             )
+        if SETTINGS.use_openai_responses_api:
+            conv.last_responses_api_response_id = response_id
 
     await session.commit()
 

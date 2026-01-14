@@ -29,6 +29,13 @@ NUDGE_DELAY_SECONDS = 1.0
 _bot_instance: Bot | None = None
 
 
+def reset_conversation_state(conversation: Conversation) -> None:
+    """Reset conversation to empty state, clearing all history and Responses API state."""
+    conversation.message_history_json = b"[]"
+    conversation.user_prompt = None
+    conversation.last_responses_api_response_id = None
+
+
 def set_bot_instance(bot: Bot) -> None:
     global _bot_instance
     _bot_instance = bot
@@ -111,9 +118,7 @@ async def cmd_start(message: Message) -> None:
         else:
             # New user - just send greeting and initialize with empty history
             await message.answer(L.commands.start.GREETING)
-            # Start with empty conversation history (greeting is in system prompt)
-            conv.message_history_json = b"[]"
-            conv.user_prompt = None
+            reset_conversation_state(conv)
             await session.commit()
             logger.info(
                 "Started conversation for user %d: empty history",
@@ -422,9 +427,7 @@ async def handle_reset_confirm(
         # Send standard greeting (same as /start)
         if conversation:
             await message.answer(L.commands.start.GREETING)
-            # Start with empty conversation history (greeting is in system prompt)
-            conversation.message_history_json = b"[]"
-            conversation.user_prompt = None
+            reset_conversation_state(conversation)
             # Cancel any pending generations for this conversation
             pending_gens = (
                 (

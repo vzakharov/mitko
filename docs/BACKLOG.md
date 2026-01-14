@@ -1,3 +1,4 @@
 - Individual scheduling (if > X responses in Y minutes, schedule forward by Z minutes)
+- Fix FULL resetting logic (including message sent) — needs some re-flowing
 - Bug with thought bubble not disappearing on an error
 - Enable cascade deletion (e.g. conversation -> generations, but also the rest)

@@ -2,7 +2,7 @@
 
 from textwrap import dedent
 
-from pydantic_ai import Agent
+from pydantic_ai import Agent, NativeOutput
 
 from ..config import SETTINGS
 from ..i18n import LANGUAGE_NAME, L
@@ -12,7 +12,7 @@ from .config import LANGUAGE_MODEL
 # Global agent instance
 CONVERSATION_AGENT = Agent(
     LANGUAGE_MODEL,
-    output_type=ConversationResponse,
+    output_type=NativeOutput(ConversationResponse),
     instructions=dedent(
         """\
         You are Mitko, a friendly Telegram bot that matches IT professionals with opportunities
