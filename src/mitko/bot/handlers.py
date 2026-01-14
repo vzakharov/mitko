@@ -17,7 +17,6 @@ from ..i18n import L
 from ..jobs.generation import nudge_processor
 from ..models import Conversation, Generation, User, get_db
 from ..services.profiler import ProfileService
-from ..types import UserMessage
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
 router = Router()
@@ -79,7 +78,7 @@ async def get_or_create_conversation(
     )
     conv = result.scalar_one_or_none()
     if conv is None:
-        conv = Conversation(telegram_id=telegram_id, messages=[])
+        conv = Conversation(telegram_id=telegram_id, message_history_json=b"[]")
         session.add(conv)
         await session.commit()
         await session.refresh(conv)
@@ -99,7 +98,8 @@ async def cmd_start(message: Message) -> None:
             user.summary is not None
             or user.is_seeker is not None
             or user.is_provider is not None
-            or len(conv.messages) > 0
+            or conv.message_history_json != b"[]"
+            or conv.user_prompt is not None
         )
 
         if has_data:
@@ -112,7 +112,8 @@ async def cmd_start(message: Message) -> None:
             # New user - just send greeting and initialize with empty history
             await message.answer(L.commands.start.GREETING)
             # Start with empty conversation history (greeting is in system prompt)
-            conv.messages = []
+            conv.message_history_json = b"[]"
+            conv.user_prompt = None
             await session.commit()
             logger.info(
                 "Started conversation for user %d: empty history",
@@ -202,8 +203,11 @@ async def handle_message(message: Message) -> None:
         await get_or_create_user(message.from_user.id, session)
         conv = await get_or_create_conversation(message.from_user.id, session)
 
-        # Add user message
-        conv.messages.append(UserMessage.create(message.text))
+        # Set or append to user_prompt
+        if conv.user_prompt:
+            conv.user_prompt += "\n\n" + message.text
+        else:
+            conv.user_prompt = message.text
 
         # Acquire exclusive lock on conversation row to prevent race conditions
         # when multiple messages arrive simultaneously (e.g., long messages split by Telegram)
@@ -256,12 +260,11 @@ async def handle_message(message: Message) -> None:
                     pending_gen.scheduled_for,
                 )
 
-            # Message will be included in the pending generation's context
+            # Message stored in user_prompt, will be processed by pending generation
             await session.commit()
             logger.info(
-                "Stored user message for %d: %d total messages (pending generation exists)",
+                "Stored user message for %d in user_prompt (pending generation exists)",
                 message.from_user.id,
-                len(conv.messages),
             )
         else:
             # Create a new generation
@@ -293,10 +296,9 @@ async def handle_message(message: Message) -> None:
             await session.commit()
 
             logger.info(
-                "Status message sent: msg_id=%d, scheduled_for=%s, count=%d",
+                "Status message sent: msg_id=%d, scheduled_for=%s",
                 status_msg.message_id,
                 scheduled_for,
-                len(conv.messages),
             )
 
             # Nudge processor after a short delay to allow rapid successive messages
@@ -421,7 +423,8 @@ async def handle_reset_confirm(
         if conversation:
             await message.answer(L.commands.start.GREETING)
             # Start with empty conversation history (greeting is in system prompt)
-            conversation.messages = []
+            conversation.message_history_json = b"[]"
+            conversation.user_prompt = None
             # Cancel any pending generations for this conversation
             pending_gens = (
                 (

@@ -13,12 +13,6 @@ from sqlalchemy.ext.asyncio import (
 from sqlmodel import col
 
 from src.mitko.models.conversation import Conversation
-from src.mitko.types.messages import (
-    AssistantMessage,
-    ConversationResponse,
-    ProfileData,
-    UserMessage,
-)
 
 
 @pytest.fixture
@@ -57,56 +51,48 @@ class TestConversationPersistence:
     ) -> None:
         """Test /start creates conversation with empty message history"""
         # Create conversation
-        conv = Conversation(telegram_id=123456789, messages=[])
+        conv = Conversation(telegram_id=123456789, message_history_json=b"[]")
         test_session.add(conv)
         await test_session.commit()
         await test_session.refresh(conv)
 
         # Simulate /start: initialize with empty messages (greeting in system prompt)
-        conv.messages = []
+        conv.message_history_json = b"[]"
+        conv.user_prompt = None
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify: should have empty message history
-        assert len(conv.messages) == 0
+        # Verify: should have empty message history and no pending prompt
+        assert conv.message_history_json == b"[]"
+        assert conv.user_prompt is None
 
     async def test_start_clears_existing_messages(
         self, test_session: AsyncSession
     ) -> None:
         """Test /start clears existing conversation history"""
-        # Create conversation with existing messages
+        # Create conversation with existing messages and pending prompt
         conv = Conversation(
             telegram_id=123456789,
-            messages=[
-                AssistantMessage(
-                    role="assistant",
-                    content=ConversationResponse(
-                        utterance="Old greeting", profile=None
-                    ),
-                ),
-                UserMessage(role="user", content="User message"),
-                AssistantMessage(
-                    role="assistant",
-                    content=ConversationResponse(
-                        utterance="Bot response", profile=None
-                    ),
-                ),
-            ],
+            message_history_json=b'[{"kind": "response", "parts": [{"content": "{\\"utterance\\": \\"Old greeting\\", \\"profile\\": null}", "part_kind": "text"}]}]',
+            user_prompt="pending message",
         )
         test_session.add(conv)
         await test_session.commit()
         await test_session.refresh(conv)
 
         # Verify initial state
-        assert len(conv.messages) == 3
+        assert conv.message_history_json != b"[]"
+        assert conv.user_prompt == "pending message"
 
         # Simulate /start: clear all messages (greeting in system prompt)
-        conv.messages = []
+        conv.message_history_json = b"[]"
+        conv.user_prompt = None
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify: should have empty message history
-        assert len(conv.messages) == 0
+        # Verify: should have empty message history and no pending prompt
+        assert conv.message_history_json == b"[]"
+        assert conv.user_prompt is None
 
     async def test_reset_clears_messages(
         self, test_session: AsyncSession
@@ -115,75 +101,58 @@ class TestConversationPersistence:
         # Create conversation with existing messages
         conv = Conversation(
             telegram_id=123456789,
-            messages=[
-                AssistantMessage(
-                    role="assistant",
-                    content=ConversationResponse(
-                        utterance="Greeting", profile=None
-                    ),
-                ),
-                UserMessage(role="user", content="I want to reset"),
-                AssistantMessage(
-                    role="assistant",
-                    content=ConversationResponse(
-                        utterance="Are you sure?", profile=None
-                    ),
-                ),
-            ],
+            message_history_json=b'[{"kind": "response", "parts": [{"content": "{\\"utterance\\": \\"Greeting\\"}", "part_kind": "text"}]}]',
         )
         test_session.add(conv)
         await test_session.commit()
         await test_session.refresh(conv)
 
         # Simulate reset confirmation: clear messages (greeting in system prompt)
-        conv.messages = []
+        conv.message_history_json = b"[]"
+        conv.user_prompt = None
         await test_session.commit()
         await test_session.refresh(conv)
 
         # Verify: should have empty message history
-        assert len(conv.messages) == 0
+        assert conv.message_history_json == b"[]"
+        assert conv.user_prompt is None
 
-    async def test_regular_messages_append(
-        self, test_session: AsyncSession
-    ) -> None:
-        """Test regular conversation messages append correctly"""
-        # Create conversation with empty history (greeting in system prompt)
-        conv = Conversation(telegram_id=123456789, messages=[])
+    async def test_user_prompt_field(self, test_session: AsyncSession) -> None:
+        """Test user_prompt field for pending messages"""
+        # Create conversation with empty history
+        conv = Conversation(telegram_id=123456789, message_history_json=b"[]")
         test_session.add(conv)
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Append user message
-        conv.messages.append(UserMessage(role="user", content="Hello bot"))
+        # Set user prompt
+        conv.user_prompt = "Hello bot"
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify: should have 1 message
-        assert len(conv.messages) == 1
+        # Verify: user_prompt is set
+        assert conv.user_prompt == "Hello bot"
 
-        # Append assistant response
-        conv.messages.append(
-            AssistantMessage(
-                role="assistant",
-                content=ConversationResponse(
-                    utterance="Hello user", profile=None
-                ),
-            )
-        )
+        # Simulate multiple rapid messages (append with newline)
+        conv.user_prompt += "\n\nAnother message"
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify: should have 2 messages in correct order
-        assert len(conv.messages) == 2
-        assert conv.messages[0].role == "user"
-        assert conv.messages[0].content == "Hello bot"
-        assert conv.messages[1].role == "assistant"
-        assert conv.messages[1].content.utterance == "Hello user"
+        # Verify: user_prompt contains both messages
+        assert conv.user_prompt == "Hello bot\n\nAnother message"
+
+        # Simulate generation consuming the prompt
+        conv.user_prompt = None
+        await test_session.commit()
+        await test_session.refresh(conv)
+
+        # Verify: user_prompt is cleared
+        assert conv.user_prompt is None
 
     async def test_persistence_across_sessions(
         self, test_engine: AsyncEngine
     ) -> None:
-        """Verify messages persist when read from fresh session"""
+        """Verify message history and user_prompt persist when read from fresh session"""
         # Create session and conversation
         session_maker = async_sessionmaker(
             test_engine, class_=AsyncSession, expire_on_commit=False
@@ -191,15 +160,8 @@ class TestConversationPersistence:
         async with session_maker() as session1:
             conv = Conversation(
                 telegram_id=987654321,
-                messages=[
-                    AssistantMessage(
-                        role="assistant",
-                        content=ConversationResponse(
-                            utterance="Greeting", profile=None
-                        ),
-                    ),
-                    UserMessage(role="user", content="Test message"),
-                ],
+                message_history_json=b'[{"kind": "response", "parts": [{"content": "test", "part_kind": "text"}]}]',
+                user_prompt="pending message",
             )
             session1.add(conv)
             await session1.commit()
@@ -212,49 +174,27 @@ class TestConversationPersistence:
             )
             fresh_conv = result.scalar_one()
 
-            # Verify messages persisted
-            assert len(fresh_conv.messages) == 2
-            msg0 = fresh_conv.messages[0]
-            msg1 = fresh_conv.messages[1]
-            assert isinstance(msg0, AssistantMessage)
-            assert msg0.content.utterance == "Greeting"
-            assert isinstance(msg1, UserMessage)
-            assert msg1.content == "Test message"
+            # Verify fields persisted
+            assert (
+                fresh_conv.message_history_json
+                == b'[{"kind": "response", "parts": [{"content": "test", "part_kind": "text"}]}]'
+            )
+            assert fresh_conv.user_prompt == "pending message"
 
-    async def test_assistant_message_with_profile_data(
+    async def test_message_history_json_storage(
         self, test_session: AsyncSession
     ) -> None:
-        """Test assistant message with profile data serializes/deserializes correctly"""
-        # Create conversation with assistant message containing profile
+        """Test message_history_json field stores PydanticAI format"""
+        # Create conversation with serialized message history
         conv = Conversation(
             telegram_id=123456789,
-            messages=[
-                AssistantMessage(
-                    role="assistant",
-                    content=ConversationResponse(
-                        utterance="Great! I've created your profile.",
-                        profile=ProfileData(
-                            is_seeker=True,
-                            is_provider=False,
-                            summary="Senior Python developer with 5 years experience",
-                        ),
-                    ),
-                )
-            ],
+            message_history_json=b'[{"kind": "request", "parts": [{"content": "Hello", "part_kind": "user-prompt"}]}, {"kind": "response", "parts": [{"content": "{\\"utterance\\": \\"Hi there!\\"}", "part_kind": "text"}]}]',
         )
         test_session.add(conv)
         await test_session.commit()
         await test_session.refresh(conv)
 
-        # Verify profile data persisted
-        assert len(conv.messages) == 1
-        msg = conv.messages[0]
-        assert msg.role == "assistant"
-        assert msg.content.utterance == "Great! I've created your profile."
-        assert msg.content.profile is not None
-        assert msg.content.profile.is_seeker is True
-        assert msg.content.profile.is_provider is False
-        assert (
-            msg.content.profile.summary
-            == "Senior Python developer with 5 years experience"
-        )
+        # Verify JSON storage persisted
+        assert conv.message_history_json != b"[]"
+        assert b"Hello" in conv.message_history_json
+        assert b"Hi there!" in conv.message_history_json

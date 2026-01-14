@@ -12,6 +12,7 @@ from contextlib import suppress
 from datetime import UTC, datetime
 
 from aiogram import Bot
+from pydantic_ai.messages import ModelMessagesTypeAdapter
 from sqlalchemy import func as sql_func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,7 +22,6 @@ from ..agents import ConversationAgent, get_model_name
 from ..i18n import L
 from ..models import Conversation, Generation, User, async_session_maker
 from ..services.profiler import ProfileService
-from ..types import AssistantMessage
 from ..types.messages import ProfileData
 
 logger = logging.getLogger(__name__)
@@ -125,13 +125,28 @@ async def _process_generation(
         )
         return
 
-    # Capture message count at generation START time (not creation time)
-    # This ensures accurate detection of concurrent messages during processing
-    message_count_at_start = len(conv.messages)
+    # Consume user_prompt
+    if not conv.user_prompt:
+        logger.error(
+            "Generation %s has no user_prompt for conversation %s",
+            generation.id,
+            conv.id,
+        )
+        return
+
+    user_prompt = conv.user_prompt
+    conv.user_prompt = None  # Clear immediately
+    await session.commit()
+
+    # Deserialize message history
+    message_history = ModelMessagesTypeAdapter.validate_json(
+        conv.message_history_json
+    )
 
     # Run conversation agent
     conversation_agent = ConversationAgent(get_model_name())
-    response = await conversation_agent.run(conv.messages)
+    result = await conversation_agent.run(user_prompt, message_history)
+    response = result.output  # Extract ConversationResponse
 
     # Handle profile creation/update
     if response.profile:
@@ -147,17 +162,12 @@ async def _process_generation(
     else:
         response_text = response.utterance
 
-    # Re-fetch conversation to get latest message count
+    # Re-fetch conversation to check if new messages arrived
     await session.refresh(conv)
-    current_count = len(conv.messages)
-
-    # Determine if new messages arrived during processing
-    new_messages_arrived = current_count != message_count_at_start
+    new_messages_arrived = conv.user_prompt is not None
 
     logger.info(
-        "Completion phase: expected=%d, actual=%d, new_messages=%s",
-        message_count_at_start,
-        current_count,
+        "Completion phase: new_messages=%s",
         new_messages_arrived,
     )
 
@@ -199,23 +209,14 @@ async def _process_generation(
         # No placeholder message (old generation) - just send response
         await bot.send_message(conv.telegram_id, response_text)
 
-    # Insert assistant message at correct position in history
-    # Using .insert() works for both cases:
-    # - No new messages: insert at end (index == length)
-    # - New messages: insert after triggering message
-    conv.messages.insert(
-        message_count_at_start, AssistantMessage.create(response)
-    )
-
-    # NOTE: MutableList automatically detects .insert() - no flag_modified needed!
+    # Update message history using PydanticAI serialization
+    conv.message_history_json = result.all_messages_json()
 
     await session.commit()
 
     logger.info(
-        "Processed generation %s: assistant message inserted at index=%d, total_messages=%d",
+        "Processed generation %s: message history updated",
         generation.id,
-        message_count_at_start,
-        len(conv.messages),
     )
 
 

@@ -1,59 +1,14 @@
 """Unified conversational agent for profile extraction and updates"""
 
-import json
-from collections.abc import Sequence
 from textwrap import dedent
 
-from pydantic_ai import Agent
-from pydantic_ai.messages import (
-    ModelRequest,
-    ModelResponse,
-    SystemPromptPart,
-    TextPart,
-    UserPromptPart,
-)
+from pydantic_ai import Agent, AgentRunResult
+from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import KnownModelName
 
 from ..config import settings
 from ..i18n import L
-from ..types.messages import (
-    ConversationResponse,
-    LLMMessage,
-    SystemMessage,
-    UserMessage,
-)
-
-
-def _to_pydantic_messages(
-    messages: Sequence[LLMMessage],
-) -> list[ModelRequest | ModelResponse]:
-    """Convert stored messages to PydanticAI format.
-
-    For assistant messages, pass the full ConversationResponse as JSON
-    so the agent can see its past structured outputs (utterance + profile data).
-    """
-    result: list[ModelRequest | ModelResponse] = []
-    for msg in messages:
-        if isinstance(msg, UserMessage):
-            result.append(
-                ModelRequest(parts=[UserPromptPart(content=msg.content)])
-            )
-        elif isinstance(msg, SystemMessage):
-            result.append(
-                ModelRequest(parts=[SystemPromptPart(content=msg.content)])
-            )
-        else:
-            # AssistantMessage - convert ConversationResponse to formatted JSON string
-            # Example output: {"utterance": "Nice to meet you...", "profile": {"is_seeker": true, ...}}
-            content_json = json.dumps(
-                msg.content.model_dump(
-                    exclude_none=True
-                ),  # Omit null values for cleaner output
-                ensure_ascii=False,
-                indent=2,  # Pretty-print for readability
-            )
-            result.append(ModelResponse(parts=[TextPart(content=content_json)]))
-    return result
+from ..types.messages import ConversationResponse
 
 
 class ConversationAgent:
@@ -215,30 +170,21 @@ class ConversationAgent:
             instructions=instructions,
         )
 
-    async def run(self, messages: Sequence[LLMMessage]) -> ConversationResponse:
+    async def run(
+        self, user_prompt: str, message_history: list[ModelMessage]
+    ) -> AgentRunResult[ConversationResponse]:
         """
         Generate conversational response with optional profile data.
 
-        The agent automatically handles profile creation and updates by seeing
-        past ConversationResponse objects (including profiles) in message history.
-
         Args:
-            messages: Full conversation history (must end with UserMessage)
+            user_prompt: The user's message to respond to
+            message_history: Previous conversation messages in PydanticAI format
 
         Returns:
-            ConversationResponse with utterance and optional profile
-
-        Raises:
-            ValueError: If messages doesn't end with UserMessage
+            Full RunResult for serialization with result.all_messages_json()
         """
-        last_message = messages[-1]
-        if isinstance(last_message, UserMessage):
-            user_prompt = last_message.content
-        else:
-            raise ValueError("Last message must be a UserMessage")
-        message_history = _to_pydantic_messages(messages[:-1])
-
+        # TODO: Consider switching from composition to inheritance
         result = await self._agent.run(
             user_prompt, message_history=message_history
         )
-        return result.output
+        return result
