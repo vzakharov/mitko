@@ -1,5 +1,6 @@
 """Custom SQLAlchemy types for cross-database compatibility"""
 
+import json
 from typing import Any
 
 from sqlalchemy import Dialect, Text, TypeDecorator
@@ -45,8 +46,9 @@ class SQLiteReadyJSONB(TypeDecorator[bytes]):
             return None
 
         if dialect.name == "postgresql":
-            # PostgreSQL JSONB accepts bytes directly
-            return value
+            # PostgreSQL JSONB expects a Python object (list/dict)
+            # Deserialize bytes → Python object
+            return json.loads(value.decode("utf-8"))
 
         # SQLite: decode bytes to string
         return value.decode("utf-8")
