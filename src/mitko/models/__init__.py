@@ -2,6 +2,7 @@ from .base import async_session_maker, engine, get_db, init_db
 from .conversation import Conversation
 from .generation import Generation, GenerationStatus
 from .match import Match, MatchStatus
+from .types import SQLiteReadyJSONB
 from .user import User, UserState
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "GenerationStatus",
     "Match",
     "MatchStatus",
+    "SQLiteReadyJSONB",
 ]

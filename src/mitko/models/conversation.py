@@ -3,10 +3,11 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
+
+from .types import SQLiteReadyJSONB
 
 if TYPE_CHECKING:
     from .generation import Generation
@@ -27,7 +28,7 @@ class Conversation(SQLModel, table=True):
     )
     message_history_json: bytes = Field(
         default=b"[]",
-        sa_column=Column(JSONB, nullable=False),
+        sa_column=Column(SQLiteReadyJSONB(), nullable=False),
         description="Serialized PydanticAI message history (JSON bytes)",
     )
     user_prompt: str | None = Field(
