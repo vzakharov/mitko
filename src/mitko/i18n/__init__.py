@@ -20,4 +20,6 @@ def get_locale() -> Locale:
 # Singleton instance - short name for convenience
 L = get_locale()
 
+LANGUAGE_NAME = "English" if L.language == "en" else "Russian"
+
 __all__ = ["Locale", "EnglishLocale", "RussianLocale", "get_locale", "L"]

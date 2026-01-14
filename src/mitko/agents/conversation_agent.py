@@ -5,15 +5,15 @@ from textwrap import dedent
 from pydantic_ai import Agent
 
 from ..config import SETTINGS
-from ..i18n import L
+from ..i18n import LANGUAGE_NAME, L
 from ..types.messages import ConversationResponse
 from .config import MODEL_NAME
 
-
-class ConversationAgent(Agent[None, ConversationResponse]):
-    """Agent that handles conversation and organic profile extraction/updates"""
-
-    SYSTEM_PROMPT_BASE = dedent(
+# Global agent instance
+CONVERSATION_AGENT = Agent(
+    MODEL_NAME,
+    output_type=ConversationResponse,
+    instructions=dedent(
         """\
         You are Mitko, a friendly Telegram bot that matches IT professionals with opportunities
         to work together.
@@ -133,41 +133,22 @@ class ConversationAgent(Agent[None, ConversationResponse]):
         == FINAL NOTE ==
 
         Remember: Be friendly, natural, and slightly cheeky — in {language_name}!"""
-    )
-
-    def __init__(self):
-        language_name = "English" if L.language == "en" else "Russian"
-
-        # Get example utterances from locale
-        onboarding_examples = "\n".join(
+    ).format(
+        language_name=LANGUAGE_NAME,
+        onboarding_examples="\n".join(
             f"- {ex}" for ex in L.agent_examples.conversation.ONBOARDING
-        )
-        profile_created_examples = "\n".join(
+        ),
+        profile_created_examples="\n".join(
             f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_CREATED
-        )
-        profile_updated_examples = "\n".join(
+        ),
+        profile_updated_examples="\n".join(
             f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_UPDATED
-        )
-
-        # Format instructions with language context and response templates
-        instructions = self.SYSTEM_PROMPT_BASE.format(
-            language_name=language_name,
-            onboarding_examples=onboarding_examples,
-            profile_created_examples=profile_created_examples,
-            profile_updated_examples=profile_updated_examples,
-            off_topic_redirect=L.OFF_TOPIC_REDIRECT,
-            jailbreak_response=L.JAILBREAK_RESPONSE.format(
-                repo_url=SETTINGS.mitko_repo_url
-            ),
-            uncertainty_phrase=L.UNCERTAINTY_PHRASE,
-            greeting=L.commands.start.GREETING,
-        )
-
-        super().__init__(
-            MODEL_NAME,
-            output_type=ConversationResponse,
-            instructions=instructions,
-        )
-
-
-CONVERSATION_AGENT = ConversationAgent()
+        ),
+        off_topic_redirect=L.OFF_TOPIC_REDIRECT,
+        jailbreak_response=L.JAILBREAK_RESPONSE.format(
+            repo_url=SETTINGS.mitko_repo_url
+        ),
+        uncertainty_phrase=L.UNCERTAINTY_PHRASE,
+        greeting=L.commands.start.GREETING,
+    ),
+)

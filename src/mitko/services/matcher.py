@@ -119,10 +119,22 @@ class MatcherService:
     async def _generate_match_rationale(
         self, seeker: User, provider: User
     ) -> str:
-        result = await RATIONALE_AGENT.generate_rationale(
-            seeker_summary=seeker.summary or "",
-            provider_summary=provider.summary or "",
+        prompt = dedent(
+            f"""Analyze these two profiles and explain why they're a good match:
+
+            Seeker Profile:
+            {seeker.summary or ""}
+
+            Provider Profile:
+            {provider.summary or ""}
+
+            Generate a structured match rationale with:
+            - explanation: A brief, friendly 2-3 sentence explanation
+            - key_alignments: A list of 2-4 specific points where they align
+            - confidence_score: A score from 0.0 to 1.0 (where 1.0 is a perfect match)"""
         )
+
+        result = await RATIONALE_AGENT.run(prompt)
         rationale = result.output
 
         message_parts = [rationale.explanation]
