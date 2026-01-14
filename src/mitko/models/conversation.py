@@ -48,6 +48,10 @@ class Conversation(SQLModel, table=True):
         default=None,
         description="Telegram message ID for status updates (edit/delete)",
     )
+    last_response_id: str | None = Field(
+        default=None,
+        description="OpenAI Responses API response_id for conversation continuity",
+    )
 
     user: "User" = Relationship(back_populates="conversations")
     generations: list["Generation"] = Relationship(

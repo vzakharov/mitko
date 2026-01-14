@@ -15,7 +15,10 @@ from aiogram import Bot
 from genai_prices import calc_price
 from pydantic import HttpUrl
 from pydantic_ai.messages import ModelMessagesTypeAdapter
-from pydantic_ai.models.openai import OpenAIChatModelSettings
+from pydantic_ai.models.openai import (
+    OpenAIChatModelSettings,
+    OpenAIResponsesModelSettings,
+)
 from sqlalchemy import func as sql_func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -143,24 +146,34 @@ async def _process_generation(
     conv.user_prompt = None  # Clear immediately
     await session.commit()
 
-    # Deserialize message history
-    message_history = ModelMessagesTypeAdapter.validate_json(
-        conv.message_history_json
-    )
-
-    # Run conversation agent
-    result = await CONVERSATION_AGENT.run(
-        user_prompt,
-        message_history=message_history,
-        model_settings=(
-            OpenAIChatModelSettings(
-                openai_prompt_cache_retention="24h",
-                openai_prompt_cache_key=str(conv.id),
+    if SETTINGS.use_openai_responses_api:
+        model_settings = OpenAIResponsesModelSettings(
+            openai_prompt_cache_retention="24h",
+        )
+        if conv.last_response_id:
+            model_settings["openai_previous_response_id"] = (
+                conv.last_response_id
             )
-            if SETTINGS.llm_provider == "openai"
-            else None
-        ),
-    )
+        result = await CONVERSATION_AGENT.run(
+            user_prompt,
+            model_settings=model_settings,
+        )
+    else:
+        result = await CONVERSATION_AGENT.run(
+            user_prompt,
+            message_history=ModelMessagesTypeAdapter.validate_json(
+                conv.message_history_json
+            ),
+            model_settings=(
+                OpenAIChatModelSettings(
+                    # openai_prompt_cache_retention="24h", # not supported for non-Responses API for our models of interest
+                    openai_prompt_cache_key=str(conv.id),
+                )
+                if SETTINGS.llm_provider == "openai"
+                else None
+            ),
+        )
+
     response = result.output
 
     # Handle profile creation/update
@@ -266,6 +279,9 @@ async def _process_generation(
             generation.log_url = HttpUrl(
                 f"https://platform.openai.com/logs/{response_id}"
             )
+        # Store response_id for Responses API conversation continuity
+        if SETTINGS.use_openai_responses_api:
+            conv.last_response_id = response_id
 
     await session.commit()
 
