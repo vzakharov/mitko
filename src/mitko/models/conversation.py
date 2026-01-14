@@ -2,10 +2,11 @@ import uuid  # noqa: I001
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, func, select
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
-from sqlmodel import Column, Relationship, SQLModel
+from sqlmodel import Column, Relationship, SQLModel, col
 
 from .types import SQLiteReadyJSONB
 
@@ -48,12 +49,22 @@ class Conversation(SQLModel, table=True):
         default=None,
         description="Telegram message ID for status updates (edit/delete)",
     )
-    last_response_id: str | None = Field(
-        default=None,
-        description="OpenAI Responses API response_id for conversation continuity",
-    )
 
     user: "User" = Relationship(back_populates="conversations")
     generations: list["Generation"] = Relationship(
         back_populates="conversation"
     )
+
+    async def get_latest_response_id(self, session: AsyncSession) -> str | None:
+        """Get the provider_response_id from the latest completed generation."""
+        from .generation import Generation
+
+        result = await session.execute(
+            select(Generation)
+            .where(col(Generation.conversation_id) == self.id)
+            .where(col(Generation.status) == "completed")
+            .order_by(col(Generation.created_at).desc())
+            .limit(1)
+        )
+        generation = result.scalar_one_or_none()
+        return generation.provider_response_id if generation else None
