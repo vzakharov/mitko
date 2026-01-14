@@ -15,6 +15,7 @@ from aiogram import Bot
 from genai_prices import calc_price
 from pydantic import HttpUrl
 from pydantic_ai.messages import ModelMessagesTypeAdapter
+from pydantic_ai.models.openai import OpenAIChatModelSettings
 from sqlalchemy import func as sql_func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -149,7 +150,16 @@ async def _process_generation(
 
     # Run conversation agent
     result = await CONVERSATION_AGENT.run(
-        user_prompt, message_history=message_history
+        user_prompt,
+        message_history=message_history,
+        model_settings=(
+            OpenAIChatModelSettings(
+                openai_prompt_cache_retention="24h",
+                openai_prompt_cache_key=str(conv.id),
+            )
+            if SETTINGS.llm_provider == "openai"
+            else None
+        ),
     )
     response = result.output
 
@@ -256,16 +266,11 @@ async def _process_generation(
         )
         generation.cost_usd = None
 
-    model_response = result.response
-    if (
-        model_response.provider_response_id
-        and SETTINGS.llm_provider == "openai"
-    ):
-        generation.provider_response_id = model_response.provider_response_id
-
+    if response_id := result.response.provider_response_id:
+        generation.provider_response_id = response_id
         if SETTINGS.llm_provider == "openai":
             generation.log_url = HttpUrl(
-                f"https://platform.openai.com/logs/{model_response.provider_response_id}"
+                f"https://platform.openai.com/logs/{response_id}"
             )
 
     await session.commit()

@@ -110,6 +110,7 @@ uv run alembic upgrade head
 - **NEVER add `# pyright: ignore`, `# noqa`, or similar suppression comments without explicit user approval** - always ask first and discuss the root cause
 - **NEVER cast to `Any` type without explicit user approval** - always ask first and find a properly typed solution
 - **Only add comments when the logic isn't clear from the code itself** - prefer self-documenting code with descriptive names over explanatory comments
+- **Inline single-use variables** - if a variable is only used once, inline it directly at the usage site rather than defining it separately
 - PostgreSQL requires `pgvector` extension
 - Embeddings are 1536-dim vectors (stored in User.embedding)
 - Conversation history stored as JSON, full context passed to LLM
