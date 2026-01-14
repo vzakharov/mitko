@@ -2,8 +2,7 @@
 
 from textwrap import dedent
 
-from pydantic_ai import Agent, AgentRunResult
-from pydantic_ai.messages import ModelMessage
+from pydantic_ai import Agent
 from pydantic_ai.models import KnownModelName
 
 from ..config import settings
@@ -11,7 +10,7 @@ from ..i18n import L
 from ..types.messages import ConversationResponse
 
 
-class ConversationAgent:
+class ConversationAgent(Agent[None, ConversationResponse]):
     """Agent that handles conversation and organic profile extraction/updates"""
 
     SYSTEM_PROMPT_BASE = dedent(
@@ -164,27 +163,8 @@ class ConversationAgent:
             greeting=L.commands.start.GREETING,
         )
 
-        self._agent = Agent(
+        super().__init__(
             model_name,
             output_type=ConversationResponse,
             instructions=instructions,
         )
-
-    async def run(
-        self, user_prompt: str, message_history: list[ModelMessage]
-    ) -> AgentRunResult[ConversationResponse]:
-        """
-        Generate conversational response with optional profile data.
-
-        Args:
-            user_prompt: The user's message to respond to
-            message_history: Previous conversation messages in PydanticAI format
-
-        Returns:
-            Full RunResult for serialization with result.all_messages_json()
-        """
-        # TODO: Consider switching from composition to inheritance
-        result = await self._agent.run(
-            user_prompt, message_history=message_history
-        )
-        return result

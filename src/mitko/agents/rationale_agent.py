@@ -2,14 +2,14 @@
 
 from textwrap import dedent
 
-from pydantic_ai import Agent
+from pydantic_ai import Agent, AgentRunResult
 from pydantic_ai.models import KnownModelName
 
 from ..i18n import L
 from .models import MatchRationale
 
 
-class RationaleAgent:
+class RationaleAgent(Agent[None, MatchRationale]):
     """Agent for generating structured match rationales"""
 
     SYSTEM_PROMPT_BASE = dedent(
@@ -61,7 +61,7 @@ class RationaleAgent:
             examples=examples,
         )
 
-        self._agent = Agent(
+        super().__init__(
             model_name,
             output_type=MatchRationale,
             instructions=instructions,
@@ -71,7 +71,7 @@ class RationaleAgent:
         self,
         seeker_summary: str,
         provider_summary: str,
-    ) -> MatchRationale:
+    ) -> AgentRunResult[MatchRationale]:
         """
         Generate a structured match rationale.
 
@@ -80,7 +80,7 @@ class RationaleAgent:
             provider_summary: Summary of the provider's profile
 
         Returns:
-            MatchRationale: Structured rationale with explanation, alignments, and confidence
+            AgentRunResult[MatchRationale]: Full result with structured rationale
 
         Raises:
             ValueError: If rationale generation fails or produces invalid output
@@ -100,5 +100,4 @@ class RationaleAgent:
             - confidence_score: A score from 0.0 to 1.0 (where 1.0 is a perfect match)"""
         )
 
-        result = await self._agent.run(prompt)
-        return result.output
+        return await self.run(prompt)

@@ -145,7 +145,9 @@ async def _process_generation(
 
     # Run conversation agent
     conversation_agent = ConversationAgent(get_model_name())
-    result = await conversation_agent.run(user_prompt, message_history)
+    result = await conversation_agent.run(
+        user_prompt, message_history=message_history
+    )
     response = result.output  # Extract ConversationResponse
 
     # Handle profile creation/update

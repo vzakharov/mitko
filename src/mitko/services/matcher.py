@@ -120,10 +120,11 @@ class MatcherService:
         self, seeker: User, provider: User
     ) -> str:
         rationale_agent = RationaleAgent(get_model_name())
-        rationale = await rationale_agent.generate_rationale(
+        result = await rationale_agent.generate_rationale(
             seeker_summary=seeker.summary or "",
             provider_summary=provider.summary or "",
         )
+        rationale = result.output
 
         message_parts = [rationale.explanation]
         if rationale.key_alignments:
