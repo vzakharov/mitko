@@ -1,14 +1,16 @@
 """Configuration helpers for PydanticAI agents"""
 
-from pydantic_ai.models import KnownModelName
+from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
 
 from ..config import SETTINGS
 
-OPENA_MODEL_NAME = "openai:gpt-5-mini"
-ANTHROPIC_MODEL_NAME = "anthropic:claude-3-7-sonnet-latest"
+OPENAI_MODEL = OpenAIChatModel("gpt-5-mini")
+OPENAI_RESPONSES_MODEL = OpenAIResponsesModel("gpt-5.1-codex-mini")
+ANTHROPIC_MODEL = AnthropicModel("claude-3-7-sonnet-latest")
 
 
-def get_model_name() -> KnownModelName:
+def get_language_model():
     """
     Get the PydanticAI model name based on the configured LLM provider.
 
@@ -19,11 +21,14 @@ def get_model_name() -> KnownModelName:
         ValueError: If the provider is unknown
     """
     if SETTINGS.llm_provider == "openai":
-        return OPENA_MODEL_NAME
+        if SETTINGS.use_openai_responses_api:
+            return OPENAI_RESPONSES_MODEL
+        else:
+            return OPENAI_MODEL
     elif SETTINGS.llm_provider == "anthropic":
-        return ANTHROPIC_MODEL_NAME
+        return ANTHROPIC_MODEL
     else:
-        raise ValueError(f"Unknown LLM provider: {SETTINGS.llm_provider}")
+        raise ValueError(f"Unsupported LLM provider: {SETTINGS.llm_provider}")
 
 
-MODEL_NAME = get_model_name()
+LANGUAGE_MODEL = get_language_model()

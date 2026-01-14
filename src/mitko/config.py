@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     telegram_mode: Literal["webhook", "polling"] = "polling"
 
     llm_provider: Literal["openai", "anthropic"] = "openai"
+    use_openai_responses_api: bool = False
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
 

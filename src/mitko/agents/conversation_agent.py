@@ -7,11 +7,11 @@ from pydantic_ai import Agent
 from ..config import SETTINGS
 from ..i18n import LANGUAGE_NAME, L
 from ..types.messages import ConversationResponse
-from .config import MODEL_NAME
+from .config import LANGUAGE_MODEL
 
 # Global agent instance
 CONVERSATION_AGENT = Agent(
-    MODEL_NAME,
+    LANGUAGE_MODEL,
     output_type=ConversationResponse,
     instructions=dedent(
         """\

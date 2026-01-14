@@ -1,2 +1,3 @@
-- Ensure caching via prompt cache key/retention 24h
+- Individual scheduling (if > X responses in Y minutes, schedule forward by Z minutes)
+- Bug with thought bubble not disappearing on an error
 - Enable cascade deletion (e.g. conversation -> generations, but also the rest)

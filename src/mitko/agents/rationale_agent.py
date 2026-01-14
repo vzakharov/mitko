@@ -5,7 +5,7 @@ from textwrap import dedent
 from pydantic_ai import Agent
 
 from ..i18n import LANGUAGE_NAME, L
-from .config import MODEL_NAME
+from .config import LANGUAGE_MODEL
 from .models import MatchRationale
 
 SYSTEM_PROMPT = dedent(
@@ -42,7 +42,7 @@ SYSTEM_PROMPT = dedent(
 
 # Global agent instance
 RATIONALE_AGENT = Agent(
-    MODEL_NAME,
+    LANGUAGE_MODEL,
     output_type=MatchRationale,
     instructions=SYSTEM_PROMPT,
 )
