@@ -45,13 +45,13 @@ class SQLiteReadyJSONB(TypeDecorator[bytes]):
         if value is None:
             return None
 
-        if dialect.name == "postgresql":
-            # PostgreSQL JSONB expects a Python object (list/dict)
-            # Deserialize bytes → Python object
-            return json.loads(value.decode("utf-8"))
+        decoded_value = value.decode("utf-8")
 
-        # SQLite: decode bytes to string
-        return value.decode("utf-8")
+        return (
+            json.loads(decoded_value)
+            if dialect.name == "postgresql"
+            else decoded_value
+        )
 
     def process_result_value(self, value: Any, dialect: Dialect):
         """Convert database value to Python bytes.
@@ -63,16 +63,11 @@ class SQLiteReadyJSONB(TypeDecorator[bytes]):
         Returns:
             Bytes representation of the value
         """
-        if value is None:
-            return None
 
-        if isinstance(value, bytes):
-            # PostgreSQL returns bytes
-            return value
-
-        if isinstance(value, str):
-            # SQLite returns string, encode to bytes
-            return value.encode("utf-8")
-
-        # Fallback: convert to string first, then bytes
-        return str(value).encode("utf-8")
+        return (
+            value
+            if isinstance(value, bytes) or value is None
+            else (
+                value if isinstance(value, str) else json.dumps(value)
+            ).encode("utf-8")
+        )
