@@ -68,5 +68,9 @@ class Generation(SQLModel, table=True):
         sa_type=HttpUrlType,
         description="URL to view logs in provider platform (OpenAI only)",
     )
+    cost_usd: float | None = Field(
+        default=None,
+        description="Total cost in USD for this generation",
+    )
 
     conversation: "Conversation" = Relationship(back_populates="generations")

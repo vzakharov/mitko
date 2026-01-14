@@ -12,6 +12,7 @@ from contextlib import suppress
 from datetime import UTC, datetime
 
 from aiogram import Bot
+from genai_prices import calc_price
 from pydantic import HttpUrl
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 from sqlalchemy import func as sql_func
@@ -19,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
+from ..agents.config import MODEL_NAME
 from ..agents.conversation_agent import CONVERSATION_AGENT
 from ..config import SETTINGS
 from ..i18n import L
@@ -220,6 +222,39 @@ async def _process_generation(
         usage.input_tokens - usage.cache_read_tokens
     )
     generation.output_tokens = usage.output_tokens
+
+    # Calculate cost using genai-prices
+    try:
+        # Strip provider prefix from model name (e.g., "openai:gpt-5-mini" -> "gpt-5-mini")
+        model_ref = (
+            MODEL_NAME.split(":", 1)[1] if ":" in MODEL_NAME else MODEL_NAME
+        )
+        provider_id = SETTINGS.llm_provider
+
+        price_data = calc_price(
+            usage,
+            model_ref=model_ref,
+            provider_id=provider_id,
+        )
+        generation.cost_usd = float(price_data.total_price)
+
+        logger.info(
+            "Calculated cost for generation %s: $%.6f (%d cached + %d uncached input, %d output tokens)",
+            generation.id,
+            generation.cost_usd,
+            generation.cached_input_tokens or 0,
+            generation.uncached_input_tokens or 0,
+            generation.output_tokens or 0,
+        )
+    except Exception as e:
+        # Fail gracefully - cost calculation should not break generation processing
+        logger.warning(
+            "Failed to calculate cost for generation %s: %s",
+            generation.id,
+            str(e),
+            exc_info=True,
+        )
+        generation.cost_usd = None
 
     model_response = result.response
     if (

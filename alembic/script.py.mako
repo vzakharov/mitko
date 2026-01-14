@@ -5,10 +5,12 @@ Revises: ${down_revision | comma,n}
 Create Date: ${create_date}
 
 """
-from typing import Sequence # noqa: UP035
+
+from typing import Sequence  # noqa: UP035
+
+import sqlalchemy as sa
 
 from alembic import op
-import sqlalchemy as sa
 ${imports if imports else ""}
 
 # revision identifiers, used by Alembic.

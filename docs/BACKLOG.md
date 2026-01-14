@@ -1,0 +1,2 @@
+- Ensure caching via prompt cache key/retention 24h
+- Enable cascade deletion (e.g. conversation -> generations, but also the rest)
