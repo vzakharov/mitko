@@ -12,13 +12,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from sqlmodel import SQLModel
 
-from mitko.config import settings
-from mitko.models import (
+from mitko.config import SETTINGS
+from mitko.models import (  # Import all models
     Conversation,
     Generation,
     Match,
     User,
-)  # Import all models
+)
 
 # Ensure models are registered with SQLModel.metadata for Alembic auto-discovery
 _ = (User, Conversation, Generation, Match)
@@ -28,7 +28,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", settings.database_url)
+config.set_main_option("sqlalchemy.url", SETTINGS.database_url)
 
 target_metadata = SQLModel.metadata
 

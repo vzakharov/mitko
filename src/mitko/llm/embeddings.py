@@ -2,7 +2,7 @@
 
 from openai import AsyncOpenAI
 
-from ..config import settings
+from ..config import SETTINGS
 
 _client: AsyncOpenAI | None = None
 
@@ -16,9 +16,9 @@ async def get_embedding(text: str) -> list[float]:
     """
     global _client
     if _client is None:
-        if not settings.openai_api_key:
+        if not SETTINGS.openai_api_key:
             raise ValueError("OPENAI_API_KEY is required for embeddings")
-        _client = AsyncOpenAI(api_key=settings.openai_api_key)
+        _client = AsyncOpenAI(api_key=SETTINGS.openai_api_key)
 
     response = await _client.embeddings.create(
         model="text-embedding-3-small",

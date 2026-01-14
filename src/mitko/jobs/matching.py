@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from ..bot.keyboards import match_consent_keyboard
-from ..config import settings
+from ..config import SETTINGS
 from ..i18n import L
 from ..models import Match, User, async_session_maker
 from ..services.matcher import MatcherService
@@ -50,7 +50,7 @@ def start_matching_scheduler(bot: Bot) -> None:
     scheduler.add_job(
         run_matching_job,
         "interval",
-        minutes=settings.matching_interval_minutes,
+        minutes=SETTINGS.matching_interval_minutes,
         args=[bot],
         id="matching_job",
         replace_existing=True,

@@ -3,9 +3,9 @@
 from textwrap import dedent
 
 from pydantic_ai import Agent, AgentRunResult
-from pydantic_ai.models import KnownModelName
 
 from ..i18n import L
+from .config import MODEL_NAME
 from .models import MatchRationale
 
 
@@ -41,13 +41,8 @@ class RationaleAgent(Agent[None, MatchRationale]):
         """
     )
 
-    def __init__(self, model_name: KnownModelName):
-        """
-        Initialize the rationale generation agent.
-
-        Args:
-            model_name: The LLM model to use (e.g., "openai:gpt-5-mini")
-        """
+    def __init__(self):
+        """Initialize the rationale generation agent."""
         language_name = "English" if L.language == "en" else "Russian"
 
         # Get example rationales from locale
@@ -62,7 +57,7 @@ class RationaleAgent(Agent[None, MatchRationale]):
         )
 
         super().__init__(
-            model_name,
+            MODEL_NAME,
             output_type=MatchRationale,
             instructions=instructions,
         )
@@ -101,3 +96,6 @@ class RationaleAgent(Agent[None, MatchRationale]):
         )
 
         return await self.run(prompt)
+
+
+RATIONALE_AGENT = RationaleAgent()

@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from ..agents import ConversationAgent, get_model_name
+from ..agents.conversation_agent import CONVERSATION_AGENT
 from ..i18n import L
 from ..models import Conversation, Generation, User, async_session_maker
 from ..services.profiler import ProfileService
@@ -144,8 +144,7 @@ async def _process_generation(
     )
 
     # Run conversation agent
-    conversation_agent = ConversationAgent(get_model_name())
-    result = await conversation_agent.run(
+    result = await CONVERSATION_AGENT.run(
         user_prompt, message_history=message_history
     )
     response = result.output  # Extract ConversationResponse

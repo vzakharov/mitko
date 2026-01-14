@@ -1,12 +1,12 @@
 from aiogram import Bot, Dispatcher
 
-from ..config import settings
+from ..config import SETTINGS
 from .handlers import router, set_bot_instance
 
 
 def create_bot() -> Bot:
     """Create and configure Bot instance"""
-    return Bot(token=settings.telegram_bot_token)
+    return Bot(token=SETTINGS.telegram_bot_token)
 
 
 def create_dispatcher() -> Dispatcher:

@@ -2,7 +2,7 @@
 
 from pydantic_ai.models import KnownModelName
 
-from ..config import settings
+from ..config import SETTINGS
 
 OPENA_MODEL_NAME = "openai:gpt-5-mini"
 ANTHROPIC_MODEL_NAME = "anthropic:claude-3-7-sonnet-latest"
@@ -18,9 +18,12 @@ def get_model_name() -> KnownModelName:
     Raises:
         ValueError: If the provider is unknown
     """
-    if settings.llm_provider == "openai":
+    if SETTINGS.llm_provider == "openai":
         return OPENA_MODEL_NAME
-    elif settings.llm_provider == "anthropic":
+    elif SETTINGS.llm_provider == "anthropic":
         return ANTHROPIC_MODEL_NAME
     else:
-        raise ValueError(f"Unknown LLM provider: {settings.llm_provider}")
+        raise ValueError(f"Unknown LLM provider: {SETTINGS.llm_provider}")
+
+
+MODEL_NAME = get_model_name()

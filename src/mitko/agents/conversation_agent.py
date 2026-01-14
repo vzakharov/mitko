@@ -3,11 +3,11 @@
 from textwrap import dedent
 
 from pydantic_ai import Agent
-from pydantic_ai.models import KnownModelName
 
-from ..config import settings
+from ..config import SETTINGS
 from ..i18n import L
 from ..types.messages import ConversationResponse
+from .config import MODEL_NAME
 
 
 class ConversationAgent(Agent[None, ConversationResponse]):
@@ -135,7 +135,7 @@ class ConversationAgent(Agent[None, ConversationResponse]):
         Remember: Be friendly, natural, and slightly cheeky — in {language_name}!"""
     )
 
-    def __init__(self, model_name: KnownModelName):
+    def __init__(self):
         language_name = "English" if L.language == "en" else "Russian"
 
         # Get example utterances from locale
@@ -157,14 +157,17 @@ class ConversationAgent(Agent[None, ConversationResponse]):
             profile_updated_examples=profile_updated_examples,
             off_topic_redirect=L.OFF_TOPIC_REDIRECT,
             jailbreak_response=L.JAILBREAK_RESPONSE.format(
-                repo_url=settings.mitko_repo_url
+                repo_url=SETTINGS.mitko_repo_url
             ),
             uncertainty_phrase=L.UNCERTAINTY_PHRASE,
             greeting=L.commands.start.GREETING,
         )
 
         super().__init__(
-            model_name,
+            MODEL_NAME,
             output_type=ConversationResponse,
             instructions=instructions,
         )
+
+
+CONVERSATION_AGENT = ConversationAgent()

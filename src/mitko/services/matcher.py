@@ -4,8 +4,8 @@ from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from ..agents import RationaleAgent, get_model_name
-from ..config import settings
+from ..agents.rationale_agent import RATIONALE_AGENT
+from ..config import SETTINGS
 from ..models import Match, User
 
 
@@ -70,8 +70,8 @@ class MatcherService:
             {
                 "seeker_embedding": embedding_str,
                 "seeker_id": seeker.telegram_id,
-                "threshold": settings.similarity_threshold,
-                "limit": settings.max_matches_per_profile,
+                "threshold": SETTINGS.similarity_threshold,
+                "limit": SETTINGS.max_matches_per_profile,
             },
         )
 
@@ -119,8 +119,7 @@ class MatcherService:
     async def _generate_match_rationale(
         self, seeker: User, provider: User
     ) -> str:
-        rationale_agent = RationaleAgent(get_model_name())
-        result = await rationale_agent.generate_rationale(
+        result = await RATIONALE_AGENT.generate_rationale(
             seeker_summary=seeker.summary or "",
             provider_summary=provider.summary or "",
         )

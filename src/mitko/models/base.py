@@ -7,12 +7,12 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
-from ..config import settings
+from ..config import SETTINGS
 
 # SQLModel.metadata replaces Base.metadata
 # Models now inherit from SQLModel directly
 
-engine = create_async_engine(settings.database_url, echo=False)
+engine = create_async_engine(SETTINGS.database_url, echo=False)
 async_session_maker = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )

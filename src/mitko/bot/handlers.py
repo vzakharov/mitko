@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from ..config import settings
+from ..config import SETTINGS
 from ..i18n import L
 from ..jobs.generation import nudge_processor
 from ..models import Conversation, Generation, User, get_db
@@ -269,7 +269,7 @@ async def handle_message(message: Message) -> None:
         else:
             # Create a new generation
             now = datetime.now(UTC)
-            interval = timedelta(seconds=settings.generation_interval_seconds)
+            interval = timedelta(seconds=SETTINGS.generation_interval_seconds)
 
             # Find max scheduled time to maintain global queue order
             max_scheduled = await _get_max_scheduled_time(session)
