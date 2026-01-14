@@ -146,22 +146,28 @@ async def _process_generation(
     conv.user_prompt = None  # Clear immediately
     await session.commit()
 
+    message_history = ModelMessagesTypeAdapter.validate_json(
+        conv.message_history_json
+    )
+
     if SETTINGS.use_openai_responses_api:
         model_settings = OpenAIResponsesModelSettings(
             openai_prompt_cache_retention="24h",
         )
-        if last_response_id := await conv.get_latest_response_id(session):
+        if (
+            last_response_id := await conv.get_latest_response_id(session)
+        ) and last_response_id.startswith("resp"):
             model_settings["openai_previous_response_id"] = last_response_id
+            message_history = None  # can't have both
         result = await CONVERSATION_AGENT.run(
             user_prompt,
+            message_history=message_history,
             model_settings=model_settings,
         )
     else:
         result = await CONVERSATION_AGENT.run(
             user_prompt,
-            message_history=ModelMessagesTypeAdapter.validate_json(
-                conv.message_history_json
-            ),
+            message_history=message_history,
             model_settings=(
                 OpenAIChatModelSettings(
                     # openai_prompt_cache_retention="24h", # not supported for non-Responses API for our models of interest
