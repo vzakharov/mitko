@@ -330,7 +330,10 @@ async def _process_generation(
     conv.message_history = [
         *conv.message_history,
         {"role": "user", "content": user_prompt},
-        {"role": "assistant", "content": json.dumps(response.model_dump())},
+        {
+            "role": "assistant",
+            "content": json.dumps(response.model_dump(), ensure_ascii=False),
+        },
     ]
 
     usage = result.usage()
