@@ -86,7 +86,7 @@ async def get_or_create_conversation(
     )
     conv = result.scalar_one_or_none()
     if conv is None:
-        conv = Conversation(telegram_id=telegram_id, message_history_json=b"[]")
+        conv = Conversation(telegram_id=telegram_id, message_history=[])
         session.add(conv)
         await session.commit()
         await session.refresh(conv)
@@ -106,7 +106,7 @@ async def cmd_start(message: Message) -> None:
             user.summary is not None
             or user.is_seeker is not None
             or user.is_provider is not None
-            or conv.message_history_json != b"[]"
+            or conv.message_history != []
             or conv.user_prompt is not None
         )
 
