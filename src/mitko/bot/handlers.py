@@ -32,7 +32,7 @@ _bot_instance: Bot | None = None
 def reset_conversation_state(conversation: Conversation) -> None:
     """Reset conversation to empty state, clearing all history and Responses API state."""
     conversation.message_history_json = b"[]"
-    conversation.history = []
+    conversation.message_history = []
     conversation.user_prompt = None
     conversation.last_responses_api_response_id = None
 

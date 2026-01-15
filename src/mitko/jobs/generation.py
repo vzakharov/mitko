@@ -15,7 +15,6 @@ from datetime import UTC, datetime
 from aiogram import Bot
 from genai_prices import calc_price
 from pydantic import HttpUrl
-from pydantic_ai.messages import ModelMessagesTypeAdapter
 from pydantic_ai.models.openai import (
     OpenAIChatModelSettings,
     OpenAIResponsesModelSettings,
@@ -84,14 +83,16 @@ async def _get_next_scheduled_time(session: AsyncSession) -> datetime | None:
     return result.scalar_one_or_none()
 
 
-def _format_history_for_instructions(history: list[HistoryMessage]) -> str:
+def _format_history_for_instructions(
+    history: list[HistoryMessage],
+) -> str | None:
     """Format history as readable text for instructions injection.
 
     Includes truncation for very long conversations to avoid token overflow.
     TODO: implement summarization for longer histories.
     """
     if not history:
-        return ""
+        return None
 
     # Truncate to last MESSAGE_HISTORY_MAX_LENGTH messages to avoid excessive token usage
     truncated_history = history[-MESSAGE_HISTORY_MAX_LENGTH:]
@@ -197,8 +198,15 @@ async def _process_generation(
     conv.user_prompt = None  # Clear immediately
     await session.commit()
 
-    message_history = ModelMessagesTypeAdapter.validate_json(
-        conv.message_history_json
+    instructions_with_history = "\n\n".join(
+        [
+            piece
+            for piece in [
+                CONVERSATION_AGENT_INSTRUCTIONS,
+                _format_history_for_instructions(conv.message_history),
+            ]
+            if piece
+        ]
     )
 
     if SETTINGS.use_openai_responses_api:
@@ -206,20 +214,13 @@ async def _process_generation(
             openai_prompt_cache_retention="24h",
         )
 
-        # Prepare instructions with history fallback
-        instructions = CONVERSATION_AGENT_INSTRUCTIONS
-        if conv.history:
-            instructions = f"{instructions}\n\n{_format_history_for_instructions(conv.history)}"
-
         if conv.last_responses_api_response_id:
-            # Try using previous_response_id for server-side state
             model_settings["openai_previous_response_id"] = (
                 conv.last_responses_api_response_id
             )
             try:
                 result = await CONVERSATION_AGENT.run(
                     user_prompt,
-                    message_history=None,  # Responses API maintains server-side state
                     model_settings=model_settings,
                 )
             except Exception as e:
@@ -237,23 +238,20 @@ async def _process_generation(
                     model_settings.pop("openai_previous_response_id", None)
                     result = await CONVERSATION_AGENT.run(
                         user_prompt,
-                        message_history=message_history,
                         model_settings=model_settings,
-                        instructions=instructions,
+                        instructions=instructions_with_history,
                     )
                 else:
                     raise
         else:
             result = await CONVERSATION_AGENT.run(
                 user_prompt,
-                message_history=message_history,
                 model_settings=model_settings,
-                instructions=instructions,
+                instructions=instructions_with_history,
             )
     else:
         result = await CONVERSATION_AGENT.run(
             user_prompt,
-            message_history=message_history,
             model_settings=(
                 OpenAIChatModelSettings(
                     # openai_prompt_cache_retention="24h", # not supported for non-Responses API for our models of interest
@@ -262,6 +260,7 @@ async def _process_generation(
                 if SETTINGS.llm_provider == "openai"
                 else None
             ),
+            instructions=instructions_with_history,
         )
 
     response = result.output
@@ -330,8 +329,8 @@ async def _process_generation(
     conv.message_history_json = result.all_messages_json()
 
     # Update conversation history for fallback
-    conv.history = [
-        *conv.history,
+    conv.message_history = [
+        *conv.message_history,
         {"role": "user", "content": user_prompt},
         {"role": "assistant", "content": json.dumps(response.model_dump())},
     ]

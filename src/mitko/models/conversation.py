@@ -12,7 +12,7 @@ from sqlmodel import (
 )
 
 from ..types.messages import HistoryMessage
-from .types import JSONBList, SQLiteReadyJSONB
+from .types import JSONBList
 
 if TYPE_CHECKING:
     from .generation import Generation
@@ -31,11 +31,6 @@ class Conversation(SQLModel, table=True):
             BigInteger(), ForeignKey("users.telegram_id"), nullable=False
         )
     )
-    message_history_json: bytes = Field(
-        default=b"[]",
-        sa_column=Column(SQLiteReadyJSONB(), nullable=False),
-        description="Serialized PydanticAI message history (JSON bytes)",
-    )
     user_prompt: str | None = Field(
         default=None,
         description="Pending user input to be processed in next generation",
@@ -44,7 +39,7 @@ class Conversation(SQLModel, table=True):
         default=None,
         description="OpenAI Responses API response ID for conversation continuation. Only used when USE_OPENAI_RESPONSES_API=true. Cleared on conversation reset.",
     )
-    history: list[HistoryMessage] = Field(
+    message_history: list[HistoryMessage] = Field(
         default_factory=list,
         sa_column=Column(JSONBList(), nullable=False, server_default="[]"),
         description="Conversation history for fallback when Responses API state expires.",
