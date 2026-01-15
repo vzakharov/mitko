@@ -6,7 +6,7 @@ from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
 from ..config import SETTINGS
 
 OPENAI_MODEL = OpenAIChatModel("gpt-5-mini")
-OPENAI_RESPONSES_MODEL = OpenAIResponsesModel("gpt-5.1-codex-mini")
+OPENAI_RESPONSES_MODEL = OpenAIResponsesModel("gpt-4.1")
 ANTHROPIC_MODEL = AnthropicModel("claude-3-7-sonnet-latest")
 
 

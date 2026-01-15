@@ -1,6 +1,6 @@
 from textwrap import dedent
 
-from sqlalchemy import and_, or_, select, text
+from sqlalchemy import Float, and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
@@ -46,41 +46,31 @@ class MatcherService:
         if seeker.embedding is None:
             return []
 
-        embedding_str = "[" + ",".join(str(x) for x in seeker.embedding) + "]"
+        # Calculate similarity using pgvector's cosine_distance operator (<=>)
+        # Returns distance (0 = identical, higher = less similar)
+        # Convert to similarity: 1 - distance (1 = identical, 0 = opposite)
+        distance = col(User.embedding).op("<=>", return_type=Float())(
+            seeker.embedding
+        )
+        similarity_expr = (1 - distance).label("similarity")
 
-        query = text(
-            dedent(
-                """\
-                    SELECT u.telegram_id,
-                    1 - (u.embedding <=> :seeker_embedding::vector) as similarity
-                    FROM users u
-                    WHERE u.is_provider = true
-                    AND u.is_complete = true
-                    AND u.embedding IS NOT NULL
-                    AND u.telegram_id != :seeker_id
-                    AND 1 - (u.embedding <=> :seeker_embedding::vector) >= :threshold
-                    ORDER BY similarity DESC
-                    LIMIT :limit
-                """
+        query = (
+            select(User, similarity_expr)
+            .where(
+                and_(
+                    col(User.is_provider) == True,  # noqa: E712
+                    col(User.is_complete) == True,  # noqa: E712
+                    col(User.embedding) != None,  # noqa: E711
+                    col(User.telegram_id) != seeker.telegram_id,
+                    similarity_expr >= SETTINGS.similarity_threshold,
+                )
             )
+            .order_by(similarity_expr.desc())
+            .limit(SETTINGS.max_matches_per_profile)
         )
 
-        result = await self.session.execute(
-            query,
-            {
-                "seeker_embedding": embedding_str,
-                "seeker_id": seeker.telegram_id,
-                "threshold": SETTINGS.similarity_threshold,
-                "limit": SETTINGS.max_matches_per_profile,
-            },
-        )
-
-        matches = list[tuple[User, float]]()
-        for row in result:
-            user = await self.session.get(User, row.telegram_id)
-            if user:
-                matches.append((user, float(row.similarity)))
-        return matches
+        result = await self.session.execute(query)
+        return [(user, float(similarity)) for user, similarity in result]
 
     async def _should_create_match(
         self, user_a_id: int, user_b_id: int

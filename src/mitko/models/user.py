@@ -34,7 +34,7 @@ class User(SQLModel, table=True):
     # Profile data (formerly in Profile model)
     summary: str | None = Field(default=None, sa_column=Column(Text))
 
-    embedding: Any = Field(
+    embedding: list[float] | None = Field(
         default=None, sa_column=Column(Vector(1536), nullable=True)
     )
     is_complete: bool = Field(default=False)
