@@ -326,8 +326,6 @@ async def _process_generation(
         # No placeholder message (old generation) - just send response
         await bot.send_message(conv.telegram_id, response_text)
 
-    conv.message_history_json = result.all_messages_json()
-
     # Update conversation history for fallback
     conv.message_history = [
         *conv.message_history,

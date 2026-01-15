@@ -180,10 +180,10 @@ class TestConversationPersistence:
             ]
             assert fresh_conv.user_prompt == "pending message"
 
-    async def test_message_history_json_storage(
+    async def test_message_history_storage(
         self, test_session: AsyncSession
     ) -> None:
-        """Test message_history_json field stores PydanticAI format"""
+        """Test message_history field stores PydanticAI format"""
         # Create conversation with serialized message history
         conv = Conversation(
             telegram_id=123456789,

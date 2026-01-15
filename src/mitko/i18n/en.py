@@ -28,21 +28,19 @@ class EnglishLocale(Locale):
         start=CommandsStart(
             GREETING=dedent(
                 """\
-                Oh hey! I'm Mitko 👋
+                Hey, I'm Mitko, your IT matchmaker 👋
 
-                I'm an IT matchmaker, so to speak — I don't just match CVs with job postings — I match people who want to work together.
+                Be honest, aren't you tired of this whole thing where every time you want to find a job — or a hire — you have to go through all those job postings, CVs, cover letters? And then wait while masses of HR folks and managers at every level conduct all their interviews, so that — THANK THE GODS! — finally two people who'll be coding, designing, marketing, conquering the world side by side can actually talk?
 
-                A few important notes before we start:
+                I'm trying to change that.
 
-                "Looking for someone" isn't just about hiring per se. Maybe you're a dev who sees your team needs an extra pair of hands. Maybe you're a founder with an idea, looking for someone to help bring it to life.
+                How? I match people who'll be working directly with each other. Not recruiters and distant bosses who'll hear the candidate's name twice (at hire and departure, lol) — but actual future colleagues.
 
-                Even if the whole process ends up going through your HR, wouldn't it be better to meet your future colleague BEFORE they're hired, rather than after (and hey, maybe there's a referral bonus in it for you ;-)?
+                So we'll chat a bit, I'll understand your "special something," and then I'll quietly look for people "on the other side of hiring" who I think would be the best fit for you as a future colleague.
 
-                "Looking for work" isn't necessarily about employment either. Maybe you're open to side projects, or just curious what's out there.
+                If you _both_ agree, I'll share contact details and you can connect directly.
 
-                I'll chat with you to understand your "work DNA" — a story that helps others (and you!) understand what you're about. Even if you're not actively looking for anything (or anyone) right now, I think our conversation will be useful for you.
-
-                Technical note: I can't look at images, read files, or browse the internet yet, even though I might sometimes hallucinate and say I can. All in due time, yeah?
+                Technical note: I can't look at images, read files, or browse the internet yet, even though I might sometimes hallucinate and say I can. But you can always copy-paste text into the chat 😉
 
                 So, let's get started: what's your name, what do you do, what makes you happy, what frustrates you? :-)"""
             )
