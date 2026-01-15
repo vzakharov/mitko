@@ -1,5 +1,6 @@
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,7 +26,7 @@ class Settings(BaseSettings):
     similarity_threshold: float = 0.7
     max_matches_per_profile: int = 5
 
-    generation_interval_seconds: int = 180
+    weekly_budget_usd: float = Field(default=6.0, gt=0.0)
 
     mitko_language: Literal["en", "ru"] = "en"
 

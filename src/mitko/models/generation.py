@@ -46,6 +46,11 @@ class Generation(SQLModel, table=True):
         default=None,
         sa_column=Column(DateTime(timezone=True), server_default=func.now()),
     )
+    started_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="Timestamp when generation status changed to 'started'",
+    )
 
     cached_input_tokens: int | None = Field(
         default=None,

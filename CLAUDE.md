@@ -93,6 +93,7 @@ uv run alembic upgrade head
 - Runtime modes: Webhook (production) or Long Polling (development) - controlled via `TELEGRAM_MODE` env var (defaults to "polling")
 - Type-safe i18n: nested dataclasses with full IDE autocomplete, single language per deployment via `MITKO_LANGUAGE` env var
 - Migration strategy: Default to `alembic revision --autogenerate` for schema changes; only write manual migrations for data transformations, complex refactoring, or PostgreSQL-specific features (pgvector extensions, custom indexes)
+- Budget control: Weekly budget (`WEEKLY_BUDGET_USD`) dynamically spaces generations proportional to cost; currently conversation agent only
 
 **Structure**:
 

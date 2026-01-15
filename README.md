@@ -81,6 +81,20 @@ curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https:
 - `MATCHING_INTERVAL_MINUTES` - How often to run matching (default: 30)
 - `SIMILARITY_THRESHOLD` - Minimum similarity score for matches (default: 0.7)
 - `MAX_MATCHES_PER_PROFILE` - Max matches per profile per run (default: 5)
+- `WEEKLY_BUDGET_USD` - Target weekly LLM spending in USD (default: 6.0). See Budget Control section below.
+
+## Budget Control
+
+The bot uses dynamic cost-based scheduling to stay within a weekly LLM budget. When a user sends a message, the system calculates how long to wait before processing it based on the cost of the previous generation.
+
+**How it works**:
+- The interval between generations is proportional to the last generation's cost
+- Formula: if the last generation cost X dollars, wait `(X / weekly_budget) * 1 week` before the next one
+- Example: With a $6/week budget, a $0.01 generation schedules the next one ~17 minutes later
+- The system self-adjusts: expensive conversations (long chat histories) automatically increase spacing
+- First generation always runs immediately since there's no cost history yet
+
+This ensures spending stays roughly constant week-to-week regardless of conversation complexity. Currently applies to the conversation agent; rationale agent integration planned once APIs are unified.
 
 ## Development
 

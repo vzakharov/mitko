@@ -409,6 +409,7 @@ async def _processor_loop(bot: Bot) -> None:
 
                     # Mark as started and transfer status message
                     generation.status = "started"
+                    generation.started_at = datetime.now(UTC)
 
                     # Transfer status message from conversation to generation
                     if conv and conv.status_message_id:

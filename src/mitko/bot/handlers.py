@@ -134,6 +134,32 @@ async def _get_max_scheduled_time(session: AsyncSession) -> datetime | None:
     return result.scalar_one_or_none()
 
 
+async def _calculate_budget_interval(session: AsyncSession) -> timedelta:
+    """Calculate dynamic generation interval based on weekly budget.
+
+    Uses the cost of the most recently started generation to estimate spacing.
+    If no previous generation with cost exists, returns 0 (no delay).
+    """
+    result = await session.execute(
+        select(Generation)
+        .where(col(Generation.started_at).isnot(None))
+        .where(col(Generation.cost_usd).isnot(None))
+        .order_by(col(Generation.started_at).desc())
+        .limit(1)
+    )
+    last_gen = result.scalar_one_or_none()
+
+    if last_gen is None or last_gen.cost_usd is None:
+        return timedelta(seconds=0)
+
+    seconds_per_week = 7 * 24 * 3600
+    interval_seconds = (
+        last_gen.cost_usd * seconds_per_week
+    ) / SETTINGS.weekly_budget_usd
+
+    return timedelta(seconds=interval_seconds)
+
+
 async def _has_pending_generation(
     conversation_id: uuid.UUID, session: AsyncSession
 ) -> bool:
@@ -274,7 +300,7 @@ async def handle_message(message: Message) -> None:
         else:
             # Create a new generation
             now = datetime.now(UTC)
-            interval = timedelta(seconds=SETTINGS.generation_interval_seconds)
+            interval = await _calculate_budget_interval(session)
 
             # Find max scheduled time to maintain global queue order
             max_scheduled = await _get_max_scheduled_time(session)

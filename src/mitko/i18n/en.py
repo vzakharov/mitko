@@ -38,7 +38,7 @@ class EnglishLocale(Locale):
 
                 So we'll chat a bit, I'll understand your "special something," and then I'll quietly look for people "on the other side of hiring" who I think would be the best fit for you as a future colleague.
 
-                If you _both_ agree, I'll share contact details and you can connect directly.
+                If you _both_ agree, I'll share contact details and you can connect directly. And from there, if everything clicks, you can loop in the HR folks and even score that referral bonus)
 
                 Technical note: I can't look at images, read files, or browse the internet yet, even though I might sometimes hallucinate and say I can. But you can always copy-paste text into the chat 😉
 
