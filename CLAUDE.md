@@ -116,7 +116,6 @@ uv run alembic upgrade head
 - Conversation history stored as JSON, full context passed to LLM
 - Webhook security via secret token validation
 - Match authorization checks required before actions
-- **No backwards compatibility needed at this stage** - project hasn't been deployed to production yet
 - Models use SQLModel (not pure SQLAlchemy) for Pydantic validation on field assignment
 - User model has no `structured_data` field - all info in `summary` for semantic matching
 - Language setting via `MITKO_LANGUAGE` env var ("en" or "ru") - controls all user-facing text and agent responses

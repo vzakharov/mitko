@@ -1,7 +1,7 @@
 """Custom SQLAlchemy types for cross-database compatibility"""
 
 import json
-from typing import Any
+from typing import Any, cast
 
 from pydantic import HttpUrl
 from sqlalchemy import Dialect, Text, TypeDecorator
@@ -73,6 +73,70 @@ class SQLiteReadyJSONB(TypeDecorator[bytes]):
                 value if isinstance(value, str) else json.dumps(value)
             ).encode("utf-8")
         )
+
+
+class JSONBList(TypeDecorator[list[Any]]):
+    """JSONB type for list data that works with both PostgreSQL and SQLite.
+
+    - PostgreSQL: Uses native JSONB type for efficient JSON storage and querying
+    - SQLite: Falls back to Text with automatic encoding/decoding
+
+    Stores data as list[dict] in Python, handling serialization automatically.
+    """
+
+    impl = Text
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect: Dialect) -> Any:
+        """Select appropriate type based on database dialect.
+
+        Args:
+            dialect: SQLAlchemy dialect object
+
+        Returns:
+            Type descriptor appropriate for the dialect
+        """
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(JSONB())
+        return dialect.type_descriptor(Text())
+
+    def process_bind_param(
+        self, value: list[Any] | None, dialect: Dialect
+    ) -> list[Any] | str | None:
+        """Convert Python list to database format.
+
+        Args:
+            value: List value from Python
+            dialect: SQLAlchemy dialect object
+
+        Returns:
+            Value in appropriate format for the database
+        """
+        if value is None:
+            return None
+
+        return value if dialect.name == "postgresql" else json.dumps(value)
+
+    def process_result_value(self, value: Any, dialect: Dialect) -> list[Any]:
+        """Convert database value to Python list.
+
+        Args:
+            value: Value from database
+            dialect: SQLAlchemy dialect object
+
+        Returns:
+            List representation of the value
+        """
+        if value is None:
+            return []
+
+        if isinstance(value, list):
+            return cast(list[Any], value)
+
+        if isinstance(value, str):
+            return json.loads(value)
+
+        return value
 
 
 class HttpUrlType(TypeDecorator[Any]):

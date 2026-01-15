@@ -1,13 +1,18 @@
-import uuid  # noqa: I001
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from sqlalchemy import BigInteger, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
-from sqlmodel import Column, Relationship, SQLModel
+from sqlmodel import (
+    Column,
+    Field,  # pyright: ignore [reportUnknownVariableType]
+    Relationship,
+    SQLModel,
+)
 
-from .types import SQLiteReadyJSONB
+from ..types.messages import HistoryMessage
+from .types import JSONBList, SQLiteReadyJSONB
 
 if TYPE_CHECKING:
     from .generation import Generation
@@ -38,6 +43,11 @@ class Conversation(SQLModel, table=True):
     last_responses_api_response_id: str | None = Field(
         default=None,
         description="OpenAI Responses API response ID for conversation continuation. Only used when USE_OPENAI_RESPONSES_API=true. Cleared on conversation reset.",
+    )
+    history: list[HistoryMessage] = Field(
+        default_factory=list,
+        sa_column=Column(JSONBList(), nullable=False, server_default="[]"),
+        description="Conversation history for fallback when Responses API state expires.",
     )
     updated_at: datetime = Field(
         default_factory=datetime.now,

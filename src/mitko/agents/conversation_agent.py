@@ -9,12 +9,8 @@ from ..i18n import LANGUAGE_NAME, L
 from ..types.messages import ConversationResponse
 from .config import LANGUAGE_MODEL
 
-# Global agent instance
-CONVERSATION_AGENT = Agent(
-    LANGUAGE_MODEL,
-    output_type=NativeOutput(ConversationResponse),
-    instructions=dedent(
-        """\
+CONVERSATION_AGENT_INSTRUCTIONS = dedent(
+    """\
         You are Mitko, a friendly Telegram bot that matches IT professionals with opportunities
         to work together.
 
@@ -133,22 +129,28 @@ CONVERSATION_AGENT = Agent(
         == FINAL NOTE ==
 
         Remember: Be friendly, natural, and slightly cheeky — in {language_name}!"""
-    ).format(
-        language_name=LANGUAGE_NAME,
-        onboarding_examples="\n".join(
-            f"- {ex}" for ex in L.agent_examples.conversation.ONBOARDING
-        ),
-        profile_created_examples="\n".join(
-            f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_CREATED
-        ),
-        profile_updated_examples="\n".join(
-            f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_UPDATED
-        ),
-        off_topic_redirect=L.OFF_TOPIC_REDIRECT,
-        jailbreak_response=L.JAILBREAK_RESPONSE.format(
-            repo_url=SETTINGS.mitko_repo_url
-        ),
-        uncertainty_phrase=L.UNCERTAINTY_PHRASE,
-        greeting=L.commands.start.GREETING,
+).format(
+    language_name=LANGUAGE_NAME,
+    onboarding_examples="\n".join(
+        f"- {ex}" for ex in L.agent_examples.conversation.ONBOARDING
     ),
+    profile_created_examples="\n".join(
+        f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_CREATED
+    ),
+    profile_updated_examples="\n".join(
+        f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_UPDATED
+    ),
+    off_topic_redirect=L.OFF_TOPIC_REDIRECT,
+    jailbreak_response=L.JAILBREAK_RESPONSE.format(
+        repo_url=SETTINGS.mitko_repo_url
+    ),
+    uncertainty_phrase=L.UNCERTAINTY_PHRASE,
+    greeting=L.commands.start.GREETING,
+)
+
+# Global agent instance
+CONVERSATION_AGENT = Agent(
+    LANGUAGE_MODEL,
+    output_type=NativeOutput(ConversationResponse),
+    instructions=CONVERSATION_AGENT_INSTRUCTIONS,
 )

@@ -73,6 +73,7 @@ class ProfileService:
         # Clear conversation history (keep the record)
         if conversation:
             conversation.message_history_json = b"[]"
+            conversation.history = []
             conversation.user_prompt = None
 
         await self.session.commit()

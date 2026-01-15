@@ -7,6 +7,7 @@ This module implements a sequential queue system for LLM generation:
 """
 
 import asyncio
+import json
 import logging
 from contextlib import suppress
 from datetime import UTC, datetime
@@ -25,18 +26,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from ..agents.config import LANGUAGE_MODEL
-from ..agents.conversation_agent import CONVERSATION_AGENT
+from ..agents.conversation_agent import (
+    CONVERSATION_AGENT,
+    CONVERSATION_AGENT_INSTRUCTIONS,
+)
 from ..config import SETTINGS
 from ..i18n import L
 from ..models import Conversation, Generation, User, async_session_maker
 from ..services.profiler import ProfileService
-from ..types.messages import ProfileData
+from ..types.messages import HistoryMessage, ProfileData
 
 logger = logging.getLogger(__name__)
 
 # Module-level state
 _nudge_event: asyncio.Event | None = None
 _processor_task: asyncio.Task[None] | None = None
+
+MESSAGE_HISTORY_MAX_LENGTH = 20
 
 
 def _get_nudge_event() -> asyncio.Event:
@@ -76,6 +82,51 @@ async def _get_next_scheduled_time(session: AsyncSession) -> datetime | None:
         )
     )
     return result.scalar_one_or_none()
+
+
+def _format_history_for_instructions(history: list[HistoryMessage]) -> str:
+    """Format history as readable text for instructions injection.
+
+    Includes truncation for very long conversations to avoid token overflow.
+    TODO: implement summarization for longer histories.
+    """
+    if not history:
+        return ""
+
+    # Truncate to last MESSAGE_HISTORY_MAX_LENGTH messages to avoid excessive token usage
+    truncated_history = history[-MESSAGE_HISTORY_MAX_LENGTH:]
+    truncation_notice = ""
+    if len(history) > MESSAGE_HISTORY_MAX_LENGTH:
+        truncation_notice = f"[Earlier messages truncated - showing last {MESSAGE_HISTORY_MAX_LENGTH} of {len(history)} messages]\n\n"
+
+    formatted_messages = list[str]()
+    for msg in truncated_history:
+        role_label = "User" if msg["role"] == "user" else "Assistant"
+        formatted_messages.append(f"{role_label}: {msg['content']}")
+
+    return f"Previous conversation history:\n{truncation_notice}{chr(10).join(formatted_messages)}"
+
+
+def _is_expired_response_error(error: Exception) -> bool:
+    """Check if error indicates expired/missing Responses API response.
+
+    Be conservative: only match specific known patterns from OpenAI.
+    """
+    from pydantic_ai.exceptions import ModelHTTPError
+
+    if not isinstance(error, ModelHTTPError):
+        return False
+
+    error_message = str(error).lower()
+
+    # Known patterns from OpenAI Responses API:
+    # - "Container is expired" (HTTP 400)
+    # - "not found" (HTTP 404)
+    is_expired = (
+        "container is expired" in error_message or "not found" in error_message
+    )
+
+    return is_expired
 
 
 def _format_profile_card(profile: ProfileData) -> str:
@@ -154,17 +205,51 @@ async def _process_generation(
         model_settings = OpenAIResponsesModelSettings(
             openai_prompt_cache_retention="24h",
         )
+
+        # Prepare instructions with history fallback
+        instructions = CONVERSATION_AGENT_INSTRUCTIONS
+        if conv.history:
+            instructions = f"{instructions}\n\n{_format_history_for_instructions(conv.history)}"
+
         if conv.last_responses_api_response_id:
+            # Try using previous_response_id for server-side state
             model_settings["openai_previous_response_id"] = (
                 conv.last_responses_api_response_id
             )
-            message_history = None  # Responses API maintains server-side state
+            try:
+                result = await CONVERSATION_AGENT.run(
+                    user_prompt,
+                    message_history=None,  # Responses API maintains server-side state
+                    model_settings=model_settings,
+                )
+            except Exception as e:
+                if _is_expired_response_error(e):
+                    logger.warning(
+                        "Responses API state expired for conversation %s (response_id=%s): %s. Falling back to history injection.",
+                        conv.id,
+                        conv.last_responses_api_response_id,
+                        str(e),
+                    )
 
-        result = await CONVERSATION_AGENT.run(
-            user_prompt,
-            message_history=message_history,
-            model_settings=model_settings,
-        )
+                    conv.last_responses_api_response_id = None
+                    await session.commit()
+
+                    model_settings.pop("openai_previous_response_id", None)
+                    result = await CONVERSATION_AGENT.run(
+                        user_prompt,
+                        message_history=message_history,
+                        model_settings=model_settings,
+                        instructions=instructions,
+                    )
+                else:
+                    raise
+        else:
+            result = await CONVERSATION_AGENT.run(
+                user_prompt,
+                message_history=message_history,
+                model_settings=model_settings,
+                instructions=instructions,
+            )
     else:
         result = await CONVERSATION_AGENT.run(
             user_prompt,
@@ -243,6 +328,13 @@ async def _process_generation(
         await bot.send_message(conv.telegram_id, response_text)
 
     conv.message_history_json = result.all_messages_json()
+
+    # Update conversation history for fallback
+    conv.history = [
+        *conv.history,
+        {"role": "user", "content": user_prompt},
+        {"role": "assistant", "content": json.dumps(response.model_dump())},
+    ]
 
     usage = result.usage()
     generation.cached_input_tokens = usage.cache_read_tokens

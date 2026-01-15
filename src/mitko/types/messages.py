@@ -5,10 +5,17 @@ to represent different roles in a conversation (user, system, assistant).
 These types are shared by both models (for storage) and agents (for processing).
 """
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypedDict
 
 from pydantic import BaseModel, field_validator, model_validator
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
+
+
+class HistoryMessage(TypedDict):
+    """A message in the conversation history (user or assistant)."""
+
+    role: Literal["user", "assistant"]
+    content: str
 
 
 class ProfileData(BaseModel):
