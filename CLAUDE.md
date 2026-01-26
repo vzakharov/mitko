@@ -52,7 +52,7 @@ uv run alembic upgrade head
 
 # Git commits
 # Use conventional commit prefixes:
-# - feature: new features
+# - feat: new features, copy improvements, etc. — anything that faces the user
 # - refactor: code restructuring without behavior change
 # - fix: bug fixes
 # - docs: documentation changes

@@ -11,6 +11,7 @@ Clever?
 
 - Auto-generate migrations with a sequentially-numbered version id right away
 - Move profile field descriptions to schema instead of instructions
+- Advise the agent that validation error responses do not come from the user themselves, so there's no need to acknowledge or apologize for them, just to provide a new input that will not cause the error again
 - Individual scheduling (if > X responses in Y minutes, schedule forward by Z minutes)
 - Fix FULL resetting logic (including message sent) — needs some re-flowing
 - Bug with thought bubble not disappearing on an error
