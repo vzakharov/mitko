@@ -22,6 +22,14 @@ async def run_matching_job(bot: Bot) -> None:
             await notify_match(bot, match, session)
 
 
+def _format_profile_for_display(user: User) -> str:
+    """Combine matching_summary + practical_context for display"""
+    parts = [user.matching_summary or ""]
+    if user.practical_context:
+        parts.append(user.practical_context)
+    return "\n\n".join(parts)
+
+
 async def notify_match(bot: Bot, match: Match, session: AsyncSession) -> None:
     user_a_result = await session.execute(
         select(User).where(col(User.telegram_id) == match.user_a_id)
@@ -32,12 +40,15 @@ async def notify_match(bot: Bot, match: Match, session: AsyncSession) -> None:
     user_a = user_a_result.scalar_one()
     user_b = user_b_result.scalar_one()
 
+    profile_display_a = _format_profile_for_display(user_b)
+    profile_display_b = _format_profile_for_display(user_a)
+
     message_a = L.matching.FOUND.format(
-        profile=user_b.summary, rationale=match.match_rationale
+        profile=profile_display_a, rationale=match.match_rationale
     )
 
     message_b = L.matching.FOUND.format(
-        profile=user_a.summary, rationale=match.match_rationale
+        profile=profile_display_b, rationale=match.match_rationale
     )
 
     keyboard = match_consent_keyboard(match.id)

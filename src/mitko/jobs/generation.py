@@ -131,11 +131,11 @@ def _is_expired_response_error(error: Exception) -> bool:
 
 
 def _format_profile_card(profile: ProfileData) -> str:
-    """Format profile as a user-visible card."""
-    card_parts = [L.profile.CARD_HEADER + "\n"]
+    """Format profile as a user-visible card (Parts 1 + 2 only)."""
+    card_parts: list[str] = [L.profile.CARD_HEADER + "\n"]
 
-    # Role
-    roles = list[str]()
+    # Role display (unchanged)
+    roles: list[str] = []
     if profile.is_seeker:
         roles.append(L.profile.ROLE_SEEKER)
     if profile.is_provider:
@@ -144,8 +144,15 @@ def _format_profile_card(profile: ProfileData) -> str:
         f"{L.profile.ROLE_LABEL}: {L.profile.ROLE_SEPARATOR.join(roles)}"
     )
 
-    # Summary
-    card_parts.append(f"\n\n{profile.summary}")
+    # Part 1: Matching Summary (technical profile)
+    card_parts.append(f"\n\n{profile.matching_summary}")
+
+    # Part 2: Practical Context (work preferences)
+    # Only display if present (may be null during lazy migration)
+    if profile.practical_context:
+        card_parts.append(f"\n\n{profile.practical_context}")
+
+    # Part 3 is NEVER shown to user
 
     return "".join(card_parts)
 

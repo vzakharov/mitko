@@ -23,19 +23,23 @@ class ProfileService:
         Returns:
             Updated user
         """
-        # Check if summary changed (triggers re-embedding)
-        summary_changed = is_update and user.summary != profile_data.summary
+        # Track if matching_summary changed (triggers re-embedding)
+        matching_summary_changed = (
+            is_update and user.matching_summary != profile_data.matching_summary
+        )
 
-        # Update user fields
+        # Update all profile fields
         user.is_seeker = profile_data.is_seeker
         user.is_provider = profile_data.is_provider
-        user.summary = profile_data.summary
+        user.matching_summary = profile_data.matching_summary
+        user.practical_context = profile_data.practical_context
+        user.private_observations = profile_data.private_observations
 
-        # Re-generate embedding if summary changed or new profile
-        if not is_update or summary_changed:
-            user.embedding = await get_embedding(profile_data.summary)
+        # Generate embedding ONLY from matching_summary (Part 1)
+        if not is_update or matching_summary_changed:
+            user.embedding = await get_embedding(profile_data.matching_summary)
 
-        # Mark as complete and active
+        # Mark profile as complete
         user.is_complete = True
         user.state = "active"
 
@@ -65,7 +69,9 @@ class ProfileService:
         # Reset user fields to defaults
         user.is_seeker = None
         user.is_provider = None
-        user.summary = None
+        user.matching_summary = None
+        user.practical_context = None
+        user.private_observations = None
         user.embedding = None
         user.is_complete = False
         user.state = "onboarding"

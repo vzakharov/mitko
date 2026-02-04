@@ -31,8 +31,11 @@ class User(SQLModel, table=True):
         ),
     )
 
-    # Profile data (formerly in Profile model)
-    summary: str | None = Field(default=None, sa_column=Column(Text))
+    matching_summary: str | None = Field(default=None, sa_column=Column(Text))
+    practical_context: str | None = Field(default=None, sa_column=Column(Text))
+    private_observations: str | None = Field(
+        default=None, sa_column=Column(Text)
+    )
 
     embedding: list[float] | None = Field(
         default=None, sa_column=Column(Vector(1536), nullable=True)

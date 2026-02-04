@@ -23,7 +23,9 @@ class ProfileData(BaseModel):
 
     is_seeker: bool
     is_provider: bool
-    summary: str
+    matching_summary: str
+    practical_context: str
+    private_observations: str | None = None
 
     @model_validator(mode="after")
     def validate_roles(self) -> "ProfileData":
@@ -34,13 +36,21 @@ class ProfileData(BaseModel):
             )
         return self
 
-    @field_validator("summary")
+    @field_validator("matching_summary", "practical_context")
     @classmethod
-    def validate_summary(cls, v: str) -> str:
-        """Ensure summary is not empty"""
+    def validate_non_empty(cls, v: str) -> str:
+        """Ensure required fields are not empty"""
         if not v or not v.strip():
-            raise ValueError("Summary cannot be empty")
+            raise ValueError("Field cannot be empty")
         return v.strip()
+
+    @field_validator("private_observations")
+    @classmethod
+    def validate_optional_field(cls, v: str | None) -> str | None:
+        """Ensure optional field is either None or non-empty"""
+        if v is not None and not v.strip():
+            return None
+        return v.strip() if v else None
 
 
 class ConversationResponse(BaseModel):

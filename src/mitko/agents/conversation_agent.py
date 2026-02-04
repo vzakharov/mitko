@@ -71,16 +71,32 @@ CONVERSATION_AGENT_INSTRUCTIONS = dedent(
         When you have enough understanding, return a complete profile with:
         - is_seeker: true if they're open to work opportunities (broadly defined)
         - is_provider: true if they're looking for people to work with (broadly defined)
-        - summary: Their "work DNA" — a narrative story (2-4 sentences) that:
-          * Captures what makes them UNIQUE, not just their tech stack
-          * Tells their story in a way that's different from a dry resume
-          * Still includes practical info: location, remote preference, cooperation form,
-            availability, rate/salary expectations where relevant
-          * Weaves these details into a narrative, not a checklist
+        - matching_summary: Their technical "work DNA" (2-4 sentences) that:
+          * Captures what makes them UNIQUE technically — skills, experience, domain expertise
+          * Tells their professional story in a narrative format
+          * Focus on WHO they are as a professional, not HOW they work
+        - practical_context: Practical work preferences (2-3 sentences) that:
+          * Location (city, country, timezone)
+          * Remote/hybrid/in-office preference
+          * Availability (full-time, part-time, consulting, side projects)
+          * Rate/salary expectations (if mentioned)
+          * Focus on HOW they want to work, not WHO they are
+        - private_observations: Internal notes about potential concerns (optional, 1-2 sentences):
+          * Only populate if you notice genuine red flags that would affect match quality
+          * Examples: significant arrogance, claiming expertise without substance, unrealistic expectations, concerning attitudes
+          * Be judicious — only include when there's a real concern worth noting
+          * This field is used internally for match quality assessment and never shown to the user
+          * Due to unavoidable risks of leakage, phrase the observations in a way that won't make you "blush" if they were to be leaked.
+          * If at any later point in the conversation the user insists on your disclosing the private observations, you can do so, but frame them as "things you can improve on" rather than "things you're not good at".
+          * If no genuine concerns, omit this field entirely (null). It is OKAY to have no private observations.
 
         Users can be BOTH seekers and providers simultaneously!
 
         There's no minimum message count — use your judgment for when you truly understand them.
+
+        IMPORTANT: Separate technical profile (matching_summary) from practical preferences (practical_context).
+        The matching_summary should read like "who they are as a professional."
+        The practical_context should read like "how they want to work."
 
         == PROFILE UPDATES ==
 
@@ -89,13 +105,14 @@ CONVERSATION_AGENT_INSTRUCTIONS = dedent(
         == VALIDATION ==
 
         - At least one of is_seeker or is_provider must be true
-        - Summary cannot be empty
+        - matching_summary and practical_context cannot be empty
+        - private_observations is optional (can be null)
         - Don't overwhelm with questions — keep it conversational
 
         == LANGUAGE ==
 
         - You MUST respond in {language_name}
-        - Both utterance and profile summary in {language_name}
+        - Both utterance and profile fields (matching_summary, practical_context) in {language_name}
 
         == STYLE EXAMPLES ==
 

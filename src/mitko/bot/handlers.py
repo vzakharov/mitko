@@ -47,6 +47,14 @@ def get_bot() -> Bot:
     return _bot_instance
 
 
+def _format_profile_for_display(user: User) -> str:
+    """Combine matching_summary + practical_context for display"""
+    parts = [user.matching_summary or ""]
+    if user.practical_context:
+        parts.append(user.practical_context)
+    return "\n\n".join(parts)
+
+
 async def validate_callback_message(callback: CallbackQuery) -> Message | None:
     """
     Validate callback.message is accessible and return it, or send error and return None.
@@ -102,7 +110,7 @@ async def cmd_start(message: Message) -> None:
 
         # Check if user has ANY existing data
         has_data = (
-            user.summary is not None
+            user.matching_summary is not None
             or user.is_seeker is not None
             or user.is_provider is not None
             or conv.message_history != []
@@ -384,13 +392,15 @@ async def handle_match_accept(
             await session.commit()
 
             bot = get_bot()
+            profile_display_a = _format_profile_for_display(user_b)
+            profile_display_b = _format_profile_for_display(user_a)
             await bot.send_message(
                 user_a.telegram_id,
-                L.matching.CONNECTION_MADE.format(profile=user_b.summary),
+                L.matching.CONNECTION_MADE.format(profile=profile_display_a),
             )
             await bot.send_message(
                 user_b.telegram_id,
-                L.matching.CONNECTION_MADE.format(profile=user_a.summary),
+                L.matching.CONNECTION_MADE.format(profile=profile_display_b),
             )
             await callback.answer(L.matching.ACCEPT_CONNECTED)
         else:
