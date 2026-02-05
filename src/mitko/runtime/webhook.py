@@ -5,11 +5,14 @@ from aiogram.types import Update
 from fastapi import FastAPI, Request, Response
 
 from ..config import SETTINGS
-from ..jobs.generation import (
+from ..jobs.generation_processor import (
     start_generation_processor,
     stop_generation_processor,
 )
-from ..jobs.matching import start_matching_scheduler, stop_matching_scheduler
+from ..jobs.matching_scheduler import (
+    start_matching_scheduler,
+    stop_matching_scheduler,
+)
 
 
 class WebhookRuntime:

@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from ..i18n import L
-from ..jobs.generation import nudge_processor
+from ..jobs.generation_processor import nudge_processor
 from ..models import Conversation, Generation, User, get_db
-from ..services.generation import create_generation
+from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
@@ -272,9 +272,11 @@ async def handle_message(message: Message) -> None:
             )
         else:
             # Create a new generation
-            generation = await create_generation(
-                session, conversation_id=conv.id
+            generation_service = GenerationOrchestrator(session)
+            generation = await generation_service.create_generation(
+                conversation_id=conv.id
             )
+            nudge_processor()
 
             # Send acknowledgment with estimated reply time
             status_text = _format_time_delta(generation.scheduled_for)

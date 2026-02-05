@@ -1,7 +1,8 @@
 # Type stubs for apscheduler.schedulers.asyncio
 # Minimal stubs covering our usage of AsyncIOScheduler
 
-from typing import Any, Callable
+from typing import Any, Callable  # noqa: UP035
+
 from apscheduler.job import Job
 
 class AsyncIOScheduler:
