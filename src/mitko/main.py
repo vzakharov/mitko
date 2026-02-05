@@ -10,8 +10,8 @@ from .jobs.generation_processor import (
     stop_generation_processor,
 )
 from .jobs.matching_scheduler import (
-    start_matching_scheduler,
-    stop_matching_scheduler,
+    start_matching_loop,
+    stop_matching_loop,
 )
 from .runtime.polling import PollingRuntime
 from .runtime.webhook import WebhookRuntime
@@ -48,12 +48,12 @@ async def main():
 
     try:
         await runtime.startup(bot, dp)
-        start_matching_scheduler(bot)
+        start_matching_loop(bot)
         start_generation_processor(bot)
         await runtime.run(bot, dp)
     finally:
         await stop_generation_processor()
-        stop_matching_scheduler()
+        stop_matching_loop()
         await runtime.shutdown(bot, dp)
 
 

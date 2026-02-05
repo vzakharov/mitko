@@ -13,6 +13,68 @@ class MatcherService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
+    async def find_next_match_pair(self) -> Match | None:
+        """Find next match pair: earliest updated user + most similar opposite-role user.
+
+        Returns Match WITHOUT rationale (empty string) - rationale generation deferred to MatchGeneration.
+        Match is NOT committed - caller decides when to commit.
+        """
+        # Get user with earliest profile_updated_at (complete, with embedding)
+        earliest_user_result = await self.session.execute(
+            select(User)
+            .where(
+                and_(
+                    col(User.is_complete) == True,  # noqa: E712
+                    col(User.embedding) != None,  # noqa: E711
+                    or_(
+                        col(User.is_seeker) == True,
+                        col(User.is_provider) == True,
+                    ),  # noqa: E712
+                )
+            )
+            .order_by(col(User.profile_updated_at).asc().nulls_last())
+            .limit(1)
+        )
+        user_a = earliest_user_result.scalar_one_or_none()
+
+        if user_a is None:
+            return None
+
+        # Find most similar user on opposite side
+        # If user_a is both seeker and provider, try seeker first
+        if user_a.is_seeker:
+            similar_users = await self._find_similar_users(
+                user_a, target_role="provider"
+            )
+        elif user_a.is_provider:
+            similar_users = await self._find_similar_users(
+                user_a, target_role="seeker"
+            )
+        else:
+            return None
+
+        if not similar_users:
+            return None
+
+        user_b, similarity = similar_users[0]
+
+        # Check for duplicates
+        if not await self._should_create_match(
+            user_a.telegram_id, user_b.telegram_id
+        ):
+            return None
+
+        # Create match WITHOUT rationale (deferred to generation)
+        match = Match(
+            user_a_id=user_a.telegram_id,
+            user_b_id=user_b.telegram_id,
+            similarity_score=similarity,
+            match_rationale="",
+            status="pending",
+        )
+        self.session.add(match)
+        return match
+
     async def find_matches(self) -> list[Match]:
         seeker_users = await self.session.execute(
             select(User).where(
@@ -39,6 +101,49 @@ class MatcherService:
 
         await self.session.commit()
         return matches_created
+
+    async def _find_similar_users(
+        self, source_user: User, target_role: str
+    ) -> list[tuple[User, float]]:
+        """Find similar users with specified role (role-agnostic version).
+
+        Args:
+            source_user: User to find matches for
+            target_role: 'seeker' or 'provider'
+        """
+        if source_user.embedding is None:
+            return []
+
+        distance = col(User.embedding).op("<=>", return_type=Float())(
+            source_user.embedding
+        )
+        similarity_expr = (1 - distance).label("similarity")
+
+        # Build role condition
+        if target_role == "provider":
+            role_condition = col(User.is_provider) == True  # noqa: E712
+        elif target_role == "seeker":
+            role_condition = col(User.is_seeker) == True  # noqa: E712
+        else:
+            raise ValueError(f"Invalid target_role: {target_role}")
+
+        query = (
+            select(User, similarity_expr)
+            .where(
+                and_(
+                    role_condition,
+                    col(User.is_complete) == True,  # noqa: E712
+                    col(User.embedding) != None,  # noqa: E711
+                    col(User.telegram_id) != source_user.telegram_id,
+                    similarity_expr >= SETTINGS.similarity_threshold,
+                )
+            )
+            .order_by(similarity_expr.desc())
+            .limit(1)
+        )
+
+        result = await self.session.execute(query)
+        return [(user, float(similarity)) for user, similarity in result]
 
     async def _find_similar_providers(
         self, seeker: User

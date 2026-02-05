@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models import Generation, async_session_maker
 from ..services.conversation_generation import ConversationGeneration
 from ..services.generation_orchestrator import GenerationOrchestrator
+from ..services.match_generation import MatchGeneration
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,10 @@ async def _route_and_process(
     if generation.conversation is not None:
         await ConversationGeneration(
             bot, session, generation, generation.conversation
+        ).execute()
+    elif generation.match is not None:
+        await MatchGeneration(
+            bot, session, generation, generation.match
         ).execute()
     else:
         raise ValueError(f"Generation {generation.id} has no associated task")

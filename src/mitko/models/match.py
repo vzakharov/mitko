@@ -17,6 +17,7 @@ from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
 
 if TYPE_CHECKING:
+    from .generation import Generation
     from .user import User
 
 MatchStatus = Literal[
@@ -64,3 +65,4 @@ class Match(SQLModel, table=True):
         back_populates="matches_b",
         sa_relationship_kwargs={"foreign_keys": "Match.user_b_id"},
     )
+    generations: list["Generation"] = Relationship(back_populates="match")

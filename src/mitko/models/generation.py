@@ -12,6 +12,7 @@ from .types import HttpUrlType
 
 if TYPE_CHECKING:
     from .conversation import Conversation
+    from .match import Match
 
 GenerationStatus = Literal["pending", "started", "completed", "failed"]
 
@@ -31,6 +32,10 @@ class Generation(SQLModel, table=True):
     conversation_id: uuid.UUID | None = Field(
         default=None,
         foreign_key="conversations.id",
+    )
+    match_id: uuid.UUID | None = Field(
+        default=None,
+        foreign_key="matches.id",
     )
     scheduled_for: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False),
@@ -85,3 +90,4 @@ class Generation(SQLModel, table=True):
     conversation: "Conversation | None" = Relationship(
         back_populates="generations"
     )
+    match: "Match | None" = Relationship(back_populates="generations")
