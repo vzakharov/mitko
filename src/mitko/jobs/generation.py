@@ -160,7 +160,17 @@ def _format_profile_card(profile: ProfileData) -> str:
 async def _process_generation(
     bot: Bot, generation: Generation, session: AsyncSession
 ) -> None:
-    """Process a single generation: generate response and send it."""
+    """Route to task-specific processor based on which FK is set."""
+    if generation.conversation_id is not None:
+        await _process_conversation(bot, generation, session)
+    else:
+        raise ValueError(f"Generation {generation.id} has no associated task")
+
+
+async def _process_conversation(
+    bot: Bot, generation: Generation, session: AsyncSession
+) -> None:
+    """Process conversation generation: run agent, update profile, send message."""
     # Fetch conversation
     conv_result = await session.execute(
         select(Conversation).where(
@@ -405,14 +415,18 @@ async def _processor_loop(bot: Bot) -> None:
                 generation = await _find_next_ripe_generation(session)
 
                 if generation is not None:
-                    # Fetch conversation for error handling
-                    conv_result = await session.execute(
-                        select(Conversation).where(
-                            col(Conversation.id) == generation.conversation_id
+                    # Fetch conversation for error handling (only if conversation_id is set)
+                    conv = None
+                    telegram_id = None
+                    if generation.conversation_id is not None:
+                        conv_result = await session.execute(
+                            select(Conversation).where(
+                                col(Conversation.id)
+                                == generation.conversation_id
+                            )
                         )
-                    )
-                    conv = conv_result.scalar_one_or_none()
-                    telegram_id = conv.telegram_id if conv else None
+                        conv = conv_result.scalar_one_or_none()
+                        telegram_id = conv.telegram_id if conv else None
 
                     # Mark as started and transfer status message
                     generation.status = "started"

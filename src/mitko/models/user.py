@@ -45,19 +45,11 @@ class User(SQLModel, table=True):
     is_complete: bool = Field(default=False)
 
     profile_version: int | None = Field(
-        default=None,
-        sa_column=Column(
-            Integer,
-            nullable=True
-        )
+        default=None, sa_column=Column(Integer, nullable=True)
     )
 
     profile_updated_at: datetime | None = Field(
-        default=None,
-        sa_column=Column(
-            DateTime(timezone=True),
-            nullable=True
-        )
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
     created_at: datetime = Field(

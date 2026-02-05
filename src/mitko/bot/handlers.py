@@ -1,21 +1,20 @@
 import asyncio
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import UUID
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, InaccessibleMessage, Message
-from sqlalchemy import func as sql_func
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from ..config import SETTINGS
 from ..i18n import L
 from ..jobs.generation import nudge_processor
 from ..models import Conversation, Generation, User, get_db
+from ..services.generation import create_generation
 from ..services.profiler import ProfileService
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
@@ -132,40 +131,6 @@ async def cmd_start(message: Message) -> None:
                 "Started conversation for user %d: empty history",
                 message.from_user.id,
             )
-
-
-async def _get_max_scheduled_time(session: AsyncSession) -> datetime | None:
-    """Get the maximum scheduled_for time across all generations."""
-    result = await session.execute(
-        select(sql_func.max(Generation.scheduled_for))
-    )
-    return result.scalar_one_or_none()
-
-
-async def _calculate_budget_interval(session: AsyncSession) -> timedelta:
-    """Calculate dynamic generation interval based on weekly budget.
-
-    Uses the cost of the most recently started generation to estimate spacing.
-    If no previous generation with cost exists, returns 0 (no delay).
-    """
-    result = await session.execute(
-        select(Generation)
-        .where(col(Generation.started_at).isnot(None))
-        .where(col(Generation.cost_usd).isnot(None))
-        .order_by(col(Generation.started_at).desc())
-        .limit(1)
-    )
-    last_gen = result.scalar_one_or_none()
-
-    if last_gen is None or last_gen.cost_usd is None:
-        return timedelta(seconds=0)
-
-    seconds_per_week = 7 * 24 * 3600
-    interval_seconds = (
-        last_gen.cost_usd * seconds_per_week
-    ) / SETTINGS.weekly_budget_usd
-
-    return timedelta(seconds=interval_seconds)
 
 
 async def _has_pending_generation(
@@ -307,27 +272,12 @@ async def handle_message(message: Message) -> None:
             )
         else:
             # Create a new generation
-            now = datetime.now(UTC)
-            interval = await _calculate_budget_interval(session)
-
-            # Find max scheduled time to maintain global queue order
-            max_scheduled = await _get_max_scheduled_time(session)
-
-            if max_scheduled is not None:
-                # Add interval to max (even if in the past - for budget control)
-                scheduled_for = max_scheduled + interval
-            else:
-                # No generations exist - schedule for now
-                scheduled_for = now
-
-            generation = Generation(
-                conversation_id=conv.id,
-                scheduled_for=scheduled_for,
+            generation = await create_generation(
+                session, conversation_id=conv.id
             )
-            session.add(generation)
 
             # Send acknowledgment with estimated reply time
-            status_text = _format_time_delta(scheduled_for)
+            status_text = _format_time_delta(generation.scheduled_for)
             status_msg = await message.answer(status_text)
 
             # Store status message ID in conversation (not generation)
@@ -337,7 +287,7 @@ async def handle_message(message: Message) -> None:
             logger.info(
                 "Status message sent: msg_id=%d, scheduled_for=%s",
                 status_msg.message_id,
-                scheduled_for,
+                generation.scheduled_for,
             )
 
             # Nudge processor after a short delay to allow rapid successive messages
