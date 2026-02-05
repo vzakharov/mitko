@@ -2,7 +2,7 @@ from datetime import datetime  # noqa: I001
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import VARCHAR, BigInteger, DateTime, Index, Text, func
+from sqlalchemy import VARCHAR, BigInteger, DateTime, Index, Integer, Text, func
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
 
@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     from .conversation import Conversation
     from .match import Match
 
+
+CURRENT_PROFILE_VERSION = 2
 
 UserState = Literal["onboarding", "profiling", "active", "paused"]
 
@@ -41,6 +43,22 @@ class User(SQLModel, table=True):
         default=None, sa_column=Column(Vector(1536), nullable=True)
     )
     is_complete: bool = Field(default=False)
+
+    profile_version: int | None = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            nullable=True
+        )
+    )
+
+    profile_updated_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=True
+        )
+    )
 
     created_at: datetime = Field(
         default_factory=datetime.now,

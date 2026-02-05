@@ -1,7 +1,10 @@
+from datetime import datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..llm import get_embedding
 from ..models import Conversation, User
+from ..models.user import CURRENT_PROFILE_VERSION
 from ..types.messages import ProfileData
 
 
@@ -42,6 +45,8 @@ class ProfileService:
         # Mark profile as complete
         user.is_complete = True
         user.state = "active"
+        user.profile_version = CURRENT_PROFILE_VERSION
+        user.profile_updated_at = datetime.now()
 
         await self.session.commit()
         await self.session.refresh(user)
@@ -75,6 +80,8 @@ class ProfileService:
         user.embedding = None
         user.is_complete = False
         user.state = "onboarding"
+        user.profile_version = None
+        user.profile_updated_at = None
 
         # Clear conversation history (keep the record)
         if conversation:
