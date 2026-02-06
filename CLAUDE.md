@@ -103,7 +103,7 @@ uv run alembic upgrade head
 - `runtime/`: Modular runtime implementations (webhook, polling)
 - `llm/`: Provider abstraction (OpenAI/Anthropic) for embeddings
 - `services/`: Business logic (profiler with create/update support, matcher)
-- `jobs/`: Background matching scheduler
+- `jobs/`: Background matching scheduler (round-robin matcher with explicit round progression)
 - `i18n.py`: Type-safe internationalization with nested dataclasses (EN/RU support)
 
 **Important**:
@@ -138,3 +138,15 @@ uv run alembic upgrade head
 - User model has no `structured_data` field - all info in `summary` for semantic matching
 - Language setting via `MITKO_LANGUAGE` env var ("en" or "ru") - controls all user-facing text and agent responses
 - LLM system prompts stay in English for optimal performance, but agents respond in configured language
+
+### Matching & Rounds
+
+- Round-robin fairness: all complete users are tried before any user is retried
+- `MatcherService` is responsible for **finding** the next match candidate and returns structured `MatchResult` types:
+  - `MatchFound` for both real matches and participation records (when no candidate is available for a user)
+  - `RoundExhausted` when all users have participated in the current round
+  - `NoUsersAvailable` when there are no complete users at all
+- `run_matching_loop` in `matching_scheduler` orchestrates **round progression**:
+  - Advances to the next round explicitly when it receives `RoundExhausted`
+  - Immediately retries after participation records and round advancement (no 30-minute sleep)
+  - Sleeps only when `NoUsersAvailable` is returned

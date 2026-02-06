@@ -7,6 +7,7 @@ from aiogram import Bot
 
 from ..models import async_session_maker
 from ..services.generation_orchestrator import GenerationOrchestrator
+from ..services.match_result import MatchFound, NoUsersAvailable, RoundExhausted
 from ..services.matcher import MatcherService
 
 logger = logging.getLogger(__name__)
@@ -18,68 +19,83 @@ MATCHING_RETRY_INTERVAL_SECONDS = 30 * 60  # 30 minutes
 _matching_task: asyncio.Task[None] | None = None
 
 
-async def run_matching_loop(bot: Bot) -> None:
-    """Find and enqueue one match, then exit. Retry if none found.
+async def run_matching_loop() -> None:
+    """Find and enqueue one match, then exit. Handle round progression.
 
     This function:
-    1. Finds the next match pair (earliest updated user + most similar opposite-role user)
-    2. If found: creates generation, commits, and exits
-    3. If not found: sleeps 30 minutes and retries
-
-    After a match is enqueued, the generation processor handles rationale generation
-    and notification. When complete, MatchGeneration restarts this loop for the next match.
+    1. Finds the next match pair (round-robin algorithm)
+    2. Handles round advancement when current round exhausted
+    3. Creates generation for real matches (not participation records)
+    4. Sleeps only when no complete users exist at all
     """
     logger.info("Starting matching loop")
 
+    forced_round: int | None = None
+
     while True:
         async with async_session_maker() as session:
-            if match := await MatcherService(session).find_next_match_pair():
-                # Commit match to DB (including participation records)
-                await session.commit()
+            matcher = MatcherService(session)
+            result = await matcher.find_next_match_pair(
+                forced_round=forced_round
+            )
 
-                # Check if this is a participation record (no actual match)
-                if match.user_b_id is None:
-                    logger.info(
-                        "User %s participated in round %d but no match found (no available candidates)",
-                        match.user_a_id,
-                        match.matching_round,
+            match result:
+                case MatchFound(match):
+                    await session.commit()
+
+                    if match.user_b_id is None:
+                        logger.info(
+                            "User %s participated in round %d but no match found (no available candidates)",
+                            match.user_a_id,
+                            match.matching_round,
+                        )
+                        forced_round = match.matching_round
+                        continue
+
+                    await GenerationOrchestrator(session).create_generation(
+                        match_id=match.id
                     )
-                    # Continue immediately to try next user (no sleep)
+                    await session.commit()
+
+                    logger.info(
+                        "Enqueued match %s (users %s ↔ %s, similarity=%.2f) for generation",
+                        match.id,
+                        match.user_a_id,
+                        match.user_b_id,
+                        match.similarity_score,
+                    )
+
+                    return
+
+                case RoundExhausted(current_round):
+                    new_round = await matcher.advance_round()
+
+                    logger.info(
+                        "Round %d complete, starting round %d",
+                        current_round,
+                        new_round,
+                    )
+                    forced_round = new_round
                     continue
 
-                # Real match found - create generation
-                await GenerationOrchestrator(session).create_generation(
-                    match_id=match.id
-                )
-                await session.commit()
+                case NoUsersAvailable():
+                    logger.info(
+                        "No complete users available, sleeping %d seconds",
+                        MATCHING_RETRY_INTERVAL_SECONDS,
+                    )
+                    forced_round = None
+                    await asyncio.sleep(MATCHING_RETRY_INTERVAL_SECONDS)
 
-                logger.info(
-                    "Enqueued match %s (users %s ↔ %s, similarity=%.2f) for generation",
-                    match.id,
-                    match.user_a_id,
-                    match.user_b_id,
-                    match.similarity_score,
-                )
-
-                return  # Exit - will be restarted after generation completes
-            else:
-                # No match pair found
-                # This happens when:
-                # 1. No complete users exist
-                # 2. All users participated in current round (and round progression kicked in)
-                #
-                # In both cases, sleep and retry
-                logger.info(
-                    "No matches found, sleeping %d seconds",
-                    MATCHING_RETRY_INTERVAL_SECONDS,
-                )
-                await asyncio.sleep(MATCHING_RETRY_INTERVAL_SECONDS)
+                case _:
+                    logger.warning(
+                        "Received unexpected MatchResult type: %r", result
+                    )
 
 
 def start_matching_loop(bot: Bot) -> None:
     """Start the matching loop as a background task."""
     global _matching_task
-    _matching_task = asyncio.create_task(run_matching_loop(bot))
+    _matching_task = asyncio.create_task(run_matching_loop())
     logger.info("Matching loop started")
 
 
