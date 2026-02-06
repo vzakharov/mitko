@@ -8,6 +8,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
     func,
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
     from .user import User
 
 MatchStatus = Literal[
-    "pending", "a_accepted", "b_accepted", "connected", "rejected"
+    "pending", "a_accepted", "b_accepted", "connected", "rejected", "unmatched"
 ]
 
 
@@ -37,13 +38,17 @@ class Match(SQLModel, table=True):
             BigInteger(), ForeignKey("users.telegram_id"), nullable=False
         )
     )
-    user_b_id: int = Field(
+    user_b_id: int | None = Field(
+        default=None,
         sa_column=Column(
-            BigInteger(), ForeignKey("users.telegram_id"), nullable=False
-        )
+            BigInteger(), ForeignKey("users.telegram_id"), nullable=True
+        ),
     )
     similarity_score: float = Field(sa_column=Column(Float, nullable=False))
     match_rationale: str = Field(sa_column=Column(Text, nullable=False))
+    matching_round: int = Field(
+        default=1, sa_column=Column(Integer, nullable=False, server_default="1")
+    )
     status: MatchStatus = Field(
         default="pending",
         sa_column=Column(String(20), nullable=False, server_default="pending"),
@@ -55,13 +60,16 @@ class Match(SQLModel, table=True):
         ),
     )
 
-    __table_args__ = (Index("ix_matches_status", "status"),)
+    __table_args__ = (
+        Index("ix_matches_status", "status"),
+        Index("ix_matches_matching_round", "matching_round"),
+    )
 
     user_a: "User" = Relationship(
         back_populates="matches_a",
         sa_relationship_kwargs={"foreign_keys": "Match.user_a_id"},
     )
-    user_b: "User" = Relationship(
+    user_b: "User | None" = Relationship(
         back_populates="matches_b",
         sa_relationship_kwargs={"foreign_keys": "Match.user_b_id"},
     )

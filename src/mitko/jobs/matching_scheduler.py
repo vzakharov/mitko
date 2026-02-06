@@ -34,10 +34,20 @@ async def run_matching_loop(bot: Bot) -> None:
     while True:
         async with async_session_maker() as session:
             if match := await MatcherService(session).find_next_match_pair():
-                # Commit match to DB
+                # Commit match to DB (including participation records)
                 await session.commit()
 
-                # Create generation (respects budget interval)
+                # Check if this is a participation record (no actual match)
+                if match.user_b_id is None:
+                    logger.info(
+                        "User %s participated in round %d but no match found (no available candidates)",
+                        match.user_a_id,
+                        match.matching_round,
+                    )
+                    # Continue immediately to try next user (no sleep)
+                    continue
+
+                # Real match found - create generation
                 await GenerationOrchestrator(session).create_generation(
                     match_id=match.id
                 )
@@ -53,8 +63,12 @@ async def run_matching_loop(bot: Bot) -> None:
 
                 return  # Exit - will be restarted after generation completes
             else:
-                # No matches found - sleep and retry
-                # TODO: Replace with nudge mechanism when profiles are updated
+                # No match pair found
+                # This happens when:
+                # 1. No complete users exist
+                # 2. All users participated in current round (and round progression kicked in)
+                #
+                # In both cases, sleep and retry
                 logger.info(
                     "No matches found, sleeping %d seconds",
                     MATCHING_RETRY_INTERVAL_SECONDS,

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .match import Match
 
 
-CURRENT_PROFILE_VERSION = 2
+CURRENT_PROFILER_VERSION = 2
 
 UserState = Literal["onboarding", "profiling", "active", "paused"]
 
@@ -44,7 +44,7 @@ class User(SQLModel, table=True):
     )
     is_complete: bool = Field(default=False)
 
-    profile_version: int | None = Field(
+    profiler_version: int | None = Field(
         default=None, sa_column=Column(Integer, nullable=True)
     )
 
