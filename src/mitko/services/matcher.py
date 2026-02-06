@@ -6,9 +6,9 @@ from sqlmodel import col
 from ..config import SETTINGS
 from ..models import Match, User
 from .match_result import (
+    AllUsersMatched,
     MatchFound,
     MatchResult,
-    NoUsersAvailable,
     RoundExhausted,
 )
 
@@ -32,7 +32,7 @@ class MatcherService:
         Returns:
             - MatchFound: Match created (real match or participation record)
             - RoundExhausted: Current round complete, needs advancement
-            - NoUsersAvailable: No complete users exist
+            - AllUsersMatched: No unmatched users exist
 
         Returns Match WITHOUT rationale (empty string) - rationale generation
         deferred to MatchGeneration. Match is NOT committed - caller decides
@@ -41,16 +41,13 @@ class MatcherService:
         current_round = forced_round or await self._get_current_round()
         users_in_round = await self._get_users_in_round(current_round)
 
-        user_a = await self._find_next_user_a(
-            current_round=current_round,
-            exclude_users=set(users_in_round),
-        )
+        user_a = await self._find_next_user_a(exclude_users=set(users_in_round))
 
         if user_a is None:
             if users_in_round:
                 return RoundExhausted(current_round=current_round)
 
-            return NoUsersAvailable()
+            return AllUsersMatched()
 
         if user_a.is_seeker:
             similar_users = await self._find_similar_users(
@@ -120,9 +117,7 @@ class MatcherService:
         current_round = await self._get_current_round()
         return current_round + 1
 
-    async def _find_next_user_a(
-        self, current_round: int, exclude_users: set[int]
-    ) -> User | None:
+    async def _find_next_user_a(self, exclude_users: set[int]) -> User | None:
         query_conditions = [
             col(User.is_complete) == True,  # noqa: E712
             col(User.embedding) != None,  # noqa: E711

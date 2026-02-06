@@ -7,7 +7,7 @@ from aiogram import Bot
 
 from ..models import async_session_maker
 from ..services.generation_orchestrator import GenerationOrchestrator
-from ..services.match_result import MatchFound, NoUsersAvailable, RoundExhausted
+from ..services.match_result import AllUsersMatched, MatchFound, RoundExhausted
 from ..services.matcher import MatcherService
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ async def run_matching_loop() -> None:
                     forced_round = new_round
                     continue
 
-                case NoUsersAvailable():
+                case AllUsersMatched():
                     logger.info(
                         "No complete users available, sleeping %d seconds",
                         MATCHING_RETRY_INTERVAL_SECONDS,

@@ -24,7 +24,7 @@ class RoundExhausted(MatchResult):
 
 
 @dataclass
-class NoUsersAvailable(MatchResult):
+class AllUsersMatched(MatchResult):
     """No complete users exist at all."""
 
     pass

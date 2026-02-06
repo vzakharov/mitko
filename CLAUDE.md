@@ -145,8 +145,8 @@ uv run alembic upgrade head
 - `MatcherService` is responsible for **finding** the next match candidate and returns structured `MatchResult` types:
   - `MatchFound` for both real matches and participation records (when no candidate is available for a user)
   - `RoundExhausted` when all users have participated in the current round
-  - `NoUsersAvailable` when there are no complete users at all
+  - `AllUsersMatched` when there are no complete users at all
 - `run_matching_loop` in `matching_scheduler` orchestrates **round progression**:
   - Advances to the next round explicitly when it receives `RoundExhausted`
   - Immediately retries after participation records and round advancement (no 30-minute sleep)
-  - Sleeps only when `NoUsersAvailable` is returned
+  - Sleeps only when `AllUsersMatched` is returned
