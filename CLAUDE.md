@@ -111,7 +111,24 @@ uv run alembic upgrade head
 - **NEVER add `# pyright: ignore`, `# noqa`, or similar suppression comments without explicit user approval** - always ask first and discuss the root cause
 - **NEVER cast to `Any` type without explicit user approval** - always ask first and find a properly typed solution
 - **Only add comments when the logic isn't clear from the code itself** - prefer self-documenting code with descriptive names over explanatory comments
-- **Inline single-use variables** - if a variable is only used once, inline it directly at the usage site rather than defining it separately
+- **Inline single-use variables** - if a variable is only used once, inline it directly at the usage site rather than defining it separately. Example:
+
+  ```python
+  # ❌ Avoid - unnecessary intermediate variables
+  async def get_user_ids(self) -> list[int]:
+      result = await self.session.execute(select(User.id))
+      user_ids = [row[0] for row in result]
+      return user_ids
+
+  # ✅ Prefer - inline with tuple unpacking
+  async def get_user_ids(self) -> list[int]:
+      return [
+          id
+          for (id,) in await self.session.execute(select(User.id))
+      ]
+  ```
+
+- **Public methods before private** - organize class methods with public API first, then private/helper methods (prefixed with `_`) below
 - PostgreSQL requires `pgvector` extension
 - Embeddings are 1536-dim vectors (stored in User.embedding)
 - Conversation history stored as JSON, full context passed to LLM

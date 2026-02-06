@@ -11,23 +11,6 @@ class MatcherService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def _get_current_round(self) -> int:
-        """Get the current matching round (MAX round from matches table, or 1 if empty)."""
-        result = await self.session.execute(
-            select(sql_func.max(Match.matching_round))
-        )
-        max_round = result.scalar_one_or_none()
-        return max_round if max_round is not None else 1
-
-    async def _get_users_in_round(self, current_round: int) -> list[int]:
-        """Get list of user IDs who have already been user_a in the current round."""
-        result = await self.session.execute(
-            select(col(Match.user_a_id))
-            .where(col(Match.matching_round) == current_round)
-            .distinct()
-        )
-        return [row[0] for row in result]
-
     async def find_next_match_pair(self) -> Match | None:
         """Find next match pair: earliest updated user (not yet in current round) + most similar opposite-role user (never matched before).
 
@@ -144,6 +127,25 @@ class MatcherService:
 
         return match
 
+    async def _get_current_round(self) -> int:
+        """Get the current matching round (MAX round from matches table, or 1 if empty)."""
+        return (
+            await self.session.execute(
+                select(sql_func.max(Match.matching_round))
+            )
+        ).scalar_one_or_none() or 1
+
+    async def _get_users_in_round(self, current_round: int) -> list[int]:
+        """Get list of user IDs who have already been user_a in the current round."""
+        return [
+            id
+            for (id,) in await self.session.execute(
+                select(col(Match.user_a_id))
+                .where(col(Match.matching_round) == current_round)
+                .distinct()
+            )
+        ]
+
     async def _find_similar_users(
         self, source_user: User, target_role: str
     ) -> list[tuple[User, float]]:
@@ -160,17 +162,19 @@ class MatcherService:
             return []
 
         # Get user IDs already matched with source_user (as user_a or user_b)
-        existing_matches = await self.session.execute(
-            select(col(Match.user_b_id))
-            .where(col(Match.user_a_id) == source_user.telegram_id)
-            .where(col(Match.user_b_id) != None)  # noqa: E711
-            .union(
-                select(col(Match.user_a_id)).where(
-                    col(Match.user_b_id) == source_user.telegram_id
+        already_matched_ids = [
+            id
+            for (id,) in await self.session.execute(
+                select(col(Match.user_b_id))
+                .where(col(Match.user_a_id) == source_user.telegram_id)
+                .where(col(Match.user_b_id) != None)  # noqa: E711
+                .union(
+                    select(col(Match.user_a_id)).where(
+                        col(Match.user_b_id) == source_user.telegram_id
+                    )
                 )
             )
-        )
-        already_matched_ids = [row[0] for row in existing_matches]
+        ]
 
         distance = col(User.embedding).op("<=>", return_type=Float())(
             source_user.embedding
@@ -198,12 +202,12 @@ class MatcherService:
                 col(User.telegram_id).not_in(already_matched_ids)
             )
 
-        query = (
-            select(User, similarity_expr)
-            .where(and_(*query_conditions))
-            .order_by(similarity_expr.desc())
-            .limit(1)
-        )
-
-        result = await self.session.execute(query)
-        return [(user, float(similarity)) for user, similarity in result]
+        return [
+            (user, float(similarity))
+            for user, similarity in await self.session.execute(
+                select(User, similarity_expr)
+                .where(and_(*query_conditions))
+                .order_by(similarity_expr.desc())
+                .limit(1)
+            )
+        ]
