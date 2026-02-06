@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
-from sqlalchemy import Float, and_, or_, select
+from sqlalchemy import Float, Select, and_, or_, select
 from sqlalchemy import func as sql_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
@@ -15,9 +17,9 @@ from .match_result import (
 )
 
 
+@dataclass
 class MatcherService:
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+    session: AsyncSession
 
     async def find_next_match_pair(
         self, forced_round: int | None = None
@@ -98,6 +100,46 @@ class MatcherService:
 
         return MatchFound(match=match)
 
+    async def advance_round(self) -> int:
+        """Advance to next matching round.
+
+        Returns:
+            The new round number.
+        """
+        return await self._get_current_round() + 1
+
+    def _build_match_exclusion_query(
+        self,
+        source_user: User,
+        select_col: int | None,
+        source_match_col: int | None,
+    ) -> Select[tuple[int | None]]:
+        """Build query to find users already matched with source_user in one direction.
+
+        Args:
+            source_user: User to find historical matches for
+            select_col: Column to select and join on (e.g., Match.user_b_id or Match.user_a_id)
+            source_match_col: Match column that should equal source_user's ID
+
+        Returns:
+            Select query that returns user IDs to exclude from matching
+        """
+        return (
+            select(col(select_col))
+            .join(User, col(User.telegram_id) == col(select_col))
+            .where(col(source_match_col) == source_user.telegram_id)
+            .where(
+                or_(
+                    col(Match.status) != "disqualified",
+                    col(Match.latest_profile_updated_at)
+                    >= sql_func.greatest(
+                        col(User.profile_updated_at),
+                        source_user.profile_updated_at or datetime.now(),
+                    ),
+                )
+            )
+        )
+
     async def _get_current_round(self) -> int:
         """Get the current matching round (MAX round from matches table, or 1 if empty)."""
         return (
@@ -118,15 +160,6 @@ class MatcherService:
                 .distinct()
             )
         ]
-
-    async def advance_round(self) -> int:
-        """Advance to next matching round.
-
-        Returns:
-            The new round number.
-        """
-        current_round = await self._get_current_round()
-        return current_round + 1
 
     def _compute_latest_profile_updated_at(
         self, user_a: User, user_b: User
@@ -169,7 +202,7 @@ class MatcherService:
         return result.scalar_one_or_none()
 
     async def _find_similar_users(
-        self, source_user: User, target_role: str
+        self, source_user: User, target_role: Literal["seeker", "provider"]
     ) -> list[tuple[User, float]]:
         """Find similar users with specified role (role-agnostic version).
 
@@ -183,88 +216,50 @@ class MatcherService:
         if source_user.embedding is None:
             return []
 
-        # Get user IDs already matched with source_user, excluding those eligible for re-matching.
-        # Re-matching is ONLY allowed when BOTH conditions are true:
-        # 1. Match status IS "disqualified" (LLM rejected), AND
-        # 2. At least one user updated their profile since the match
-        #
-        # Therefore, exclude users where:
-        # - Status is NOT "disqualified", OR
-        # - Neither user has updated profile since match (even if disqualified)
-        already_matched_ids_subquery = (
-            select(col(Match.user_b_id))
-            .join(User, col(User.telegram_id) == col(Match.user_b_id))
-            .where(col(Match.user_a_id) == source_user.telegram_id)
-            .where(col(Match.user_b_id) != None)  # noqa: E711
-            .where(
-                or_(
-                    # Exclude if status is not disqualified
-                    col(Match.status) != "disqualified",
-                    # Exclude if disqualified but neither user updated profile
-                    col(Match.latest_profile_updated_at)
-                    >= sql_func.greatest(
-                        col(User.profile_updated_at),
-                        source_user.profile_updated_at or datetime.now(),
-                    ),
-                )
+        similarity_expr = (
+            1
+            - col(User.embedding).op("<=>", return_type=Float())(
+                source_user.embedding
             )
-            .union(
-                select(col(Match.user_a_id))
-                .join(User, col(User.telegram_id) == col(Match.user_a_id))
-                .where(col(Match.user_b_id) == source_user.telegram_id)
-                .where(
-                    or_(
-                        # Exclude if status is not disqualified
-                        col(Match.status) != "disqualified",
-                        # Exclude if disqualified but neither user updated profile
-                        col(Match.latest_profile_updated_at)
-                        >= sql_func.greatest(
-                            col(User.profile_updated_at),
-                            source_user.profile_updated_at or datetime.now(),
-                        ),
-                    )
-                )
-            )
-        )
-
-        already_matched_ids: list[int] = [
-            id
-            for (id,) in await self.session.execute(
-                already_matched_ids_subquery
-            )
-        ]
-
-        distance = col(User.embedding).op("<=>", return_type=Float())(
-            source_user.embedding
-        )
-        similarity_expr = (1 - distance).label("similarity")
-
-        # Build role condition
-        if target_role == "provider":
-            role_condition = col(User.is_provider) == True  # noqa: E712
-        elif target_role == "seeker":
-            role_condition = col(User.is_seeker) == True  # noqa: E712
-        else:
-            raise ValueError(f"Invalid target_role: {target_role}")
-
-        query_conditions = [
-            role_condition,
-            col(User.is_complete) == True,  # noqa: E712
-            col(User.embedding) != None,  # noqa: E711
-            col(User.telegram_id) != source_user.telegram_id,
-            similarity_expr >= SETTINGS.similarity_threshold,
-        ]
-
-        if already_matched_ids:
-            query_conditions.append(
-                col(User.telegram_id).not_in(already_matched_ids)
-            )
+        ).label("similarity")
 
         return [
             (user, float(similarity))
             for user, similarity in await self.session.execute(
                 select(User, similarity_expr)
-                .where(and_(*query_conditions))
+                .where(
+                    and_(
+                        col(
+                            {
+                                "provider": User.is_provider,
+                                "seeker": User.is_seeker,
+                            }[target_role]
+                        ).is_(True),
+                        col(User.is_complete) == True,  # noqa: E712
+                        col(User.embedding) != None,  # noqa: E711
+                        col(User.telegram_id) != source_user.telegram_id,
+                        similarity_expr >= SETTINGS.similarity_threshold,
+                        col(User.telegram_id).not_in(
+                            # Get user IDs already matched with source_user, excluding those eligible for re-matching.
+                            # Re-matching is ONLY allowed when BOTH conditions are true:
+                            # 1. Match status IS "disqualified" (LLM rejected), AND
+                            # 2. At least one user updated their profile since the match
+                            #
+                            # Therefore, exclude users where:
+                            # - Status is NOT "disqualified", OR
+                            # - Neither user has updated profile since match (even if disqualified)
+                            self._build_match_exclusion_query(
+                                source_user, Match.user_b_id, Match.user_a_id
+                            ).union(
+                                self._build_match_exclusion_query(
+                                    source_user,
+                                    Match.user_a_id,
+                                    Match.user_b_id,
+                                )
+                            )
+                        ),
+                    )
+                )
                 .order_by(similarity_expr.desc())
                 .limit(1)
             )

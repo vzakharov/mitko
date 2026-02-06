@@ -14,8 +14,6 @@ from pydantic_ai.models.openai import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from mitko.utils.typing_utils import raise_error
-
 from ..agents.config import LANGUAGE_MODEL
 from ..agents.conversation_agent import (
     CONVERSATION_AGENT,
@@ -25,6 +23,7 @@ from ..config import SETTINGS
 from ..i18n import L
 from ..models import Conversation, Generation
 from ..types.messages import HistoryMessage, ProfileData
+from ..utils.typing_utils import raise_error
 from .profiler import ProfileService
 
 if TYPE_CHECKING:
