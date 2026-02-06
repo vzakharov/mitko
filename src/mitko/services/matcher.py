@@ -39,12 +39,16 @@ class MatcherService:
         when to commit.
         """
         current_round = forced_round or await self._get_current_round()
-        users_in_round = await self._get_users_in_round(current_round)
+        users_already_tried_in_round = await self._get_users_already_tried_in_round(
+            current_round
+        )
 
-        user_a = await self._find_next_user_a(exclude_users=set(users_in_round))
+        user_a = await self._find_next_user_a(
+            exclude_users=set(users_already_tried_in_round)
+        )
 
         if user_a is None:
-            if users_in_round:
+            if users_already_tried_in_round:
                 return RoundExhausted(current_round=current_round)
 
             return AllUsersMatched()
@@ -97,7 +101,9 @@ class MatcherService:
             )
         ).scalar_one_or_none() or 1
 
-    async def _get_users_in_round(self, current_round: int) -> list[int]:
+    async def _get_users_already_tried_in_round(
+        self, current_round: int
+    ) -> list[int]:
         """Get list of user IDs who have already been user_a in the current round."""
         return [
             id
