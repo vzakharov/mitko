@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import Float, and_, or_, select
 from sqlalchemy import func as sql_func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,8 +41,8 @@ class MatcherService:
         when to commit.
         """
         current_round = forced_round or await self._get_current_round()
-        users_already_tried_in_round = await self._get_users_already_tried_in_round(
-            current_round
+        users_already_tried_in_round = (
+            await self._get_users_already_tried_in_round(current_round)
         )
 
         user_a = await self._find_next_user_a(
@@ -88,6 +90,9 @@ class MatcherService:
             match_rationale="",
             status="pending",
             matching_round=current_round,
+            latest_profile_updated_at=self._compute_latest_profile_updated_at(
+                user_a, user_b
+            ),
         )
         self.session.add(match)
 
@@ -122,6 +127,24 @@ class MatcherService:
         """
         current_round = await self._get_current_round()
         return current_round + 1
+
+    def _compute_latest_profile_updated_at(
+        self, user_a: User, user_b: User
+    ) -> datetime | None:
+        """Compute the latest profile update timestamp between two matched users.
+
+        Args:
+            user_a: First user
+            user_b: Second user
+
+        Returns:
+            The most recent profile_updated_at timestamp, or None if either user has no profile_updated_at
+        """
+        return (
+            max(user_a.profile_updated_at, user_b.profile_updated_at)
+            if user_a.profile_updated_at and user_b.profile_updated_at
+            else user_a.profile_updated_at or user_b.profile_updated_at
+        )
 
     async def _find_next_user_a(self, exclude_users: set[int]) -> User | None:
         query_conditions = [
@@ -160,18 +183,54 @@ class MatcherService:
         if source_user.embedding is None:
             return []
 
-        # Get user IDs already matched with source_user (as user_a or user_b)
-        already_matched_ids = [
-            id
-            for (id,) in await self.session.execute(
-                select(col(Match.user_b_id))
-                .where(col(Match.user_a_id) == source_user.telegram_id)
-                .where(col(Match.user_b_id) != None)  # noqa: E711
-                .union(
-                    select(col(Match.user_a_id)).where(
-                        col(Match.user_b_id) == source_user.telegram_id
+        # Get user IDs already matched with source_user, excluding those eligible for re-matching.
+        # Re-matching is ONLY allowed when BOTH conditions are true:
+        # 1. Match status IS "disqualified" (LLM rejected), AND
+        # 2. At least one user updated their profile since the match
+        #
+        # Therefore, exclude users where:
+        # - Status is NOT "disqualified", OR
+        # - Neither user has updated profile since match (even if disqualified)
+        already_matched_ids_subquery = (
+            select(col(Match.user_b_id))
+            .join(User, col(User.telegram_id) == col(Match.user_b_id))
+            .where(col(Match.user_a_id) == source_user.telegram_id)
+            .where(col(Match.user_b_id) != None)  # noqa: E711
+            .where(
+                or_(
+                    # Exclude if status is not disqualified
+                    col(Match.status) != "disqualified",
+                    # Exclude if disqualified but neither user updated profile
+                    col(Match.latest_profile_updated_at)
+                    >= sql_func.greatest(
+                        col(User.profile_updated_at),
+                        source_user.profile_updated_at or datetime.now(),
+                    ),
+                )
+            )
+            .union(
+                select(col(Match.user_a_id))
+                .join(User, col(User.telegram_id) == col(Match.user_a_id))
+                .where(col(Match.user_b_id) == source_user.telegram_id)
+                .where(
+                    or_(
+                        # Exclude if status is not disqualified
+                        col(Match.status) != "disqualified",
+                        # Exclude if disqualified but neither user updated profile
+                        col(Match.latest_profile_updated_at)
+                        >= sql_func.greatest(
+                            col(User.profile_updated_at),
+                            source_user.profile_updated_at or datetime.now(),
+                        ),
                     )
                 )
+            )
+        )
+
+        already_matched_ids: list[int] = [
+            id
+            for (id,) in await self.session.execute(
+                already_matched_ids_subquery
             )
         ]
 

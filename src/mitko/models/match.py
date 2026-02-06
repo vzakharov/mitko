@@ -21,8 +21,18 @@ if TYPE_CHECKING:
     from .generation import Generation
     from .user import User
 
+# TODO: Update RationaleAgent (or rename to QualifyingAgent) to evaluate match quality
+# and set status to "qualified" or "disqualified" instead of only explaining good matches.
+# For now, matches are created with status "pending" and this evaluation step is skipped.
 MatchStatus = Literal[
-    "pending", "a_accepted", "b_accepted", "connected", "rejected", "unmatched"
+    "pending",
+    "qualified",  # LLM approved: match is worthwhile, present to users
+    "disqualified",  # LLM rejected: match isn't worthwhile, don't present
+    "a_accepted",
+    "b_accepted",
+    "connected",
+    "rejected",  # User(s) rejected
+    "unmatched",
 ]
 
 
@@ -58,6 +68,9 @@ class Match(SQLModel, table=True):
         sa_column=Column(
             DateTime(timezone=True), nullable=False, server_default=func.now()
         ),
+    )
+    latest_profile_updated_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
     __table_args__ = (

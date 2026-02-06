@@ -156,3 +156,11 @@ uv run alembic upgrade head
   - Advances to the next round explicitly when it receives `RoundExhausted`
   - Immediately retries after participation records and round advancement (no 30-minute sleep)
   - Sleeps only when `AllUsersMatched` is returned
+- **Match statuses**: `pending`, `qualified`, `disqualified`, `a_accepted`, `b_accepted`, `connected`, `rejected`, `unmatched`
+  - `qualified`/`disqualified`: Reserved for future LLM evaluation of match quality (not yet implemented)
+  - Currently matches are created with `pending` status
+- **Re-matching logic**: Users are re-matched ONLY when BOTH conditions are true:
+  1. Previous match status IS `disqualified` (LLM rejected the match)
+  2. AND at least one user has updated their profile since the match was created (tracked via `latest_profile_updated_at`)
+  - This means: LLM-rejected matches get a second chance only when profiles change
+  - `rejected` (user-rejected), `connected`, and other status matches are NEVER re-matched, even if profiles update
