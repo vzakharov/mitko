@@ -7,7 +7,10 @@ An LLM-powered Telegram bot that helps match IT job seekers with employers/contr
 1. Users start a conversation with `/start`
 2. Bot asks questions to understand their profile (seeker vs provider)
 3. Once profile is complete, bot stores it with vector embeddings
-4. Background job periodically finds matches using cosine similarity
+4. Background matching continuously finds matches using:
+   - Round-robin fairness (all users tried before retries)
+   - Vector similarity search (pgvector cosine distance)
+   - Immediate continuation when matches found or rounds exhausted
 5. Both parties are notified and can accept/reject
 6. When both accept, contact details are shared
 
@@ -23,6 +26,158 @@ An LLM-powered Telegram bot that helps match IT job seekers with employers/contr
 - Configurable LLM providers (OpenAI/Anthropic)
 - Type-safe structured outputs via PydanticAI and Pydantic models
 - Multi-language support (EN/RU) with type-safe i18n
+
+## Architecture Diagrams
+
+### Overall System Flow
+
+High-level flow from user interaction through profile creation, matching, and contact sharing.
+
+```mermaid
+graph TB
+    A[User sends message] --> B[ConversationAgent]
+    B --> C{Profile complete?}
+    C -->|No| D[Continue conversation]
+    C -->|Yes| E[Generate embedding<br/>from matching_summary]
+    E --> F[User marked active]
+    F --> G[Matching Scheduler Loop]
+
+    G --> H[MatcherService finds<br/>similar user]
+    H --> I[RationaleAgent generates<br/>match explanation]
+    I --> J[Both users notified]
+
+    J --> K{User A accepts?}
+    K -->|Yes| L{User B accepts?}
+    K -->|No| M[Match rejected]
+    L -->|Yes| N[Contact details shared]
+    L -->|No| M
+
+    D --> A
+    M --> G
+    N --> G
+```
+
+### Round-Robin Matching Scheduler
+
+Shows the three possible outcomes in each iteration of the matching loop - the trickiest part of the system.
+
+```mermaid
+flowchart TD
+    Start([Matching Loop Starts]) --> GetRound[Get current_round from DB]
+    GetRound --> FindUserA{Find next user_a<br/>not tried in round}
+
+    FindUserA -->|Found| FindUserB[Search for similar user_b<br/>via vector similarity]
+    FindUserB --> CheckUserB{user_b found?}
+
+    CheckUserB -->|Yes| CreateMatch[Create Match<br/>status=pending<br/>matching_round=N]
+    CreateMatch --> CreateGen[Create Generation<br/>for rationale]
+    CreateGen --> Exit([EXIT - Wait for processor])
+
+    CheckUserB -->|No| CreateUnmatched[Create Match<br/>status=unmatched<br/>user_b_id=NULL]
+    CreateUnmatched --> Continue1[Continue same round]
+    Continue1 --> FindUserA
+
+    FindUserA -->|None| RoundExhausted[All users tried<br/>in current round]
+    RoundExhausted --> AdvanceRound[Increment round:<br/>round = round + 1]
+    AdvanceRound --> Continue2[Continue with new round]
+    Continue2 --> FindUserA
+
+    FindUserA -->|No complete users| AllMatched[No active users<br/>in system]
+    AllMatched --> Sleep[Sleep 30 minutes]
+    Sleep --> Start
+```
+
+### Match Status State Machine
+
+Shows all possible state transitions during mutual consent flow.
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: Match created
+
+    pending --> a_accepted: User A accepts
+    pending --> b_accepted: User B accepts
+    pending --> rejected: Either rejects
+
+    a_accepted --> connected: User B accepts
+    a_accepted --> rejected: User B rejects
+
+    b_accepted --> connected: User A accepts
+    b_accepted --> rejected: User A rejects
+
+    connected --> [*]: Contact details shared
+    rejected --> [*]: Match closed
+```
+
+### Generation Orchestration
+
+Shows how GenerationOrchestrator manages all types of LLM generations with budget control - a universal queueing system.
+
+```mermaid
+flowchart TB
+    subgraph Sources["Generation Sources"]
+        MsgHandler[Message Handler]
+        MatchSched[Matching Scheduler]
+        Future[Future Agents...]
+    end
+
+    subgraph Orchestrator["GenerationOrchestrator"]
+        CreateGen[create_generation]
+        CalcInterval[Calculate interval:<br/>cost × 604800s / weekly_budget]
+        GetMaxSched[Get max scheduled_for<br/>from all generations]
+        Schedule[scheduled_for =<br/>max_scheduled + interval]
+    end
+
+    subgraph Queue["Generation Queue<br/>(Database)"]
+        PendingGens[(Pending Generations<br/>sorted by scheduled_for)]
+    end
+
+    subgraph Processor["Generation Processor Loop"]
+        GetNext[Get next generation<br/>where scheduled_for ≤ now]
+        ExecType{Type?}
+        ConvExec[ConversationGeneration.execute]
+        MatchExec[MatchGeneration.execute]
+        RecordCost[Record cost_usd]
+    end
+
+    MsgHandler --> CreateGen
+    MatchSched --> CreateGen
+    Future --> CreateGen
+
+    CreateGen --> CalcInterval
+    CalcInterval --> GetMaxSched
+    GetMaxSched --> Schedule
+    Schedule --> PendingGens
+
+    PendingGens --> GetNext
+    GetNext --> ExecType
+    ExecType -->|conversation_id| ConvExec
+    ExecType -->|match_id| MatchExec
+    ConvExec --> RecordCost
+    MatchExec --> RecordCost
+    RecordCost -.affects next interval.-> CalcInterval
+
+    style Orchestrator fill:#e1f5ff
+    style Processor fill:#fff4e1
+```
+
+### Budget Control Formula
+
+Shows the dynamic spacing calculation in detail.
+
+```mermaid
+graph LR
+    A[Last generation cost:<br/>$0.01] --> B[Weekly budget:<br/>$6.00]
+    B --> C[Calculate:<br/>0.01 × 604800s / 6.00]
+    C --> D[Interval:<br/>~1008 seconds<br/>≈17 minutes]
+    D --> E[Next generation<br/>scheduled at:<br/>max_scheduled + 17min]
+
+    style A fill:#ffebe9
+    style B fill:#e1f5ff
+    style C fill:#fff4e1
+    style D fill:#e7f5e1
+    style E fill:#f5e1ff
+```
 
 ## Architecture
 

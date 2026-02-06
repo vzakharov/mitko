@@ -68,13 +68,19 @@ uv run alembic upgrade head
 # IMPORTANT: When using the TodoWrite tool to track implementation tasks,
 # always add "Create git commit" as the FINAL task in your todo list.
 # This ensures commits are not forgotten after completing the implementation.
+
+# Planning Requirements
+# When creating implementation plans:
+# - Always check if README.md needs updates (architecture changes, new features, usage changes)
+# - Always check if CLAUDE.md needs updates (architectural patterns, important guidelines, examples)
+# - Include these as explicit tasks in the implementation plan
 ```
 
 ## Architecture
 
 **Stack**: FastAPI (webhooks) + aiogram v3 (Telegram) + SQLModel (Pydantic + SQLAlchemy 2.0) async + PostgreSQL/pgvector + APScheduler + PydanticAI
 
-**Flow**: User chats with bot → ConversationAgent handles natural conversation and organically extracts/updates profile → Embedding generated → Background job matches profiles using vector similarity → Both parties accept → Contact details shared
+**Flow**: User chats with bot → ConversationAgent handles natural conversation and organically extracts/updates profile → Embedding generated → Continuous round-robin matching finds profiles using vector similarity → Both parties accept → Contact details shared
 
 **Key Patterns**:
 
@@ -93,7 +99,7 @@ uv run alembic upgrade head
 - Runtime modes: Webhook (production) or Long Polling (development) - controlled via `TELEGRAM_MODE` env var (defaults to "polling")
 - Type-safe i18n: nested dataclasses with full IDE autocomplete, single language per deployment via `MITKO_LANGUAGE` env var
 - Migration strategy: Default to `alembic revision --autogenerate` for schema changes; only write manual migrations for data transformations, complex refactoring, or PostgreSQL-specific features (pgvector extensions, custom indexes)
-- Budget control: Weekly budget (`WEEKLY_BUDGET_USD`) dynamically spaces generations proportional to cost; currently conversation agent only
+- Budget control: Weekly budget (`WEEKLY_BUDGET_USD`) dynamically spaces ALL generations (conversation, match rationale, future agents) proportional to cost via universal GenerationOrchestrator
 
 **Structure**:
 
