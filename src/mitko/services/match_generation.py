@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 from textwrap import dedent
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from aiogram import Bot
 from genai_prices import calc_price
@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from ..agents.config import LANGUAGE_MODEL
-from ..agents.rationale_agent import RATIONALE_AGENT
+from ..agents.qualifier_agent import QUALIFIER_AGENT
 from ..bot.keyboards import match_consent_keyboard
 from ..config import SETTINGS
 from ..i18n import L
@@ -21,7 +21,7 @@ from ..models import Match, User
 if TYPE_CHECKING:
     from pydantic_ai.run import AgentRunResult
 
-    from ..agents.rationale_agent import MatchRationale
+    from ..agents.qualifier_agent import MatchQualification
     from ..models import Generation
 
 logger = logging.getLogger(__name__)
@@ -45,26 +45,36 @@ class MatchGeneration:
     match: Match
 
     async def execute(self) -> None:
-        """Process a match generation: generate rationale, notify users, enqueue next match."""
+        """Process a match generation: generate rationale, update status, notify users if qualified."""
 
         try:
             # Fetch both users
             user_a, user_b = await self._fetch_users()
 
-            # Generate rationale
-            rationale_text = await self._generate_match_rationale(
+            # Generate rationale and decision
+            explanation, decision = await self._generate_match_rationale(
                 user_a, user_b
             )
-            self.match.match_rationale = rationale_text
 
-            # Notify both users
-            await self._notify_both_users(user_a, user_b, rationale_text)
+            # Store explanation (internal reasoning) and update status based on decision
+            self.match.match_rationale = explanation
+            self.match.status = decision
 
             await self.session.commit()
 
+            # Only notify users if match is qualified
+            if decision == "qualified":
+                # TODO: Create MatchSuggesterAgent to convert internal explanation into
+                # natural user-facing messages like "Hey Bob, we figured you might want to
+                # talk to Alice, she's ..." For now, showing internal explanation directly.
+                # TODO: Implement safeguards to prevent red flag information from leaking
+                # between users in the explanation.
+                await self._notify_both_users(user_a, user_b, explanation)
+
             logger.info(
-                "Processed match generation %s: notified users %s and %s",
+                "Processed match generation %s: decision=%s for users %s and %s",
                 self.generation.id,
+                decision,
                 user_a.telegram_id,
                 user_b.telegram_id,
             )
@@ -94,8 +104,12 @@ class MatchGeneration:
 
     async def _generate_match_rationale(
         self, user_a: User, user_b: User
-    ) -> str:
-        """Generate match rationale using RATIONALE_AGENT."""
+    ) -> tuple[str, Literal["qualified", "disqualified"]]:
+        """Generate match rationale and decision using QUALIFIER_AGENT.
+
+        Returns:
+            Tuple of (explanation, decision) where decision is "qualified" or "disqualified"
+        """
 
         # Build profile sections
         user_a_profile = f"""Technical Background: {user_a.matching_summary or "Not provided"}
@@ -107,7 +121,7 @@ Work Preferences: {user_b.practical_context or "Not yet specified"}
 Internal Notes: {user_b.private_observations or "None"}"""
 
         prompt = dedent(
-            f"""Analyze these two profiles and explain why they're a good match:
+            f"""Evaluate this potential match:
 
             User A Profile:
             {user_a_profile}
@@ -115,38 +129,17 @@ Internal Notes: {user_b.private_observations or "None"}"""
             User B Profile:
             {user_b_profile}
 
-            Generate a structured match rationale considering:
-            - Technical alignment (skills, experience, domain expertise)
-            - Practical compatibility (location, remote preference, availability) - if specified
-            - Potential concerns from internal notes (if any - use these to inform confidence scoring)
-
-            Important: Internal notes are for YOUR evaluation only. Do not mention them explicitly in the
-            explanation shown to users. If they raise concerns, reflect that in a lower confidence_score
-            and focus on genuine alignments in your explanation.
-
-            Note: Work Preferences may be "Not yet specified" for some users during a transition period.
-            Focus on technical alignment in such cases.
-
-            Output:
-            - explanation: A brief, friendly 2-3 sentence explanation of technical + practical fit
-            - key_alignments: A list of 2-4 specific points where they align (focus on technical if practical missing)
-            - confidence_score: A score from 0.0 to 1.0 (adjust down if internal notes raise concerns or if practical context is missing)"""
+            Decide if this match should be qualified (strong enough to present to users) or
+            disqualified (not strong enough). Provide your internal reasoning."""
         )
 
-        result = await RATIONALE_AGENT.run(prompt)
+        result = await QUALIFIER_AGENT.run(prompt)
         rationale = result.output
 
         # Record usage and cost
         self._record_usage_and_cost(result)
 
-        # Format for display (only explanation and key_alignments are shown to users)
-        formatted = [rationale.explanation]
-        if rationale.key_alignments:
-            formatted.append("\n\nKey alignments:")
-            for alignment in rationale.key_alignments:
-                formatted.append(f"\n• {alignment}")
-
-        return "".join(formatted)
+        return rationale.explanation, rationale.decision
 
     async def _notify_both_users(
         self, user_a: User, user_b: User, rationale: str
@@ -173,7 +166,7 @@ Internal Notes: {user_b.private_observations or "None"}"""
 
     def _record_usage_and_cost(
         self,
-        result: "AgentRunResult[MatchRationale]",
+        result: "AgentRunResult[MatchQualification]",
     ) -> None:
         """Record token usage and calculate cost."""
         usage = result.usage()

@@ -334,7 +334,7 @@ async def handle_match_accept(
             )
             return
 
-        if match.status == "pending":
+        if match.status == "qualified":
             is_user_a = current_user.telegram_id == user_a.telegram_id
             match.status = "a_accepted" if is_user_a else "b_accepted"
             await session.commit()

@@ -104,7 +104,7 @@ uv run alembic upgrade head
 **Structure**:
 
 - `models/`: SQLModel ORM (User with embeddings, Conversation, Match) - Pydantic-powered validation
-- `agents/`: PydanticAI agents for structured outputs (ConversationAgent for chat+profiles, RationaleAgent for match explanations)
+- `agents/`: PydanticAI agents for structured outputs (ConversationAgent for chat+profiles, QualifierAgent for match qualification)
 - `bot/`: Telegram handlers, keyboards, and bot initialization
 - `runtime/`: Modular runtime implementations (webhook, polling)
 - `llm/`: Provider abstraction (OpenAI/Anthropic) for embeddings
@@ -157,8 +157,9 @@ uv run alembic upgrade head
   - Immediately retries after participation records and round advancement (no 30-minute sleep)
   - Sleeps only when `AllUsersMatched` is returned
 - **Match statuses**: `pending`, `qualified`, `disqualified`, `a_accepted`, `b_accepted`, `connected`, `rejected`, `unmatched`
-  - `qualified`/`disqualified`: Reserved for future LLM evaluation of match quality (not yet implemented)
-  - Currently matches are created with `pending` status
+  - `qualified`/`disqualified`: Actively used by QualifierAgent to evaluate match quality
+  - Matches are created with `pending` status, then QualifierAgent evaluates and sets to `qualified` or `disqualified`
+  - Only `qualified` matches notify users and can be accepted
 - **Re-matching logic**: Users are re-matched ONLY when BOTH conditions are true:
   1. Previous match status IS `disqualified` (LLM rejected the match)
   2. AND at least one user has updated their profile since the match was created (tracked via `latest_profile_updated_at`)

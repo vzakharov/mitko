@@ -43,18 +43,21 @@ graph TB
     F --> G[Matching Scheduler Loop]
 
     G --> H[MatcherService finds<br/>similar user]
-    H --> I[RationaleAgent generates<br/>match explanation]
-    I --> J[Both users notified]
+    H --> I[QualifierAgent evaluates<br/>match quality]
+    I --> J{Match qualified?}
+    J -->|Yes| K[Both users notified]
+    J -->|No| L[Match disqualified,<br/>stay in DB for re-matching]
+    L --> G
 
-    J --> K{User A accepts?}
-    K -->|Yes| L{User B accepts?}
-    K -->|No| M[Match rejected]
-    L -->|Yes| N[Contact details shared]
-    L -->|No| M
+    K --> M{User A accepts?}
+    M -->|Yes| N{User B accepts?}
+    M -->|No| O[Match rejected]
+    N -->|Yes| P[Contact details shared]
+    N -->|No| O
 
     D --> A
-    M --> G
-    N --> G
+    O --> G
+    P --> G
 ```
 
 ### Round-Robin Matching Scheduler
@@ -70,7 +73,7 @@ flowchart TD
     FindUserB --> CheckUserB{user_b found?}
 
     CheckUserB -->|Yes| CreateMatch[Create Match<br/>status=pending<br/>matching_round=N]
-    CreateMatch --> CreateGen[Create Generation<br/>for rationale]
+    CreateMatch --> CreateGen[Create Generation<br/>for qualification]
     CreateGen --> Exit([EXIT - Wait for processor])
 
     CheckUserB -->|No| CreateUnmatched[Create Match<br/>status=unmatched<br/>user_b_id=NULL]
@@ -95,15 +98,20 @@ Shows all possible state transitions during mutual consent flow.
 stateDiagram-v2
     [*] --> pending: Match created
 
-    pending --> a_accepted: User A accepts
-    pending --> b_accepted: User B accepts
-    pending --> rejected: Either rejects
+    pending --> qualified: QualifierAgent approves
+    pending --> disqualified: QualifierAgent rejects
+
+    qualified --> a_accepted: User A accepts
+    qualified --> b_accepted: User B accepts
+    qualified --> rejected: Either rejects
 
     a_accepted --> connected: User B accepts
     a_accepted --> rejected: User B rejects
 
     b_accepted --> connected: User A accepts
     b_accepted --> rejected: User A rejects
+
+    disqualified --> pending: Profile updated (re-match)
 
     connected --> [*]: Contact details shared
     rejected --> [*]: Match closed
@@ -191,6 +199,7 @@ graph LR
 ## Setup
 
 1. Install dependencies:
+
 ```bash
 uv sync
 # or
@@ -198,27 +207,32 @@ pip install -e .
 ```
 
 2. Set up environment variables:
+
 ```bash
 cp .env.example .env
 # Edit .env with your credentials
 ```
 
 3. Set up database with pgvector extension:
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
 4. Run migrations:
+
 ```bash
 alembic upgrade head
 ```
 
 5. Start the bot:
+
 ```bash
 uvicorn src.mitko.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 6. Set webhook URL (replace with your domain):
+
 ```bash
 curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://your-domain.com/webhook/your_secret"
 ```
@@ -243,17 +257,19 @@ curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https:
 The bot uses dynamic cost-based scheduling to stay within a weekly LLM budget. When a user sends a message, the system calculates how long to wait before processing it based on the cost of the previous generation.
 
 **How it works**:
+
 - The interval between generations is proportional to the last generation's cost
 - Formula: if the last generation cost X dollars, wait `(X / weekly_budget) * 1 week` before the next one
 - Example: With a $6/week budget, a $0.01 generation schedules the next one ~17 minutes later
 - The system self-adjusts: expensive conversations (long chat histories) automatically increase spacing
 - First generation always runs immediately since there's no cost history yet
 
-This ensures spending stays roughly constant week-to-week regardless of conversation complexity. Currently applies to the conversation agent; rationale agent integration planned once APIs are unified.
+This ensures spending stays roughly constant week-to-week regardless of conversation complexity. Currently applies to both the conversation agent and qualifier agent (match qualification).
 
 ## Development
 
 The project uses:
+
 - Type hints throughout
 - Async/await for all I/O operations
 - SQLModel (Pydantic + SQLAlchemy 2.0) async patterns
@@ -261,4 +277,3 @@ The project uses:
 - Pydantic models for validation and structured data
 - Single unified ConversationAgent for natural conversation and profile management
 - Type-safe i18n with nested dataclasses for full IDE autocomplete
-

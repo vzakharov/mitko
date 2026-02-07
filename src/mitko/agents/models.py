@@ -1,14 +1,26 @@
 """Pydantic models for structured LLM outputs"""
 
-from pydantic import BaseModel, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
 
 
-class MatchRationale(BaseModel):
-    """Structured match rationale with explanation"""
+class MatchQualification(BaseModel):
+    """Match evaluation result with decision and internal reasoning"""
 
-    explanation: str
-    key_alignments: list[str]
-    confidence_score: float
+    explanation: str = Field(
+        description=(
+            "Internal reasoning explaining why this match is qualified or disqualified. "
+            "Focus on objective evaluation - this is agent-to-agent communication, "
+            "not user-facing messaging."
+        )
+    )
+    decision: Literal["qualified", "disqualified"] = Field(
+        description=(
+            "Match quality decision: 'qualified' means match is worthwhile and should be "
+            "presented to users; 'disqualified' means match isn't strong enough."
+        )
+    )
 
     @field_validator("explanation")
     @classmethod
@@ -17,22 +29,6 @@ class MatchRationale(BaseModel):
         if not v or not v.strip():
             raise ValueError("Explanation cannot be empty")
         return v.strip()
-
-    @field_validator("key_alignments")
-    @classmethod
-    def validate_alignments(cls, v: list[str]) -> list[str]:
-        """Ensure at least one alignment point"""
-        if not v:
-            raise ValueError("Must provide at least one key alignment")
-        return [item.strip() for item in v if item.strip()]
-
-    @field_validator("confidence_score")
-    @classmethod
-    def validate_confidence(cls, v: float) -> float:
-        """Ensure confidence is between 0 and 1"""
-        if not 0 <= v <= 1:
-            raise ValueError("Confidence score must be between 0 and 1")
-        return v
 
 
 class SummaryResult(BaseModel):
