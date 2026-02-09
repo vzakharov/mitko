@@ -181,11 +181,11 @@ class MatcherService:
 
     async def _find_next_user_a(self, exclude_users: set[int]) -> User | None:
         query_conditions = [
-            col(User.is_complete) == True,  # noqa: E712
-            col(User.embedding) != None,  # noqa: E711
+            col(User.is_complete).is_(True),
+            col(User.embedding).isnot(None),
             or_(
-                col(User.is_seeker) == True,  # noqa: E712
-                col(User.is_provider) == True,  # noqa: E712
+                col(User.is_seeker).is_(True),
+                col(User.is_provider).is_(True),
             ),
         ]
 
@@ -235,8 +235,8 @@ class MatcherService:
                                 "seeker": User.is_seeker,
                             }[target_role]
                         ).is_(True),
-                        col(User.is_complete) == True,  # noqa: E712
-                        col(User.embedding) != None,  # noqa: E711
+                        col(User.is_complete).is_(True),
+                        col(User.embedding).isnot(None),
                         col(User.telegram_id) != source_user.telegram_id,
                         similarity_expr >= SETTINGS.similarity_threshold,
                         col(User.telegram_id).not_in(
