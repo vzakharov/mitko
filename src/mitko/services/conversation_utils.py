@@ -1,11 +1,84 @@
 """Utilities for conversation message handling."""
 
-from aiogram import Bot
-from sqlalchemy.ext.asyncio import AsyncSession
+import logging
+from typing import Any
 
-from src.mitko.models.conversation import Conversation
+from aiogram import Bot
+from aiogram.types import Message
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col
+
+from ..models.conversation import Conversation
+from ..utils.typing_utils import raise_error
+from .admin_channel import mirror_to_admin_thread
+
+logger = logging.getLogger(__name__)
 
 INJECTED_MESSAGE_PREFIX = "[Admin-injected message - not LLM-generated - stored for memory continuity]"
+
+
+async def send_to_user(
+    bot: Bot,
+    recipient: Conversation | int,
+    text: str,
+    session: AsyncSession,
+    **kwargs: Any,
+) -> Message:
+    """Send a message to the user and mirror it to their admin channel thread.
+
+    Args:
+        bot: Telegram Bot instance
+        recipient: Conversation object or raw telegram_id (int)
+        text: Message text
+        session: DB session (used to persist admin_thread_id if a new thread is created)
+        **kwargs: Forwarded to bot.send_message (e.g. reply_markup, parse_mode)
+    """
+    telegram_id, conv = (
+        (recipient.telegram_id, recipient)
+        if isinstance(recipient, Conversation)
+        else (recipient, None)
+    )
+
+    result = await bot.send_message(telegram_id, text, **kwargs)
+
+    await _mirror_outgoing(bot, telegram_id, text, session, conv)
+
+    return result
+
+
+async def _mirror_outgoing(
+    bot: Bot,
+    telegram_id: int,
+    text: str,
+    session: AsyncSession,
+    conv: Conversation | None,
+) -> None:
+    """Mirror an outgoing message to the admin channel thread for this user."""
+    try:
+        conv = (
+            conv
+            or (
+                await session.execute(
+                    select(Conversation).where(
+                        col(Conversation.telegram_id) == telegram_id
+                    )
+                )
+            ).scalar_one_or_none()
+            or raise_error(
+                ValueError(
+                    f"No conversation found for telegram_id={telegram_id}"
+                )
+            )
+        )
+
+        await mirror_to_admin_thread(bot, conv, f"← {text}", session)
+    except Exception as e:
+        logger.exception(
+            "Failed to mirror outgoing message for telegram_id=%d: %s",
+            telegram_id,
+            e,
+        )
 
 
 async def send_and_record_bot_message(
@@ -40,5 +113,5 @@ async def send_and_record_bot_message(
     conversation.last_responses_api_response_id = None
 
     session.add(conversation)
-    await bot.send_message(conversation.telegram_id, message_text)
+    await send_to_user(bot, conversation, message_text, session)
     await session.commit()

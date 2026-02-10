@@ -24,6 +24,7 @@ from ..i18n import L
 from ..models import Conversation, Generation
 from ..types.messages import HistoryMessage, ProfileData
 from ..utils.typing_utils import raise_error
+from .conversation_utils import send_to_user
 from .profiler import ProfileService
 
 if TYPE_CHECKING:
@@ -59,9 +60,11 @@ class ConversationGeneration:
             await self._handle_agent_response(user_prompt, result)
         except Exception:
             # Notify user of failure before re-raising
-            await self.bot.send_message(
-                self.conversation.telegram_id,
+            await send_to_user(
+                self.bot,
+                self.conversation,
                 L.system.errors.GENERATION_FAILED,
+                self.session,
             )
             raise
 
@@ -269,7 +272,7 @@ class ConversationGeneration:
                         generation.placeholder_message_id,
                         e,
                     )
-                    await self.bot.send_message(conv.telegram_id, response_text)
+                    await send_to_user(self.bot, conv, response_text, self.session)
             else:
                 # Delete placeholder message and send response as new message (user gets notification)
                 try:
@@ -288,10 +291,10 @@ class ConversationGeneration:
                         e,
                     )
 
-                await self.bot.send_message(conv.telegram_id, response_text)
+                await send_to_user(self.bot, conv, response_text, self.session)
         else:
             # No placeholder message (old generation) - just send response
-            await self.bot.send_message(conv.telegram_id, response_text)
+            await send_to_user(self.bot, conv, response_text, self.session)
 
     def _record_usage_and_cost(
         self,

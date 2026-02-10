@@ -17,6 +17,7 @@ from ..bot.keyboards import match_consent_keyboard
 from ..config import SETTINGS
 from ..i18n import L
 from ..models import Match, User
+from .conversation_utils import send_to_user
 
 if TYPE_CHECKING:
     from pydantic_ai.run import AgentRunResult
@@ -157,12 +158,8 @@ Internal Notes: {user_b.private_observations or "None"}"""
 
         keyboard = match_consent_keyboard(self.match.id)
 
-        await self.bot.send_message(
-            user_a.telegram_id, message_a, reply_markup=keyboard
-        )
-        await self.bot.send_message(
-            user_b.telegram_id, message_b, reply_markup=keyboard
-        )
+        await send_to_user(self.bot, user_a.telegram_id, message_a, self.session, reply_markup=keyboard)
+        await send_to_user(self.bot, user_b.telegram_id, message_b, self.session, reply_markup=keyboard)
 
     def _record_usage_and_cost(
         self,

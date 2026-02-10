@@ -1,11 +1,16 @@
 """Admin channel service for posting messages and events."""
 
 import logging
+from typing import TYPE_CHECKING
 
 from aiogram import Bot
 from aiogram.types import Message
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import SETTINGS
+
+if TYPE_CHECKING:
+    from ..models.conversation import Conversation
 
 logger = logging.getLogger(__name__)
 
@@ -44,3 +49,27 @@ async def post_to_admin(
             "Failed to post to admin channel %s", SETTINGS.admin_channel_id
         )
         return None
+
+
+async def mirror_to_admin_thread(
+    bot: Bot,
+    conv: "Conversation",
+    text: str,
+    session: AsyncSession,
+) -> None:
+    """Post text to the admin thread for this conversation, creating the thread root if needed.
+
+    Persists admin_thread_id via session.add() + session.commit() when a new thread is created.
+    Silent failure: never raises.
+    """
+    try:
+        if (
+            sent := await post_to_admin(
+                bot, text, thread_id=conv.admin_thread_id
+            )
+        ) and (not conv.admin_thread_id):
+            conv.admin_thread_id = sent.message_id
+            session.add(conv)
+            await session.commit()
+    except Exception:
+        logger.exception("Failed to mirror message to admin thread")

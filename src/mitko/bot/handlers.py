@@ -15,6 +15,7 @@ from ..config import SETTINGS
 from ..i18n import L
 from ..jobs.generation_processor import nudge_processor
 from ..models import Conversation, Generation, User, get_db
+from ..services.conversation_utils import send_to_user
 from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
@@ -351,14 +352,8 @@ async def handle_match_accept(
             bot = get_bot()
             profile_display_a = _format_profile_for_display(user_b)
             profile_display_b = _format_profile_for_display(user_a)
-            await bot.send_message(
-                user_a.telegram_id,
-                L.matching.CONNECTION_MADE.format(profile=profile_display_a),
-            )
-            await bot.send_message(
-                user_b.telegram_id,
-                L.matching.CONNECTION_MADE.format(profile=profile_display_b),
-            )
+            await send_to_user(bot, user_a.telegram_id, L.matching.CONNECTION_MADE.format(profile=profile_display_a), session)
+            await send_to_user(bot, user_b.telegram_id, L.matching.CONNECTION_MADE.format(profile=profile_display_b), session)
             await callback.answer(L.matching.ACCEPT_CONNECTED)
         else:
             await callback.answer(
