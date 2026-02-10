@@ -57,6 +57,11 @@ class Conversation(SQLModel, table=True):
         default=None,
         description="Telegram message ID for status updates (edit/delete)",
     )
+    admin_thread_id: int | None = Field(
+        default=None,
+        sa_column=Column(BigInteger(), nullable=True),
+        description="Admin channel message ID used as thread root for this conversation's logs",
+    )
 
     user: "User" = Relationship(back_populates="conversations")
     generations: list["Generation"] = Relationship(

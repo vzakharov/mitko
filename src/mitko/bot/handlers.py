@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
+from ..config import SETTINGS
 from ..i18n import L
 from ..jobs.generation_processor import nudge_processor
 from ..models import Conversation, Generation, User, get_db
@@ -20,6 +21,10 @@ from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
 router = Router()
 logger = logging.getLogger(__name__)
+
+if SETTINGS.admin_channel_id is not None:
+    router.message.filter(F.chat.id != SETTINGS.admin_channel_id)
+    router.callback_query.filter(F.message.chat.id != SETTINGS.admin_channel_id)
 
 # Delay before nudging processor to allow rapid successive messages to be processed
 # (e.g., long messages split by Telegram into multiple parts)
