@@ -1,5 +1,6 @@
 """Admin channel service for posting messages and events."""
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
@@ -42,8 +43,12 @@ async def _post_to_admin(
         parse_mode: Optional Telegram parse mode ("HTML", "Markdown", etc.)
     """
 
-    await _channel_throttler.wait()
-    await global_throttler.wait()
+    await asyncio.gather(
+        *[
+            throttler.wait()
+            for throttler in [_channel_throttler, global_throttler]
+        ]
+    )
     return await bot.send_message(
         chat_id=SETTINGS.admin_channel_id
         or raise_error(RuntimeError("Admin channel is not configured")),
