@@ -2,17 +2,19 @@
 
 import asyncio
 import time
-from collections.abc import Callable
+from dataclasses import dataclass, field
 
 
-async def wait_for_interval(get_last: Callable[[], float], min_interval: float) -> float:
-    """Sleep until min_interval seconds have elapsed since get_last().
+@dataclass
+class Throttler:
+    """Single-process rate limiter. Not safe for multi-worker deployments."""
 
-    get_last is called on every loop iteration so callers can pass a lambda
-    that reads a module-level variable, ensuring concurrent coroutines see
-    each other's updates.
-    Returns time.monotonic() at the moment the interval has elapsed.
-    """
-    while (remaining := min_interval - (time.monotonic() - get_last())) > 0:
-        await asyncio.sleep(remaining)
-    return time.monotonic()
+    min_interval: float
+    _last_at: float = field(default=0.0, init=False, repr=False)
+
+    async def wait(self) -> None:
+        while (
+            remaining := self.min_interval - (time.monotonic() - self._last_at)
+        ) > 0:
+            await asyncio.sleep(remaining)
+        self._last_at = time.monotonic()

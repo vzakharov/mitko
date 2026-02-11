@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from ..models.conversation import Conversation
+from ..utils.async_utils import Throttler
 from ..utils.typing_utils import raise_error
 from .admin_channel import mirror_to_admin_thread
-from .bot_throttle import wait_for_global_limit
 
 # 1 msg/s per DM chat (Telegram limit)
 _DM_MIN_INTERVAL = 1.0
@@ -22,6 +22,9 @@ _DM_MIN_INTERVAL = 1.0
 logger = logging.getLogger(__name__)
 
 INJECTED_MESSAGE_PREFIX = "[Admin-injected message - not LLM-generated - stored for memory continuity]"
+
+_GLOBAL_MIN_INTERVAL = 1 / 30  # 30 msg/s global Telegram limit
+global_throttler = Throttler(_GLOBAL_MIN_INTERVAL)
 
 
 async def send_to_user(
@@ -43,15 +46,25 @@ async def send_to_user(
     telegram_id, conv = (
         (recipient.telegram_id, recipient)
         if isinstance(recipient, Conversation)
-        else (recipient, None)
+        else (
+            recipient,
+            (
+                await session.execute(
+                    select(Conversation).where(
+                        col(Conversation.telegram_id) == recipient
+                    )
+                )
+            ).scalar_one(),
+        )
     )
 
-    if conv is not None:
-        elapsed = (datetime.now(UTC) - conv.updated_at).total_seconds()
-        if (remaining := _DM_MIN_INTERVAL - elapsed) > 0:
-            await asyncio.sleep(remaining)
+    if (
+        remaining := _DM_MIN_INTERVAL
+        - (datetime.now(UTC) - conv.updated_at).total_seconds()
+    ) > 0:
+        await asyncio.sleep(remaining)
 
-    await wait_for_global_limit()
+    await global_throttler.wait()
     result = await bot.send_message(telegram_id, text, **kwargs)
 
     await _mirror_outgoing(bot, telegram_id, text, session, conv)
