@@ -3,6 +3,7 @@
 from textwrap import dedent
 
 from .base import (
+    Admin,
     AgentExamples,
     AgentExamplesConversation,
     AgentExamplesRationale,
@@ -168,6 +169,9 @@ class RussianLocale(Locale):
                 ),
             ]
         ),
+    )
+    admin = Admin(
+        CONVERSATION_HEADER="Разговор с пользователем [{user_id}](tg://user?id={user_id})"
     )
     OFF_TOPIC_REDIRECT = (
         "Слушай, мне тоже тут весело обсуждать <...>, но ты забиваешь очередь, и кто-то "

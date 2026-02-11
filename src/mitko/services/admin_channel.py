@@ -8,6 +8,8 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import SETTINGS
+from ..i18n import L
+from ..utils.typing_utils import raise_error
 
 if TYPE_CHECKING:
     from ..models.conversation import Conversation
@@ -21,11 +23,11 @@ async def _post_to_admin(
     *,
     thread_id: int | None = None,
     parse_mode: str | None = None,
-) -> Message | None:
+) -> Message:
     """Send a message to the admin channel, optionally in a thread.
 
-    Returns the sent Message on success, or None if admin channel is not configured.
-    Raises on send failures — callers are responsible for error handling.
+    Returns the sent Message on success.
+    Raises on send failures or if admin channel is not configured.
 
     Args:
         bot: Telegram Bot instance
@@ -33,11 +35,12 @@ async def _post_to_admin(
         thread_id: If provided, reply to this message_id to post in its thread
         parse_mode: Optional Telegram parse mode ("HTML", "Markdown", etc.)
     """
-    if SETTINGS.admin_channel_id is None:
-        return None
 
     return await bot.send_message(
-        chat_id=SETTINGS.admin_channel_id,
+        chat_id=(
+            SETTINGS.admin_channel_id
+            or raise_error(RuntimeError("Admin channel is not configured"))
+        ),
         text=text,
         reply_to_message_id=thread_id,
         parse_mode=parse_mode,
@@ -52,23 +55,24 @@ async def mirror_to_admin_thread(
 ) -> None:
     """Post text to the admin thread for this conversation, creating the thread root if needed.
 
-    Prepends a tg://user?id=... identifier to the first message in a new thread.
+    Sends a separate header message (from i18n) as the thread root on first call.
     Persists admin_thread_id via session.add() + session.commit() when a new thread is created.
     Silent failure: never raises.
     """
     try:
-        is_new_thread = not conv.admin_thread_id
-        post_text = (
-            f"tg://user?id={conv.telegram_id} {text}" if is_new_thread else text
-        )
-
-        if (
-            sent := await _post_to_admin(
-                bot, post_text, thread_id=conv.admin_thread_id
-            )
-        ) and is_new_thread:
-            conv.admin_thread_id = sent.message_id
+        if not conv.admin_thread_id:
+            conv.admin_thread_id = (
+                await _post_to_admin(
+                    bot,
+                    L.admin.CONVERSATION_HEADER.format(
+                        user_id=conv.telegram_id
+                    ),
+                    parse_mode="Markdown",
+                )
+            ).message_id
             session.add(conv)
             await session.commit()
-    except Exception:
-        logger.exception("Failed to mirror message to admin thread")
+
+        await _post_to_admin(bot, text, thread_id=conv.admin_thread_id)
+    except Exception as e:
+        logger.exception("Failed to mirror message to admin thread: %s", e)

@@ -118,22 +118,35 @@ uv run alembic upgrade head
 - **NEVER add `# pyright: ignore`, `# noqa`, or similar suppression comments without explicit user approval** - always ask first and discuss the root cause
 - **NEVER cast to `Any` type without explicit user approval** - always ask first and find a properly typed solution
 - **Only add comments when the logic isn't clear from the code itself** - prefer self-documenting code with descriptive names over explanatory comments
-- **Inline single-use variables** - if a variable is only used once, inline it directly at the usage site rather than defining it separately. Example:
+- **Inline single-use variables** - if a variable is only used once, inline it directly at the usage site rather than defining it separately. This applies everywhere: simple assignments, f-strings passed to a function, walrus operator results, etc. Exception: when inlining makes the expression genuinely hard to parse at a glance, a named variable is fine — but that bar is high, and naming is hard, so prefer inlining by default.
 
-  ```python
-  # ❌ Avoid - unnecessary intermediate variables
-  async def get_user_ids(self) -> list[int]:
-      result = await self.session.execute(select(User.id))
-      user_ids = [row[0] for row in result]
-      return user_ids
+Example:
 
-  # ✅ Prefer - inline with tuple unpacking
-  async def get_user_ids(self) -> list[int]:
-      return [
-          id
-          for (id,) in await self.session.execute(select(User.id))
-      ]
-  ```
+```python
+# ❌ Avoid - unnecessary intermediate variables
+async def get_user_ids(self) -> list[int]:
+    result = await self.session.execute(select(User.id))
+    user_ids = [row[0] for row in result]
+    return user_ids
+
+# ✅ Prefer - inline with tuple unpacking
+async def get_user_ids(self) -> list[int]:
+    return [
+        id
+        for (id,) in await self.session.execute(select(User.id))
+    ]
+
+# ❌ Avoid - named variable only used once as argument
+header = L.admin.CONVERSATION_HEADER.format(user_id=conv.telegram_id)
+sent = await _post_to_admin(bot, header, parse_mode="Markdown")
+
+# ✅ Prefer - inline the expression directly
+sent = await _post_to_admin(
+    bot,
+    L.admin.CONVERSATION_HEADER.format(user_id=conv.telegram_id),
+    parse_mode="Markdown",
+)
+```
 
 - **Public methods before private** - organize class methods with public API first, then private/helper methods (prefixed with `_`) below
 - PostgreSQL requires `pgvector` extension

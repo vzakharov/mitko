@@ -3,6 +3,7 @@
 from textwrap import dedent
 
 from .base import (
+    Admin,
     AgentExamples,
     AgentExamplesConversation,
     AgentExamplesRationale,
@@ -167,6 +168,9 @@ class EnglishLocale(Locale):
                 ),
             ]
         ),
+    )
+    admin = Admin(
+        CONVERSATION_HEADER="Conversation with user [{user_id}](tg://user?id={user_id})"
     )
     OFF_TOPIC_REDIRECT = (
         "Hey, I'm having fun talking about <...> too, but you're holding up the queue and "

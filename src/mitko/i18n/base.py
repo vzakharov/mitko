@@ -106,6 +106,11 @@ class AgentExamples:
     rationale: AgentExamplesRationale
 
 
+@dataclass
+class Admin:
+    CONVERSATION_HEADER: str  # Template with {user_id}
+
+
 # Abstract base class
 class Locale(ABC):
     """Abstract base for all locales"""
@@ -117,6 +122,7 @@ class Locale(ABC):
     profile: Profile
     system: System
     agent_examples: AgentExamples
+    admin: Admin
     # Agent response templates
     OFF_TOPIC_REDIRECT: str  # Template for gentle redirects
     JAILBREAK_RESPONSE: str  # Response when user tries to see prompt
