@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-async def post_to_admin(
+async def _post_to_admin(
     bot: Bot,
     text: str,
     *,
@@ -24,9 +24,8 @@ async def post_to_admin(
 ) -> Message | None:
     """Send a message to the admin channel, optionally in a thread.
 
-    Returns the sent Message on success, or None if admin channel is not
-    configured or the send fails. Errors are logged, never raised — admin
-    channel failures must never break core bot functionality.
+    Returns the sent Message on success, or None if admin channel is not configured.
+    Raises on send failures — callers are responsible for error handling.
 
     Args:
         bot: Telegram Bot instance
@@ -37,18 +36,12 @@ async def post_to_admin(
     if SETTINGS.admin_channel_id is None:
         return None
 
-    try:
-        return await bot.send_message(
-            chat_id=SETTINGS.admin_channel_id,
-            text=text,
-            reply_to_message_id=thread_id,
-            parse_mode=parse_mode,
-        )
-    except Exception:
-        logger.exception(
-            "Failed to post to admin channel %s", SETTINGS.admin_channel_id
-        )
-        return None
+    return await bot.send_message(
+        chat_id=SETTINGS.admin_channel_id,
+        text=text,
+        reply_to_message_id=thread_id,
+        parse_mode=parse_mode,
+    )
 
 
 async def mirror_to_admin_thread(
@@ -59,15 +52,21 @@ async def mirror_to_admin_thread(
 ) -> None:
     """Post text to the admin thread for this conversation, creating the thread root if needed.
 
+    Prepends a tg://user?id=... identifier to the first message in a new thread.
     Persists admin_thread_id via session.add() + session.commit() when a new thread is created.
     Silent failure: never raises.
     """
     try:
+        is_new_thread = not conv.admin_thread_id
+        post_text = (
+            f"tg://user?id={conv.telegram_id} {text}" if is_new_thread else text
+        )
+
         if (
-            sent := await post_to_admin(
-                bot, text, thread_id=conv.admin_thread_id
+            sent := await _post_to_admin(
+                bot, post_text, thread_id=conv.admin_thread_id
             )
-        ) and (not conv.admin_thread_id):
+        ) and is_new_thread:
             conv.admin_thread_id = sent.message_id
             session.add(conv)
             await session.commit()
