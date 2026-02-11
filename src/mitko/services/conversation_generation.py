@@ -272,7 +272,9 @@ class ConversationGeneration:
                         generation.placeholder_message_id,
                         e,
                     )
-                    await send_to_user(self.bot, conv, response_text, self.session)
+                    await send_to_user(
+                        self.bot, conv, response_text, self.session
+                    )
             else:
                 # Delete placeholder message and send response as new message (user gets notification)
                 try:

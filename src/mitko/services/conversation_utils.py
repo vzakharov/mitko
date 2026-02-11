@@ -7,10 +7,9 @@ from typing import Any
 
 from aiogram import Bot
 from aiogram.types import Message
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import col
 
+from ..db import get_conversation, get_conversation_or_none
 from ..models.conversation import Conversation
 from ..utils.async_utils import Throttler
 from ..utils.typing_utils import raise_error
@@ -46,16 +45,7 @@ async def send_to_user(
     telegram_id, conv = (
         (recipient.telegram_id, recipient)
         if isinstance(recipient, Conversation)
-        else (
-            recipient,
-            (
-                await session.execute(
-                    select(Conversation).where(
-                        col(Conversation.telegram_id) == recipient
-                    )
-                )
-            ).scalar_one(),
-        )
+        else (recipient, await get_conversation(session, recipient))
     )
 
     if (
@@ -83,13 +73,7 @@ async def _mirror_outgoing(
     try:
         conv = (
             conv
-            or (
-                await session.execute(
-                    select(Conversation).where(
-                        col(Conversation.telegram_id) == telegram_id
-                    )
-                )
-            ).scalar_one_or_none()
+            or await get_conversation_or_none(session, telegram_id)
             or raise_error(
                 ValueError(
                     f"No conversation found for telegram_id={telegram_id}"

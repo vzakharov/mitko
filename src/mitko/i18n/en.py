@@ -78,7 +78,6 @@ class EnglishLocale(Locale):
             Wanna connect?"""
         ),
         ACCEPT_WAITING="Got it! Now waiting to hear from the other side.",
-        ACCEPT_CONNECTED="We're on! Check your messages.",
         CONNECTION_MADE=dedent(
             """\
             🎉 Boom, matched! Here's the details:
@@ -113,6 +112,7 @@ class EnglishLocale(Locale):
             USER_NOT_FOUND="User not found",
             MESSAGE_UNAVAILABLE="Hmm, can't access that message anymore. Try again?",
             GENERATION_FAILED="Oops, something went wrong on my end. Please try again!",
+            SOMETHING_WENT_WRONG="Oops, something went wrong. Chances are, we're on it (no promises though).",
         ),
     )
     agent_examples = AgentExamples(

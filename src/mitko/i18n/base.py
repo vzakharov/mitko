@@ -52,7 +52,6 @@ class MatchingErrors:
 class Matching:
     FOUND: str  # Template with {profile} and {rationale}
     ACCEPT_WAITING: str
-    ACCEPT_CONNECTED: str
     CONNECTION_MADE: str  # Template with {profile}
     REJECT_NOTED: str
     errors: MatchingErrors
@@ -72,7 +71,8 @@ class SystemErrors:
     UNAUTHORIZED: str
     USER_NOT_FOUND: str
     MESSAGE_UNAVAILABLE: str
-    GENERATION_FAILED: str  # Shown when LLM generation fails
+    GENERATION_FAILED: str
+    SOMETHING_WENT_WRONG: str
 
 
 @dataclass

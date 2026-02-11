@@ -12,6 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from ..config import SETTINGS
+from ..db import (
+    get_match_or_none,
+    get_or_create_conversation,
+    get_or_create_user,
+    get_user,
+)
 from ..i18n import L
 from ..jobs.generation_processor import nudge_processor
 from ..models import Conversation, Generation, User, get_db
@@ -77,41 +83,15 @@ async def validate_callback_message(callback: CallbackQuery) -> Message | None:
     return callback.message
 
 
-async def get_or_create_user(telegram_id: int, session: AsyncSession) -> User:
-    result = await session.execute(
-        select(User).where(col(User.telegram_id) == telegram_id)
-    )
-    user = result.scalar_one_or_none()
-    if user is None:
-        user = User(telegram_id=telegram_id, state="onboarding")
-        session.add(user)
-        await session.commit()
-        await session.refresh(user)
-    return user
-
-
-async def get_or_create_conversation(
-    telegram_id: int, session: AsyncSession
-) -> Conversation:
-    result = await session.execute(
-        select(Conversation).where(col(Conversation.telegram_id) == telegram_id)
-    )
-    conv = result.scalar_one_or_none()
-    if conv is None:
-        conv = Conversation(telegram_id=telegram_id, message_history=[])
-        session.add(conv)
-        await session.commit()
-        await session.refresh(conv)
-    return conv
-
-
 @router.message(Command("start"))
 async def cmd_start(message: Message) -> None:
     if message.from_user is None:
         return
     async for session in get_db():
-        user = await get_or_create_user(message.from_user.id, session)
-        conv = await get_or_create_conversation(message.from_user.id, session)
+        (user, conv) = await asyncio.gather(
+            get_or_create_user(session, message.from_user.id),
+            get_or_create_conversation(session, message.from_user.id),
+        )
 
         # Check if user has ANY existing data
         has_data = (
@@ -210,8 +190,10 @@ async def handle_message(message: Message) -> None:
         return
 
     async for session in get_db():
-        await get_or_create_user(message.from_user.id, session)
-        conv = await get_or_create_conversation(message.from_user.id, session)
+        (_, conv) = await asyncio.gather(
+            get_or_create_user(session, message.from_user.id),
+            get_or_create_conversation(session, message.from_user.id),
+        )
 
         # Set or append to user_prompt
         if conv.user_prompt:
@@ -310,30 +292,31 @@ async def handle_match_accept(
     match_id = UUID(callback_data.match_id)
 
     async for session in get_db():
-        from ..models import Match
-
-        result = await session.execute(
-            select(Match).where(col(Match.id) == match_id)
-        )
-        match = result.scalar_one_or_none()
+        match = await get_match_or_none(session, match_id)
         if not match:
             await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
             return
+        if not match.user_b_id:
+            logger.exception("Match %s has no user_b_id", match_id)
+            await callback.answer(
+                L.system.errors.SOMETHING_WENT_WRONG, show_alert=True
+            )
+            return
 
-        user_a_result = await session.execute(
-            select(User).where(col(User.telegram_id) == match.user_a_id)
+        (user_a, user_b) = await asyncio.gather(
+            *(
+                get_user(session, id)
+                for id in (match.user_a_id, match.user_b_id)
+            )
         )
-        user_b_result = await session.execute(
-            select(User).where(col(User.telegram_id) == match.user_b_id)
-        )
-        user_a = user_a_result.scalar_one()
-        user_b = user_b_result.scalar_one()
 
         current_user = None
         if user_a.telegram_id == callback.from_user.id:
             current_user = user_a
+            other_user = user_b
         elif user_b.telegram_id == callback.from_user.id:
             current_user = user_b
+            other_user = user_a
         else:
             await callback.answer(
                 L.matching.errors.UNAUTHORIZED, show_alert=True
@@ -349,12 +332,21 @@ async def handle_match_accept(
             match.status = "connected"
             await session.commit()
 
-            bot = get_bot()
-            profile_display_a = _format_profile_for_display(user_b)
-            profile_display_b = _format_profile_for_display(user_a)
-            await send_to_user(bot, user_a.telegram_id, L.matching.CONNECTION_MADE.format(profile=profile_display_a), session)
-            await send_to_user(bot, user_b.telegram_id, L.matching.CONNECTION_MADE.format(profile=profile_display_b), session)
-            await callback.answer(L.matching.ACCEPT_CONNECTED)
+            await asyncio.gather(
+                callback.answer(
+                    L.matching.CONNECTION_MADE.format(
+                        profile=_format_profile_for_display(other_user)
+                    )
+                ),
+                send_to_user(
+                    get_bot(),
+                    other_user.telegram_id,
+                    L.matching.CONNECTION_MADE.format(
+                        profile=_format_profile_for_display(current_user)
+                    ),
+                    session,
+                ),
+            )
         else:
             await callback.answer(
                 L.matching.errors.ALREADY_PROCESSED, show_alert=True
@@ -368,19 +360,12 @@ async def handle_match_reject(
     match_id = UUID(callback_data.match_id)
 
     async for session in get_db():
-        from ..models import Match
-
-        result = await session.execute(
-            select(Match).where(col(Match.id) == match_id)
-        )
-        match = result.scalar_one_or_none()
-        if not match:
+        if match := await get_match_or_none(session, match_id):
+            match.status = "rejected"
+            await session.commit()
+            await callback.answer(L.matching.REJECT_NOTED)
+        else:
             await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
-            return
-
-        match.status = "rejected"
-        await session.commit()
-        await callback.answer(L.matching.REJECT_NOTED)
 
 
 @router.callback_query(ResetAction.filter(F.action == "confirm"))
@@ -402,8 +387,10 @@ async def handle_reset_confirm(
 
     async for session in get_db():
         # Get or create user and conversation (defensive programming)
-        user = await get_or_create_user(telegram_id, session)
-        conversation = await get_or_create_conversation(telegram_id, session)
+        (user, conversation) = await asyncio.gather(
+            get_or_create_user(session, telegram_id),
+            get_or_create_conversation(session, telegram_id),
+        )
 
         # Use ProfileService to reset
         profiler = ProfileService(session)
@@ -413,30 +400,27 @@ async def handle_reset_confirm(
         await message.edit_text(L.commands.reset.SUCCESS)
 
         # Send standard greeting (same as /start)
-        if conversation:
-            await message.answer(L.commands.start.GREETING)
-            reset_conversation_state(conversation)
-            # Cancel any pending generations for this conversation
-            pending_gens = (
-                (
-                    await session.execute(
-                        select(Generation)
-                        .where(
-                            col(Generation.conversation_id) == conversation.id
-                        )
-                        .where(col(Generation.status) == "pending")
-                    )
+        await message.answer(L.commands.start.GREETING)
+        reset_conversation_state(conversation)
+        # Cancel any pending generations for this conversation
+        pending_gens = (
+            (
+                await session.execute(
+                    select(Generation)
+                    .where(col(Generation.conversation_id) == conversation.id)
+                    .where(col(Generation.status) == "pending")
                 )
-                .scalars()
-                .all()
             )
-            for gen in pending_gens:
-                gen.status = "failed"
-            await session.commit()
-            logger.info(
-                "Reset conversation for user %d: empty history",
-                telegram_id,
-            )
+            .scalars()
+            .all()
+        )
+        for gen in pending_gens:
+            gen.status = "failed"
+        await session.commit()
+        logger.info(
+            "Reset conversation for user %d: empty history",
+            telegram_id,
+        )
 
         await callback.answer()
 

@@ -1,5 +1,6 @@
 """Match generation service for LLM-powered match rationale generation."""
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from textwrap import dedent
@@ -7,16 +8,16 @@ from typing import TYPE_CHECKING, Literal
 
 from aiogram import Bot
 from genai_prices import calc_price
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import col
 
 from ..agents.config import LANGUAGE_MODEL
 from ..agents.qualifier_agent import QUALIFIER_AGENT
 from ..bot.keyboards import match_consent_keyboard
 from ..config import SETTINGS
+from ..db import get_user
 from ..i18n import L
 from ..models import Match, User
+from ..utils.typing_utils import raise_error
 from .conversation_utils import send_to_user
 
 if TYPE_CHECKING:
@@ -93,14 +94,16 @@ class MatchGeneration:
 
     async def _fetch_users(self) -> tuple[User, User]:
         """Fetch both users involved in the match."""
-        user_a_result = await self.session.execute(
-            select(User).where(col(User.telegram_id) == self.match.user_a_id)
+        (user_a, user_b) = await asyncio.gather(
+            *(
+                get_user(self.session, id)
+                for id in (
+                    self.match.user_a_id,
+                    self.match.user_b_id
+                    or raise_error(ValueError("Match has no user_b_id")),
+                )
+            )
         )
-        user_b_result = await self.session.execute(
-            select(User).where(col(User.telegram_id) == self.match.user_b_id)
-        )
-        user_a = user_a_result.scalar_one()
-        user_b = user_b_result.scalar_one()
         return user_a, user_b
 
     async def _generate_match_rationale(
@@ -146,20 +149,24 @@ Internal Notes: {user_b.private_observations or "None"}"""
         self, user_a: User, user_b: User, rationale: str
     ) -> None:
         """Send match notifications to both users."""
-        profile_display_a = _format_profile_for_display(user_b)
-        profile_display_b = _format_profile_for_display(user_a)
 
-        message_a = L.matching.FOUND.format(
-            profile=profile_display_a, rationale=rationale
+        await asyncio.gather(
+            *(
+                send_to_user(
+                    self.bot,
+                    user.telegram_id,
+                    L.matching.FOUND.format(
+                        profile=_format_profile_for_display(
+                            user_b if user == user_a else user_a
+                        ),
+                        rationale=rationale,
+                    ),
+                    self.session,
+                    reply_markup=match_consent_keyboard(self.match.id),
+                )
+                for user in (user_a, user_b)
+            )
         )
-        message_b = L.matching.FOUND.format(
-            profile=profile_display_b, rationale=rationale
-        )
-
-        keyboard = match_consent_keyboard(self.match.id)
-
-        await send_to_user(self.bot, user_a.telegram_id, message_a, self.session, reply_markup=keyboard)
-        await send_to_user(self.bot, user_b.telegram_id, message_b, self.session, reply_markup=keyboard)
 
     def _record_usage_and_cost(
         self,
