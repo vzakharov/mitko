@@ -9,7 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import SETTINGS
 from ..i18n import L
+from ..utils.async_utils import wait_for_interval
 from ..utils.typing_utils import raise_error
+from .bot_throttle import wait_for_global_limit
+
+# 20 msg/min channel Telegram limit
+_CHANNEL_MIN_INTERVAL = 3.0
+_last_channel_send_at: float = 0.0
 
 if TYPE_CHECKING:
     from ..models.conversation import Conversation
@@ -36,11 +42,14 @@ async def _post_to_admin(
         parse_mode: Optional Telegram parse mode ("HTML", "Markdown", etc.)
     """
 
+    global _last_channel_send_at
+    _last_channel_send_at = await wait_for_interval(
+        lambda: _last_channel_send_at, _CHANNEL_MIN_INTERVAL
+    )
+    await wait_for_global_limit()
     return await bot.send_message(
-        chat_id=(
-            SETTINGS.admin_channel_id
-            or raise_error(RuntimeError("Admin channel is not configured"))
-        ),
+        chat_id=SETTINGS.admin_channel_id
+        or raise_error(RuntimeError("Admin channel is not configured")),
         text=text,
         reply_to_message_id=thread_id,
         parse_mode=parse_mode,

@@ -1,6 +1,8 @@
 """Utilities for conversation message handling."""
 
+import asyncio
 import logging
+from datetime import UTC, datetime
 from typing import Any
 
 from aiogram import Bot
@@ -12,6 +14,10 @@ from sqlmodel import col
 from ..models.conversation import Conversation
 from ..utils.typing_utils import raise_error
 from .admin_channel import mirror_to_admin_thread
+from .bot_throttle import wait_for_global_limit
+
+# 1 msg/s per DM chat (Telegram limit)
+_DM_MIN_INTERVAL = 1.0
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +46,12 @@ async def send_to_user(
         else (recipient, None)
     )
 
+    if conv is not None:
+        elapsed = (datetime.now(UTC) - conv.updated_at).total_seconds()
+        if (remaining := _DM_MIN_INTERVAL - elapsed) > 0:
+            await asyncio.sleep(remaining)
+
+    await wait_for_global_limit()
     result = await bot.send_message(telegram_id, text, **kwargs)
 
     await _mirror_outgoing(bot, telegram_id, text, session, conv)
