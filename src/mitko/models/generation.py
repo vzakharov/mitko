@@ -11,7 +11,7 @@ from sqlmodel import Column, Relationship, SQLModel
 from .types import HttpUrlType
 
 if TYPE_CHECKING:
-    from .conversation import Conversation
+    from .chat import Chat
     from .match import Match
 
 GenerationStatus = Literal["pending", "started", "completed", "failed"]
@@ -22,16 +22,16 @@ class Generation(SQLModel, table=True):
     __table_args__: ClassVar[Any] = (
         Index("ix_generations_status", "status"),
         Index("ix_generations_scheduled_for", "scheduled_for"),
-        Index("ix_generations_conversation_id", "conversation_id"),
+        Index("ix_generations_chat_id", "chat_id"),
     )
 
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         sa_column=Column(PGUUID(as_uuid=True), primary_key=True),
     )
-    conversation_id: uuid.UUID | None = Field(
+    chat_id: uuid.UUID | None = Field(
         default=None,
-        foreign_key="conversations.id",
+        foreign_key="chats.id",
     )
     match_id: uuid.UUID | None = Field(
         default=None,
@@ -44,8 +44,8 @@ class Generation(SQLModel, table=True):
         default="pending",
         sa_column=Column(String(20), nullable=False),
     )
-    # TODO: Move placeholder_message_id to Conversation model
-    # Currently used only for conversation generations to show "Thinking 🤔" status.
+    # TODO: Move placeholder_message_id to Chat model
+    # Currently used only for chat generations to show "Thinking 🤔" status.
     # Should be moved to Conversation.status_message_id pattern for cleaner separation.
     placeholder_message_id: int | None = Field(
         default=None,
@@ -87,7 +87,5 @@ class Generation(SQLModel, table=True):
         description="Total cost in USD for this generation",
     )
 
-    conversation: "Conversation | None" = Relationship(
-        back_populates="generations"
-    )
+    chat: "Chat | None" = Relationship(back_populates="generations")
     match: "Match | None" = Relationship(back_populates="generations")

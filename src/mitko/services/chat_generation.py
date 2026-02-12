@@ -1,4 +1,4 @@
-"""Conversation generation service for LLM-powered dialogue."""
+"""Chat generation service for LLM-powered dialogue."""
 
 import json
 import logging
@@ -14,17 +14,17 @@ from pydantic_ai.models.openai import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..agents.config import LANGUAGE_MODEL
-from ..agents.conversation_agent import (
-    CONVERSATION_AGENT,
-    CONVERSATION_AGENT_INSTRUCTIONS,
+from ..agents.chat_agent import (
+    CHAT_AGENT,
+    CHAT_AGENT_INSTRUCTIONS,
 )
+from ..agents.config import LANGUAGE_MODEL
 from ..config import SETTINGS
 from ..i18n import L
-from ..models import Conversation, Generation
+from ..models import Chat, Generation
 from ..types.messages import HistoryMessage, ProfileData
 from ..utils.typing_utils import raise_error
-from .conversation_utils import send_to_user
+from .chat_utils import send_to_user
 from .profiler import ProfileService
 
 if TYPE_CHECKING:
@@ -38,16 +38,16 @@ MESSAGE_HISTORY_MAX_LENGTH = 20
 
 
 @dataclass
-class ConversationGeneration:
-    """Service for processing conversation generations."""
+class ChatGeneration:
+    """Service for processing chat generations."""
 
     bot: Bot
     session: AsyncSession
     generation: Generation
-    conversation: Conversation
+    chat: Chat
 
     async def execute(self) -> None:
-        """Process a conversation generation: run agent, update profile, send message."""
+        """Process a chat generation: run agent, update profile, send message."""
 
         await self._prepare_placeholder_message()
         await self._show_thinking_status()
@@ -55,25 +55,25 @@ class ConversationGeneration:
         try:
             user_prompt = await self._consume_user_prompt()
 
-            result = await self._run_conversation_agent(user_prompt)
+            result = await self._run_chat_agent(user_prompt)
 
             await self._handle_agent_response(user_prompt, result)
         except Exception:
             # Notify user of failure before re-raising
             await send_to_user(
                 self.bot,
-                self.conversation,
+                self.chat,
                 L.system.errors.GENERATION_FAILED,
                 self.session,
             )
             raise
 
     async def _prepare_placeholder_message(self) -> None:
-        """Transfer status message from conversation to generation."""
-        conv = self.conversation
-        if conv.status_message_id:
-            self.generation.placeholder_message_id = conv.status_message_id
-            conv.status_message_id = None
+        """Transfer status message from chat to generation."""
+        chat = self.chat
+        if chat.status_message_id:
+            self.generation.placeholder_message_id = chat.status_message_id
+            chat.status_message_id = None
             await self.session.commit()
 
     async def _show_thinking_status(self) -> None:
@@ -84,7 +84,7 @@ class ConversationGeneration:
         try:
             await self.bot.edit_message_text(
                 text=L.system.THINKING,
-                chat_id=self.conversation.telegram_id,
+                chat_id=self.chat.telegram_id,
                 message_id=self.generation.placeholder_message_id,
             )
         except Exception as e:
@@ -97,7 +97,7 @@ class ConversationGeneration:
         # TODO: Consider periodic refresh every 4s to keep typing indicator alive
         try:
             await self.bot.send_chat_action(
-                chat_id=self.conversation.telegram_id, action="typing"
+                chat_id=self.chat.telegram_id, action="typing"
             )
         except Exception as e:
             logger.warning("Failed to send typing indicator: %s", e)
@@ -108,27 +108,27 @@ class ConversationGeneration:
         )
 
     async def _consume_user_prompt(self) -> str:
-        """Consume and clear the user_prompt from conversation."""
-        user_prompt = self.conversation.user_prompt or raise_error(
+        """Consume and clear the user_prompt from chat."""
+        user_prompt = self.chat.user_prompt or raise_error(
             ValueError("User prompt is required")
         )
-        self.conversation.user_prompt = None
+        self.chat.user_prompt = None
         await self.session.commit()
         return user_prompt
 
-    async def _run_conversation_agent(
+    async def _run_chat_agent(
         self, user_prompt: str
     ) -> "AgentRunResult[ConversationResponse]":
-        """Run the conversation agent to generate a response."""
+        """Run the chat agent to generate a response."""
 
-        conv = self.conversation
+        chat = self.chat
 
         instructions_with_history = "\n\n".join(
             [
                 piece
                 for piece in [
-                    CONVERSATION_AGENT_INSTRUCTIONS,
-                    self._format_history_for_instructions(conv.message_history),
+                    CHAT_AGENT_INSTRUCTIONS,
+                    self._format_history_for_instructions(chat.message_history),
                 ]
                 if piece
             ]
@@ -139,45 +139,45 @@ class ConversationGeneration:
                 openai_prompt_cache_retention="24h",
             )
 
-            if conv.last_responses_api_response_id:
+            if chat.last_responses_api_response_id:
                 model_settings["openai_previous_response_id"] = (
-                    conv.last_responses_api_response_id
+                    chat.last_responses_api_response_id
                 )
                 try:
-                    return await CONVERSATION_AGENT.run(
+                    return await CHAT_AGENT.run(
                         user_prompt,
                         model_settings=model_settings,
                     )
                 except Exception as e:
                     if self._is_expired_response_error(e):
                         logger.warning(
-                            "Responses API state expired for conversation %s (response_id=%s): %s. Falling back to history injection.",
-                            conv.id,
-                            conv.last_responses_api_response_id,
+                            "Responses API state expired for chat %s (response_id=%s): %s. Falling back to history injection.",
+                            chat.id,
+                            chat.last_responses_api_response_id,
                             str(e),
                         )
 
-                        conv.last_responses_api_response_id = None
+                        chat.last_responses_api_response_id = None
                         await self.session.commit()
 
                         model_settings.pop("openai_previous_response_id", None)
-                        return await CONVERSATION_AGENT.run(
+                        return await CHAT_AGENT.run(
                             user_prompt,
                             model_settings=model_settings,
                             instructions=instructions_with_history,
                         )
                     raise
-            return await CONVERSATION_AGENT.run(
+            return await CHAT_AGENT.run(
                 user_prompt,
                 model_settings=model_settings,
                 instructions=instructions_with_history,
             )
 
-        return await CONVERSATION_AGENT.run(
+        return await CHAT_AGENT.run(
             user_prompt,
             model_settings=(
                 OpenAIChatModelSettings(
-                    openai_prompt_cache_key=str(conv.id),
+                    openai_prompt_cache_key=str(chat.id),
                 )
                 if SETTINGS.llm_provider == "openai"
                 else None
@@ -192,14 +192,14 @@ class ConversationGeneration:
     ) -> None:
         """Handle agent response: update profile, send message, update history."""
         response = result.output
-        conv = self.conversation
+        chat = self.chat
 
         # Handle profile creation/update
         if response.profile:
             profiler = ProfileService(self.session)
-            is_update = conv.user.is_complete
+            is_update = chat.user.is_complete
             await profiler.create_or_update_profile(
-                conv.user, response.profile, is_update=is_update
+                chat.user, response.profile, is_update=is_update
             )
 
             profile_card = self._format_profile_card(response.profile)
@@ -209,9 +209,9 @@ class ConversationGeneration:
 
         await self._send_response_to_user(response_text)
 
-        # Update conversation history for fallback
-        conv.message_history = [
-            *conv.message_history,
+        # Update chat history for fallback
+        chat.message_history = [
+            *chat.message_history,
             {"role": "user", "content": user_prompt},
             {
                 "role": "assistant",
@@ -230,7 +230,7 @@ class ConversationGeneration:
                     f"https://platform.openai.com/logs/{response_id}"
                 )
             if SETTINGS.use_openai_responses_api:
-                conv.last_responses_api_response_id = response_id
+                chat.last_responses_api_response_id = response_id
 
         await self.session.commit()
 
@@ -244,12 +244,12 @@ class ConversationGeneration:
         response_text: str,
     ) -> None:
         """Send response to user, handling placeholder message logic."""
-        conv = self.conversation
+        chat = self.chat
         generation = self.generation
 
-        # Re-fetch conversation to check if new messages arrived
-        await self.session.refresh(conv)
-        new_messages_arrived = conv.user_prompt is not None
+        # Re-fetch chat to check if new messages arrived
+        await self.session.refresh(chat)
+        new_messages_arrived = chat.user_prompt is not None
 
         logger.info(
             "Completion phase: new_messages=%s",
@@ -263,7 +263,7 @@ class ConversationGeneration:
                 try:
                     await self.bot.edit_message_text(
                         text=response_text,
-                        chat_id=conv.telegram_id,
+                        chat_id=chat.telegram_id,
                         message_id=generation.placeholder_message_id,
                     )
                 except Exception as e:
@@ -273,7 +273,7 @@ class ConversationGeneration:
                         e,
                     )
                     await send_to_user(
-                        self.bot, conv, response_text, self.session
+                        self.bot, chat, response_text, self.session
                     )
             else:
                 # Delete placeholder message and send response as new message (user gets notification)
@@ -283,7 +283,7 @@ class ConversationGeneration:
                         := generation.placeholder_message_id
                     ):
                         await self.bot.delete_message(
-                            chat_id=conv.telegram_id,
+                            chat_id=chat.telegram_id,
                             message_id=placeholder_message_id,
                         )
                 except Exception as e:
@@ -293,10 +293,10 @@ class ConversationGeneration:
                         e,
                     )
 
-                await send_to_user(self.bot, conv, response_text, self.session)
+                await send_to_user(self.bot, chat, response_text, self.session)
         else:
             # No placeholder message (old generation) - just send response
-            await send_to_user(self.bot, conv, response_text, self.session)
+            await send_to_user(self.bot, chat, response_text, self.session)
 
     def _record_usage_and_cost(
         self,
@@ -359,7 +359,7 @@ class ConversationGeneration:
             role_label = "User" if msg["role"] == "user" else "Assistant"
             formatted_messages.append(f"{role_label}: {msg['content']}")
 
-        return f"Previous conversation history:\n{truncation_notice}{chr(10).join(formatted_messages)}"
+        return f"Previous chat history:\n{truncation_notice}{chr(10).join(formatted_messages)}"
 
     def _is_expired_response_error(self, error: Exception) -> bool:
         """Check if error indicates expired/missing Responses API response.

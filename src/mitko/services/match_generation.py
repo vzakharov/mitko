@@ -18,7 +18,7 @@ from ..db import get_user
 from ..i18n import L
 from ..models import Match, User
 from ..utils.typing_utils import raise_error
-from .conversation_utils import send_to_user
+from .chat_utils import send_to_user
 
 if TYPE_CHECKING:
     from pydantic_ai.run import AgentRunResult

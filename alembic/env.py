@@ -14,14 +14,14 @@ from sqlmodel import SQLModel
 
 from mitko.config import SETTINGS
 from mitko.models import (  # Import all models
-    Conversation,
+    Chat,
     Generation,
     Match,
     User,
 )
 
 # Ensure models are registered with SQLModel.metadata for Alembic auto-discovery
-_ = (User, Conversation, Generation, Match)
+_ = (User, Chat, Generation, Match)
 
 config = context.config
 

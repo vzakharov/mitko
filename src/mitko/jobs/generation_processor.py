@@ -6,7 +6,7 @@ This module implements a sequential queue system for LLM generation:
 - Only one generation happens at a time (sequential, not parallel)
 
 This is the infrastructure layer that orchestrates the queue processing.
-Actual business logic lives in services/ (ConversationGeneration, GenerationOrchestrator, etc.)
+Actual business logic lives in services/ (ChatGeneration, GenerationOrchestrator, etc.)
 """
 
 import asyncio
@@ -18,7 +18,7 @@ from aiogram import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Generation, async_session_maker
-from ..services.conversation_generation import ConversationGeneration
+from ..services.chat_generation import ChatGeneration
 from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.match_generation import MatchGeneration
 
@@ -47,9 +47,9 @@ async def _route_and_process(
     bot: Bot, generation: Generation, session: AsyncSession
 ) -> None:
     """Route to task-specific processor based on which FK is set."""
-    if generation.conversation is not None:
-        await ConversationGeneration(
-            bot, session, generation, generation.conversation
+    if generation.chat is not None:
+        await ChatGeneration(
+            bot, session, generation, generation.chat
         ).execute()
     elif generation.match is not None:
         await MatchGeneration(

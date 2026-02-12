@@ -35,7 +35,7 @@ High-level flow from user interaction through profile creation, matching, and co
 
 ```mermaid
 graph TB
-    A[User sends message] --> B[ConversationAgent]
+    A[User sends message] --> B[ChatAgent]
     B --> C{Profile complete?}
     C -->|No| D[Continue conversation]
     C -->|Yes| E[Generate embedding<br/>from matching_summary]
@@ -143,7 +143,7 @@ flowchart TB
     subgraph Processor["Generation Processor Loop"]
         GetNext[Get next generation<br/>where scheduled_for ≤ now]
         ExecType{Type?}
-        ConvExec[ConversationGeneration.execute]
+        ChatExec[ChatGeneration.execute]
         MatchExec[MatchGeneration.execute]
         RecordCost[Record cost_usd]
     end
@@ -159,9 +159,9 @@ flowchart TB
 
     PendingGens --> GetNext
     GetNext --> ExecType
-    ExecType -->|conversation_id| ConvExec
+    ExecType -->|chat_id| ChatExec
     ExecType -->|match_id| MatchExec
-    ConvExec --> RecordCost
+    ChatExec --> RecordCost
     MatchExec --> RecordCost
     RecordCost -.affects next interval.-> CalcInterval
 
@@ -275,5 +275,5 @@ The project uses:
 - SQLModel (Pydantic + SQLAlchemy 2.0) async patterns
 - PydanticAI for type-safe LLM agent outputs
 - Pydantic models for validation and structured data
-- Single unified ConversationAgent for natural conversation and profile management
+- Single unified ChatAgent for natural conversation and profile management
 - Type-safe i18n with nested dataclasses for full IDE autocomplete

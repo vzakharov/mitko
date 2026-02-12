@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from .user import User
 
 
-class Conversation(SQLModel, table=True):
-    __tablename__: ClassVar[Any] = "conversations"
+class Chat(SQLModel, table=True):
+    __tablename__: ClassVar[Any] = "chats"
 
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
@@ -37,12 +37,12 @@ class Conversation(SQLModel, table=True):
     )
     last_responses_api_response_id: str | None = Field(
         default=None,
-        description="OpenAI Responses API response ID for conversation continuation. Only used when USE_OPENAI_RESPONSES_API=true. Cleared on conversation reset.",
+        description="OpenAI Responses API response ID for chat continuation. Only used when USE_OPENAI_RESPONSES_API=true. Cleared on chat reset.",
     )
     message_history: list[HistoryMessage] = Field(
         default_factory=list,
         sa_column=Column(JSONBList(), nullable=False, server_default="[]"),
-        description="Conversation history for fallback when Responses API state expires.",
+        description="Chat history for fallback when Responses API state expires.",
     )
     updated_at: datetime = Field(
         default_factory=datetime.now,
@@ -60,10 +60,8 @@ class Conversation(SQLModel, table=True):
     admin_thread_id: int | None = Field(
         default=None,
         sa_column=Column(BigInteger(), nullable=True),
-        description="Admin channel message ID used as thread root for this conversation's logs",
+        description="Admin channel message ID used as thread root for this chat's logs",
     )
 
-    user: "User" = Relationship(back_populates="conversations")
-    generations: list["Generation"] = Relationship(
-        back_populates="conversation"
-    )
+    user: "User" = Relationship(back_populates="chats")
+    generations: list["Generation"] = Relationship(back_populates="chat")

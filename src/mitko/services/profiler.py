@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..llm import get_embedding
-from ..models import Conversation, User
+from ..models import Chat, User
 from ..models.user import CURRENT_PROFILER_VERSION
 from ..types.messages import ProfileData
 
@@ -54,22 +54,20 @@ class ProfileService:
         return user
 
     async def create_profile(
-        self, user: User, conversation: Conversation, profile_data: ProfileData
+        self, user: User, chat: Chat, profile_data: ProfileData
     ) -> User:
         """Legacy method - redirects to create_or_update_profile"""
         return await self.create_or_update_profile(
             user, profile_data, is_update=False
         )
 
-    async def reset_profile(
-        self, user: User, conversation: Conversation | None
-    ) -> None:
+    async def reset_profile(self, user: User, chat: Chat | None) -> None:
         """
-        Reset user profile and conversation to blank state.
+        Reset user profile and chat to blank state.
 
         Args:
             user: User to reset
-            conversation: Conversation to clear (if exists)
+            chat: Chat to clear (if exists)
         """
         # Reset user fields to defaults
         user.is_seeker = None
@@ -83,9 +81,9 @@ class ProfileService:
         user.profiler_version = None
         user.profile_updated_at = None
 
-        # Clear conversation history (keep the record)
-        if conversation:
-            conversation.message_history = []
-            conversation.user_prompt = None
+        # Clear chat history (keep the record)
+        if chat:
+            chat.message_history = []
+            chat.user_prompt = None
 
         await self.session.commit()

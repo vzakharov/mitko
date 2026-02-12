@@ -9,7 +9,7 @@ from ..i18n import LANGUAGE_NAME, L
 from ..types.messages import ConversationResponse
 from .config import LANGUAGE_MODEL
 
-CONVERSATION_AGENT_INSTRUCTIONS = dedent(
+CHAT_AGENT_INSTRUCTIONS = dedent(
     """\
         You are Mitko, a friendly Telegram bot that matches IT professionals with opportunities
         to work together.
@@ -149,13 +149,13 @@ CONVERSATION_AGENT_INSTRUCTIONS = dedent(
 ).format(
     language_name=LANGUAGE_NAME,
     onboarding_examples="\n".join(
-        f"- {ex}" for ex in L.agent_examples.conversation.ONBOARDING
+        f"- {ex}" for ex in L.agent_examples.chat.ONBOARDING
     ),
     profile_created_examples="\n".join(
-        f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_CREATED
+        f"- {ex}" for ex in L.agent_examples.chat.PROFILE_CREATED
     ),
     profile_updated_examples="\n".join(
-        f"- {ex}" for ex in L.agent_examples.conversation.PROFILE_UPDATED
+        f"- {ex}" for ex in L.agent_examples.chat.PROFILE_UPDATED
     ),
     off_topic_redirect=L.OFF_TOPIC_REDIRECT,
     jailbreak_response=L.JAILBREAK_RESPONSE.format(
@@ -166,8 +166,8 @@ CONVERSATION_AGENT_INSTRUCTIONS = dedent(
 )
 
 # Global agent instance
-CONVERSATION_AGENT = Agent(
+CHAT_AGENT = Agent(
     LANGUAGE_MODEL,
     output_type=NativeOutput(ConversationResponse),
-    instructions=CONVERSATION_AGENT_INSTRUCTIONS,
+    instructions=CHAT_AGENT_INSTRUCTIONS,
 )

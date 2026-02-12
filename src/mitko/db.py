@@ -7,32 +7,28 @@ from sqlalchemy import Result, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from .models import Conversation, Match, User
+from .models import Chat, Match, User
 
 
-async def _select_conversation(
+async def _select_chat(
     session: AsyncSession, telegram_id: int
-) -> Result[tuple[Conversation]]:
+) -> Result[tuple[Chat]]:
     return await session.execute(
-        select(Conversation).where(col(Conversation.telegram_id) == telegram_id)
+        select(Chat).where(col(Chat.telegram_id) == telegram_id)
     )
 
 
-async def get_conversation_or_none(
+async def get_chat_or_none(
     session: AsyncSession, telegram_id: int
-) -> Conversation | None:
-    return (
-        await _select_conversation(session, telegram_id)
-    ).scalar_one_or_none()
+) -> Chat | None:
+    return (await _select_chat(session, telegram_id)).scalar_one_or_none()
 
 
-async def get_conversation(
-    session: AsyncSession, telegram_id: int
-) -> Conversation:
-    return (await _select_conversation(session, telegram_id)).scalar_one()
+async def get_chat(session: AsyncSession, telegram_id: int) -> Chat:
+    return (await _select_chat(session, telegram_id)).scalar_one()
 
 
-TModel = TypeVar("TModel", Conversation, User)
+TModel = TypeVar("TModel", Chat, User)
 
 
 async def _create(session: AsyncSession, instance: TModel) -> TModel:
@@ -42,13 +38,9 @@ async def _create(session: AsyncSession, instance: TModel) -> TModel:
     return instance
 
 
-async def get_or_create_conversation(
-    session: AsyncSession, telegram_id: int
-) -> Conversation:
-    return await get_conversation_or_none(
-        session, telegram_id
-    ) or await _create(
-        session, Conversation(telegram_id=telegram_id, message_history=[])
+async def get_or_create_chat(session: AsyncSession, telegram_id: int) -> Chat:
+    return await get_chat_or_none(session, telegram_id) or await _create(
+        session, Chat(telegram_id=telegram_id, message_history=[])
     )
 
 

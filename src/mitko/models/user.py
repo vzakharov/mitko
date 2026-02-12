@@ -7,7 +7,7 @@ from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from .conversation import Conversation
+    from .chat import Chat
     from .match import Match
 
 
@@ -69,7 +69,7 @@ class User(SQLModel, table=True):
         ),
     )
 
-    conversations: list["Conversation"] = Relationship(back_populates="user")
+    chats: list["Chat"] = Relationship(back_populates="user")
     matches_a: list["Match"] = Relationship(
         back_populates="user_a",
         sa_relationship_kwargs={

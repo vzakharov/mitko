@@ -5,7 +5,7 @@ from textwrap import dedent
 from .base import (
     Admin,
     AgentExamples,
-    AgentExamplesConversation,
+    AgentExamplesChat,
     AgentExamplesRationale,
     Commands,
     CommandsReset,
@@ -116,7 +116,7 @@ class EnglishLocale(Locale):
         ),
     )
     agent_examples = AgentExamples(
-        conversation=AgentExamplesConversation(
+        chat=AgentExamplesChat(
             ONBOARDING=[
                 (
                     "Nice to meet you, <name>! <specific detail from their response> — "
@@ -170,7 +170,7 @@ class EnglishLocale(Locale):
         ),
     )
     admin = Admin(
-        CONVERSATION_HEADER="Conversation with user [{user_id}](tg://user?id={user_id})"
+        CHAT_HEADER="Chat with user [{user_id}](tg://user?id={user_id})"
     )
     OFF_TOPIC_REDIRECT = (
         "Hey, I'm having fun talking about <...> too, but you're holding up the queue and "

@@ -89,7 +89,7 @@ class System:
 
 
 @dataclass
-class AgentExamplesConversation:
+class AgentExamplesChat:
     ONBOARDING: list[str]
     PROFILE_CREATED: list[str]
     PROFILE_UPDATED: list[str]
@@ -102,13 +102,13 @@ class AgentExamplesRationale:
 
 @dataclass
 class AgentExamples:
-    conversation: AgentExamplesConversation
+    chat: AgentExamplesChat
     rationale: AgentExamplesRationale
 
 
 @dataclass
 class Admin:
-    CONVERSATION_HEADER: str  # Template with {user_id}
+    CHAT_HEADER: str  # Template with {user_id}
 
 
 # Abstract base class

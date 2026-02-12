@@ -1,5 +1,5 @@
 from .base import async_session_maker, engine, get_db, init_db
-from .conversation import Conversation
+from .chat import Chat
 from .generation import Generation, GenerationStatus
 from .match import Match, MatchStatus
 from .types import SQLiteReadyJSONB
@@ -12,7 +12,7 @@ __all__ = [
     "init_db",
     "User",
     "UserState",
-    "Conversation",
+    "Chat",
     "Generation",
     "GenerationStatus",
     "Match",

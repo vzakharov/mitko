@@ -12,14 +12,14 @@ from ..config import SETTINGS
 from ..i18n import L
 from ..utils.async_utils import Throttler
 from ..utils.typing_utils import raise_error
-from .conversation_utils import global_throttler
+from .chat_utils import global_throttler
 
 # 20 msg/min channel Telegram limit
 _CHANNEL_MIN_INTERVAL = 3.0
 _channel_throttler = Throttler(_CHANNEL_MIN_INTERVAL)
 
 if TYPE_CHECKING:
-    from ..models.conversation import Conversation
+    from ..models.chat import Chat
 
 logger = logging.getLogger(__name__)
 
@@ -60,30 +60,28 @@ async def _post_to_admin(
 
 async def mirror_to_admin_thread(
     bot: Bot,
-    conv: "Conversation",
+    chat: "Chat",
     text: str,
     session: AsyncSession,
 ) -> None:
-    """Post text to the admin thread for this conversation, creating the thread root if needed.
+    """Post text to the admin thread for this chat, creating the thread root if needed.
 
     Sends a separate header message (from i18n) as the thread root on first call.
     Persists admin_thread_id via session.add() + session.commit() when a new thread is created.
     Silent failure: never raises.
     """
     try:
-        if not conv.admin_thread_id:
-            conv.admin_thread_id = (
+        if not chat.admin_thread_id:
+            chat.admin_thread_id = (
                 await _post_to_admin(
                     bot,
-                    L.admin.CONVERSATION_HEADER.format(
-                        user_id=conv.telegram_id
-                    ),
+                    L.admin.CHAT_HEADER.format(user_id=chat.telegram_id),
                     parse_mode="Markdown",
                 )
             ).message_id
-            session.add(conv)
+            session.add(chat)
             await session.commit()
 
-        await _post_to_admin(bot, text, thread_id=conv.admin_thread_id)
+        await _post_to_admin(bot, text, thread_id=chat.admin_thread_id)
     except Exception as e:
         logger.exception("Failed to mirror message to admin thread: %s", e)

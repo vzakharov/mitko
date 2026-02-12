@@ -14,14 +14,14 @@ from sqlmodel import col
 from ..config import SETTINGS
 from ..db import (
     get_match_or_none,
-    get_or_create_conversation,
+    get_or_create_chat,
     get_or_create_user,
     get_user,
 )
 from ..i18n import L
 from ..jobs.generation_processor import nudge_processor
-from ..models import Conversation, Generation, User, get_db
-from ..services.conversation_utils import send_to_user
+from ..models import Chat, Generation, User, get_db
+from ..services.chat_utils import send_to_user
 from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
@@ -40,11 +40,11 @@ NUDGE_DELAY_SECONDS = 1.0
 _bot_instance: Bot | None = None
 
 
-def reset_conversation_state(conversation: Conversation) -> None:
-    """Reset conversation to empty state, clearing all history and Responses API state."""
-    conversation.message_history = []
-    conversation.user_prompt = None
-    conversation.last_responses_api_response_id = None
+def reset_chat_state(chat: Chat) -> None:
+    """Reset chat to empty state, clearing all history and Responses API state."""
+    chat.message_history = []
+    chat.user_prompt = None
+    chat.last_responses_api_response_id = None
 
 
 def set_bot_instance(bot: Bot) -> None:
@@ -88,9 +88,9 @@ async def cmd_start(message: Message) -> None:
     if message.from_user is None:
         return
     async for session in get_db():
-        (user, conv) = await asyncio.gather(
+        (user, chat) = await asyncio.gather(
             get_or_create_user(session, message.from_user.id),
-            get_or_create_conversation(session, message.from_user.id),
+            get_or_create_chat(session, message.from_user.id),
         )
 
         # Check if user has ANY existing data
@@ -98,8 +98,8 @@ async def cmd_start(message: Message) -> None:
             user.matching_summary is not None
             or user.is_seeker is not None
             or user.is_provider is not None
-            or conv.message_history != []
-            or conv.user_prompt is not None
+            or chat.message_history != []
+            or chat.user_prompt is not None
         )
 
         if has_data:
@@ -111,21 +111,21 @@ async def cmd_start(message: Message) -> None:
         else:
             # New user - just send greeting and initialize with empty history
             await message.answer(L.commands.start.GREETING)
-            reset_conversation_state(conv)
+            reset_chat_state(chat)
             await session.commit()
             logger.info(
-                "Started conversation for user %d: empty history",
+                "Started chat for user %d: empty history",
                 message.from_user.id,
             )
 
 
 async def _has_pending_generation(
-    conversation_id: uuid.UUID, session: AsyncSession
+    chat_id: uuid.UUID, session: AsyncSession
 ) -> bool:
-    """Check if conversation has a pending generation."""
+    """Check if chat has a pending generation."""
     result = await session.execute(
         select(Generation)
-        .where(col(Generation.conversation_id) == conversation_id)
+        .where(col(Generation.chat_id) == chat_id)
         .where(col(Generation.status) == "pending")
         .limit(1)
     )
@@ -133,12 +133,12 @@ async def _has_pending_generation(
 
 
 async def _has_started_generation(
-    conversation_id: uuid.UUID, session: AsyncSession
+    chat_id: uuid.UUID, session: AsyncSession
 ) -> bool:
-    """Check if conversation has a generation that has started processing."""
+    """Check if chat has a generation that has started processing."""
     result = await session.execute(
         select(Generation)
-        .where(col(Generation.conversation_id) == conversation_id)
+        .where(col(Generation.chat_id) == chat_id)
         .where(col(Generation.status) == "started")
         .limit(1)
     )
@@ -190,51 +190,49 @@ async def handle_message(message: Message) -> None:
         return
 
     async for session in get_db():
-        (_, conv) = await asyncio.gather(
+        (_, chat) = await asyncio.gather(
             get_or_create_user(session, message.from_user.id),
-            get_or_create_conversation(session, message.from_user.id),
+            get_or_create_chat(session, message.from_user.id),
         )
 
         # Set or append to user_prompt
-        if conv.user_prompt:
-            conv.user_prompt += "\n\n" + message.text
+        if chat.user_prompt:
+            chat.user_prompt += "\n\n" + message.text
         else:
-            conv.user_prompt = message.text
+            chat.user_prompt = message.text
 
-        # Acquire exclusive lock on conversation row to prevent race conditions
+        # Acquire exclusive lock on chat row to prevent race conditions
         # when multiple messages arrive simultaneously (e.g., long messages split by Telegram)
         await session.execute(
-            select(Conversation)
-            .where(col(Conversation.id) == conv.id)
-            .with_for_update()
+            select(Chat).where(col(Chat.id) == chat.id).with_for_update()
         )
 
-        # Check if there's already a pending generation for this conversation
-        has_pending = await _has_pending_generation(conv.id, session)
+        # Check if there's already a pending generation for this chat
+        has_pending = await _has_pending_generation(chat.id, session)
 
         if has_pending:
             # Re-send status message if exists and no generation started yet
-            if conv.status_message_id and not await _has_started_generation(
-                conv.id, session
+            if chat.status_message_id and not await _has_started_generation(
+                chat.id, session
             ):
                 bot = get_bot()
                 # Delete old status message
                 try:
                     await bot.delete_message(
-                        chat_id=conv.telegram_id,
-                        message_id=conv.status_message_id,
+                        chat_id=chat.telegram_id,
+                        message_id=chat.status_message_id,
                     )
                 except Exception as e:
                     logger.warning(
                         "Failed to delete old status message %d: %s",
-                        conv.status_message_id,
+                        chat.status_message_id,
                         e,
                     )
 
                 # Get earliest pending generation for timeline calculation
                 result = await session.execute(
                     select(Generation)
-                    .where(col(Generation.conversation_id) == conv.id)
+                    .where(col(Generation.chat_id) == chat.id)
                     .where(col(Generation.status) == "pending")
                     .order_by(col(Generation.scheduled_for).asc())
                     .limit(1)
@@ -244,7 +242,7 @@ async def handle_message(message: Message) -> None:
                 # Send new status message with updated timeline
                 status_text = _format_time_delta(pending_gen.scheduled_for)
                 status_msg = await message.answer(status_text)
-                conv.status_message_id = status_msg.message_id
+                chat.status_message_id = status_msg.message_id
 
                 logger.info(
                     "Re-sent status message: new_msg_id=%d, scheduled_for=%s",
@@ -262,7 +260,7 @@ async def handle_message(message: Message) -> None:
             # Create a new generation
             generation_service = GenerationOrchestrator(session)
             generation = await generation_service.create_generation(
-                conversation_id=conv.id
+                chat_id=chat.id
             )
             nudge_processor()
 
@@ -270,8 +268,8 @@ async def handle_message(message: Message) -> None:
             status_text = _format_time_delta(generation.scheduled_for)
             status_msg = await message.answer(status_text)
 
-            # Store status message ID in conversation (not generation)
-            conv.status_message_id = status_msg.message_id
+            # Store status message ID in chat (not generation)
+            chat.status_message_id = status_msg.message_id
             await session.commit()
 
             logger.info(
@@ -386,28 +384,28 @@ async def handle_reset_confirm(
         return
 
     async for session in get_db():
-        # Get or create user and conversation (defensive programming)
-        (user, conversation) = await asyncio.gather(
+        # Get or create user and chat (defensive programming)
+        (user, chat) = await asyncio.gather(
             get_or_create_user(session, telegram_id),
-            get_or_create_conversation(session, telegram_id),
+            get_or_create_chat(session, telegram_id),
         )
 
         # Use ProfileService to reset
         profiler = ProfileService(session)
-        await profiler.reset_profile(user, conversation)
+        await profiler.reset_profile(user, chat)
 
         # Send playful amnesia message
         await message.edit_text(L.commands.reset.SUCCESS)
 
         # Send standard greeting (same as /start)
         await message.answer(L.commands.start.GREETING)
-        reset_conversation_state(conversation)
-        # Cancel any pending generations for this conversation
+        reset_chat_state(chat)
+        # Cancel any pending generations for this chat
         pending_gens = (
             (
                 await session.execute(
                     select(Generation)
-                    .where(col(Generation.conversation_id) == conversation.id)
+                    .where(col(Generation.chat_id) == chat.id)
                     .where(col(Generation.status) == "pending")
                 )
             )
@@ -418,7 +416,7 @@ async def handle_reset_confirm(
             gen.status = "failed"
         await session.commit()
         logger.info(
-            "Reset conversation for user %d: empty history",
+            "Reset chat for user %d: empty history",
             telegram_id,
         )
 

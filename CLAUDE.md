@@ -80,7 +80,7 @@ uv run alembic upgrade head
 
 **Stack**: FastAPI (webhooks) + aiogram v3 (Telegram) + SQLModel (Pydantic + SQLAlchemy 2.0) async + PostgreSQL/pgvector + APScheduler + PydanticAI
 
-**Flow**: User chats with bot → ConversationAgent handles natural conversation and organically extracts/updates profile → Embedding generated → Continuous round-robin matching finds profiles using vector similarity → Both parties accept → Contact details shared
+**Flow**: User chats with bot → ChatAgent handles natural conversation and organically extracts/updates profile → Embedding generated → Continuous round-robin matching finds profiles using vector similarity → Both parties accept → Contact details shared
 
 **Key Patterns**:
 
@@ -100,12 +100,12 @@ uv run alembic upgrade head
 - Type-safe i18n: nested dataclasses with full IDE autocomplete, single language per deployment via `MITKO_LANGUAGE` env var
 - Migration strategy: Default to `alembic revision --autogenerate` for schema changes; only write manual migrations for data transformations, complex refactoring, or PostgreSQL-specific features (pgvector extensions, custom indexes)
 - Budget control: Weekly budget (`WEEKLY_BUDGET_USD`) dynamically spaces ALL generations (conversation, match rationale, future agents) proportional to cost via universal GenerationOrchestrator
-- Admin channel: optional private channel for admin commands and logs. Configured via `ADMIN_CHANNEL_ID` env var. Uses a separate aiogram Router (registered before the user router) with a router-level chat ID filter, so admin and user handlers are fully isolated with zero boilerplate. All admin posting goes through `services/admin_channel.py:post_to_admin()`, which is a no-op when unconfigured. `Conversation.admin_thread_id` stores the thread root message ID for logs-in-threads.
+- Admin channel: optional private channel for admin commands and logs. Configured via `ADMIN_CHANNEL_ID` env var. Uses a separate aiogram Router (registered before the user router) with a router-level chat ID filter, so admin and user handlers are fully isolated with zero boilerplate. All admin posting goes through `services/admin_channel.py:post_to_admin()`, which is a no-op when unconfigured. `Chat.admin_thread_id` stores the thread root message ID for logs-in-threads.
 
 **Structure**:
 
-- `models/`: SQLModel ORM (User with embeddings, Conversation, Match) - Pydantic-powered validation
-- `agents/`: PydanticAI agents for structured outputs (ConversationAgent for chat+profiles, QualifierAgent for match qualification)
+- `models/`: SQLModel ORM (User with embeddings, Chat, Match) - Pydantic-powered validation
+- `agents/`: PydanticAI agents for structured outputs (ChatAgent for chat+profiles, QualifierAgent for match qualification)
 - `bot/`: Telegram handlers, keyboards, bot initialization, and admin channel router
 - `runtime/`: Modular runtime implementations (webhook, polling)
 - `llm/`: Provider abstraction (OpenAI/Anthropic) for embeddings
@@ -137,13 +137,13 @@ async def get_user_ids(self) -> list[int]:
     ]
 
 # ❌ Avoid - named variable only used once as argument
-header = L.admin.CONVERSATION_HEADER.format(user_id=conv.telegram_id)
+header = L.admin.CHAT_HEADER.format(user_id=chat.telegram_id)
 sent = await _post_to_admin(bot, header, parse_mode="Markdown")
 
 # ✅ Prefer - inline the expression directly
 sent = await _post_to_admin(
     bot,
-    L.admin.CONVERSATION_HEADER.format(user_id=conv.telegram_id),
+    L.admin.CHAT_HEADER.format(user_id=chat.telegram_id),
     parse_mode="Markdown",
 )
 ```
@@ -151,7 +151,7 @@ sent = await _post_to_admin(
 - **Public methods before private** - organize class methods with public API first, then private/helper methods (prefixed with `_`) below
 - PostgreSQL requires `pgvector` extension
 - Embeddings are 1536-dim vectors (stored in User.embedding)
-- Conversation history stored as JSON, full context passed to LLM
+- Chat history stored as JSON, full context passed to LLM
 - Webhook security via secret token validation
 - Match authorization checks required before actions
 - Models use SQLModel (not pure SQLAlchemy) for Pydantic validation on field assignment

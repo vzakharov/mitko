@@ -28,7 +28,7 @@ class GenerationOrchestrator:
 
     async def create_generation(
         self,
-        conversation_id: uuid.UUID | None = None,
+        chat_id: uuid.UUID | None = None,
         match_id: uuid.UUID | None = None,
     ) -> Generation:
         """Create a new generation with budget-adjusted scheduling.
@@ -39,10 +39,8 @@ class GenerationOrchestrator:
         - Proper queueing (sequential, respects max_scheduled_for)
         """
 
-        if sum(1 for id in [conversation_id, match_id] if id is not None) != 1:
-            raise ValueError(
-                "Must provide exactly one of conversation_id or match_id"
-            )
+        if sum(1 for id in [chat_id, match_id] if id is not None) != 1:
+            raise ValueError("Must provide exactly one of chat_id or match_id")
 
         interval = await self._calculate_budget_interval()
         max_scheduled = await self._get_max_scheduled_time()
@@ -55,7 +53,7 @@ class GenerationOrchestrator:
 
         generation = Generation(
             id=uuid.uuid4(),
-            conversation_id=conversation_id,
+            chat_id=chat_id,
             scheduled_for=scheduled_for,
             status="pending",
             created_at=now,

@@ -9,7 +9,7 @@ from aiogram.types import Message, TelegramObject
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import SETTINGS
-from ..db import get_conversation_or_none
+from ..db import get_chat_or_none
 from ..models import async_session_maker
 from ..services.admin_channel import mirror_to_admin_thread
 
@@ -52,5 +52,5 @@ class MessageMirrorMiddleware(BaseMiddleware):
     async def _mirror_with_session(
         self, telegram_id: int, text: str, bot: Bot, session: AsyncSession
     ) -> None:
-        if conv := await get_conversation_or_none(session, telegram_id):
-            await mirror_to_admin_thread(bot, conv, f"→ {text}", session)
+        if chat := await get_chat_or_none(session, telegram_id):
+            await mirror_to_admin_thread(bot, chat, f"→ {text}", session)
