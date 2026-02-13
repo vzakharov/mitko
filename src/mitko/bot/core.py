@@ -14,10 +14,7 @@ def create_bot() -> Bot:
 def create_dispatcher() -> Dispatcher:
     """Create and configure Dispatcher with all routers"""
     dp = Dispatcher()
-    if admin_router is not None:
-        dp.include_router(
-            admin_router
-        )  # Admin first — higher priority than user router
+    dp.include_router(admin_router)  # Admin first — higher priority than user router
     dp.include_router(router)
     router.message.middleware(MessageMirrorMiddleware())
     return dp

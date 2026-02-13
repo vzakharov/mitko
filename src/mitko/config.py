@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     telegram_webhook_secret: str | None = None
     telegram_webhook_url: str | None = None
     telegram_mode: Literal["webhook", "polling"] = "polling"
-    admin_channel_id: int | None = None
+    admin_channel_id: int
 
     llm_provider: Literal["openai", "anthropic"] = "openai"
     use_openai_responses_api: bool = False

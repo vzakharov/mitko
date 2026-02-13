@@ -29,9 +29,8 @@ from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 router = Router()
 logger = logging.getLogger(__name__)
 
-if SETTINGS.admin_channel_id is not None:
-    router.message.filter(F.chat.id != SETTINGS.admin_channel_id)
-    router.callback_query.filter(F.message.chat.id != SETTINGS.admin_channel_id)
+router.message.filter(F.chat.id != SETTINGS.admin_channel_id)
+router.callback_query.filter(F.message.chat.id != SETTINGS.admin_channel_id)
 
 # Delay before nudging processor to allow rapid successive messages to be processed
 # (e.g., long messages split by Telegram into multiple parts)

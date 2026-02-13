@@ -100,7 +100,7 @@ uv run alembic upgrade head
 - Type-safe i18n: nested dataclasses with full IDE autocomplete, single language per deployment via `MITKO_LANGUAGE` env var
 - Migration strategy: Default to `alembic revision --autogenerate` for schema changes; only write manual migrations for data transformations, complex refactoring, or PostgreSQL-specific features (pgvector extensions, custom indexes)
 - Budget control: Weekly budget (`WEEKLY_BUDGET_USD`) dynamically spaces ALL generations (conversation, match rationale, future agents) proportional to cost via universal GenerationOrchestrator
-- Admin channel: optional private channel for admin commands and logs. Configured via `ADMIN_CHANNEL_ID` env var. Uses a separate aiogram Router (registered before the user router) with a router-level chat ID filter, so admin and user handlers are fully isolated with zero boilerplate. All admin posting goes through `services/admin_channel.py:post_to_admin()`, which is a no-op when unconfigured. `Chat.admin_thread_id` stores the thread root message ID for logs-in-threads.
+- Admin channel: required private channel for admin commands and logs. Configured via `ADMIN_CHANNEL_ID` env var (required at startup). Uses a separate aiogram Router (registered before the user router) with a router-level chat ID filter, so admin and user handlers are fully isolated with zero boilerplate. All admin posting goes through `services/admin_channel.py:post_to_admin()`. `Chat.admin_thread_id` stores the thread root message ID for logs-in-threads.
 
 **Structure**:
 

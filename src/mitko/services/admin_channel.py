@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import SETTINGS
 from ..i18n import L
 from ..utils.async_utils import Throttler
-from ..utils.typing_utils import raise_error
 from .chat_utils import global_throttler
 
 # 20 msg/min channel Telegram limit
@@ -34,7 +33,7 @@ async def _post_to_admin(
     """Send a message to the admin channel, optionally in a thread.
 
     Returns the sent Message on success.
-    Raises on send failures or if admin channel is not configured.
+    Raises on send failures.
 
     Args:
         bot: Telegram Bot instance
@@ -50,8 +49,7 @@ async def _post_to_admin(
         ]
     )
     return await bot.send_message(
-        chat_id=SETTINGS.admin_channel_id
-        or raise_error(RuntimeError("Admin channel is not configured")),
+        chat_id=SETTINGS.admin_channel_id,
         text=text,
         reply_to_message_id=thread_id,
         parse_mode=parse_mode,

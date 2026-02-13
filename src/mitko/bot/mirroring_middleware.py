@@ -27,10 +27,7 @@ class MessageMirrorMiddleware(BaseMiddleware):
             isinstance(event, Message)
             and event.text
             and event.from_user
-            and (
-                SETTINGS.admin_channel_id is None
-                or event.chat.id != SETTINGS.admin_channel_id
-            )
+            and event.chat.id != SETTINGS.admin_channel_id
         ):
             await self._mirror_incoming(
                 event.from_user.id, event.text, data["bot"]
