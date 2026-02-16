@@ -6,6 +6,8 @@ from sqlalchemy import VARCHAR, BigInteger, DateTime, Index, Integer, Text, func
 from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
 from sqlmodel import Column, Relationship, SQLModel
 
+from .types import JSONBList
+
 if TYPE_CHECKING:
     from .chat import Chat
     from .match import Match
@@ -24,6 +26,11 @@ class User(SQLModel, table=True):
     # Role flags
     is_seeker: bool | None = Field(default=None)
     is_provider: bool | None = Field(default=None)
+
+    flags: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSONBList(), nullable=False, server_default="[]"),
+    )
 
     # State management
     state: UserState = Field(
@@ -60,6 +67,7 @@ class User(SQLModel, table=True):
     )
 
     __table_args__ = (
+        Index("ix_users_flags", "flags", postgresql_using="gin"),
         Index(
             "ix_users_embedding",
             "embedding",
