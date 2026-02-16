@@ -14,8 +14,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
-from sqlmodel import Column, Relationship, SQLModel
+from sqlmodel import Field, Column, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .generation import Generation

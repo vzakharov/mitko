@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from pydantic import HttpUrl
 from sqlalchemy import DateTime, Index, String, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
-from sqlmodel import Column, Relationship, SQLModel
+from sqlmodel import Field, Column, Relationship, SQLModel
 
 from .types import HttpUrlType
 

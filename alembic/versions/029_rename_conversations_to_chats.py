@@ -19,7 +19,9 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.rename_table("conversations", "chats")
     op.alter_column("generations", "conversation_id", new_column_name="chat_id")
-    op.execute("ALTER INDEX ix_generations_conversation_id RENAME TO ix_generations_chat_id")
+    op.execute(
+        "ALTER INDEX ix_generations_conversation_id RENAME TO ix_generations_chat_id"
+    )
     op.execute(
         "ALTER TABLE generations RENAME CONSTRAINT "
         "generations_conversation_id_fkey TO generations_chat_id_fkey"
@@ -31,6 +33,8 @@ def downgrade() -> None:
         "ALTER TABLE generations RENAME CONSTRAINT "
         "generations_chat_id_fkey TO generations_conversation_id_fkey"
     )
-    op.execute("ALTER INDEX ix_generations_chat_id RENAME TO ix_generations_conversation_id")
+    op.execute(
+        "ALTER INDEX ix_generations_chat_id RENAME TO ix_generations_conversation_id"
+    )
     op.alter_column("generations", "chat_id", new_column_name="conversation_id")
     op.rename_table("chats", "conversations")

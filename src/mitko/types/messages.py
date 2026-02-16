@@ -8,7 +8,7 @@ These types are shared by both models (for storage) and agents (for processing).
 from typing import Annotated, Literal, TypedDict
 
 from pydantic import BaseModel, field_validator, model_validator
-from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
+from sqlmodel import Field
 
 
 class HistoryMessage(TypedDict):

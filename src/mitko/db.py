@@ -7,7 +7,15 @@ from sqlalchemy import Result, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from .models import Chat, Match, User
+from .models import (
+    Announce,
+    AnnounceStatus,
+    Chat,
+    Match,
+    User,
+    UserGroup,
+    UserGroupMember,
+)
 
 
 async def _select_chat(
@@ -28,7 +36,7 @@ async def get_chat(session: AsyncSession, telegram_id: int) -> Chat:
     return (await _select_chat(session, telegram_id)).scalar_one()
 
 
-TModel = TypeVar("TModel", Chat, User)
+TModel = TypeVar("TModel", Announce, Chat, User, UserGroup, UserGroupMember)
 
 
 async def _create(session: AsyncSession, instance: TModel) -> TModel:
@@ -85,3 +93,58 @@ async def filter_users(
     for key, value in filters.items():
         query = query.where(col(getattr(User, key)) == value)
     return list((await session.execute(query)).scalars().all())
+
+
+async def create_user_group(
+    session: AsyncSession,
+    users: list[User],
+    name: str | None = None,
+) -> UserGroup:
+    group = UserGroup(name=name)
+    session.add(group)
+    await session.flush()
+    for user in users:
+        session.add(
+            UserGroupMember(group_id=group.id, user_id=user.telegram_id)
+        )
+    await session.commit()
+    await session.refresh(group)
+    return group
+
+
+async def create_announce(
+    session: AsyncSession,
+    group: UserGroup,
+    source_message_id: int,
+    text: str,
+) -> Announce:
+    return await _create(
+        session,
+        Announce(
+            group_id=group.id, source_message_id=source_message_id, text=text
+        ),
+    )
+
+
+async def get_announce_or_none(
+    session: AsyncSession, source_message_id: int
+) -> Announce | None:
+    if announce := (
+        await session.execute(
+            select(Announce).where(
+                col(Announce.source_message_id) == source_message_id
+            )
+        )
+    ).scalar_one_or_none():
+        await session.refresh(announce, ["group"])
+        await session.refresh(announce.group, ["members"])
+        for member in announce.group.members:
+            await session.refresh(member, ["user"])
+        return announce
+
+
+async def update_announce_status(
+    session: AsyncSession, announce: Announce, status: AnnounceStatus
+) -> None:
+    announce.status = status
+    await session.commit()

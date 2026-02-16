@@ -15,9 +15,14 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     Message,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..db import filter_users
+from ..db import (
+    create_announce,
+    create_user_group,
+    filter_users,
+    get_announce_or_none,
+    update_announce_status,
+)
 from ..i18n import L
 from ..models import async_session_maker
 from ..models.user import User
@@ -25,9 +30,6 @@ from ..services.admin_channel import post_to_admin
 from ..services.chat_utils import global_throttler, send_to_user
 
 logger = logging.getLogger(__name__)
-
-# Pending announce payloads: source_message_id → (filters, text)
-_pending_announces: dict[int, tuple[dict[str, Any], str]] = {}
 
 
 def register_announce_handlers(router: Router) -> None:
@@ -63,11 +65,12 @@ async def handle_announce(message: Message) -> None:
             )
             return
 
+    assert message.message_id is not None
+
     async with async_session_maker() as session:
         users = await filter_users(session, filters)
-
-    assert message.message_id is not None
-    _pending_announces[message.message_id] = (filters, text)
+        group = await create_user_group(session, users)
+        await create_announce(session, group, message.message_id, text)
 
     await message.reply(
         L.admin.announce.PREVIEW.format(
@@ -84,8 +87,7 @@ async def handle_announce(message: Message) -> None:
 class AnnounceAction(CallbackData, prefix="announce"):
     """Callback data for announce confirmation actions.
 
-    The announce payload (filters + text) is stored in _pending_announces
-    keyed by source_message_id to avoid callback_data size limits.
+    The announce payload is stored in the DB keyed by source_message_id.
     """
 
     action: Literal["yes", "cancel"]
@@ -118,26 +120,33 @@ def announce_confirmation_keyboard(
 async def handle_announce_callback(
     callback: CallbackQuery, callback_data: AnnounceAction, bot: Bot
 ) -> None:
-    pending = _pending_announces.pop(callback_data.source_message_id, None)
-    if pending is None:
-        await callback.answer()
-        return
-
     if callback.message is None or isinstance(
         callback.message, InaccessibleMessage
     ):
         await callback.answer()
         return
 
-    filters, text = pending
-
-    if callback_data.action == "cancel":
-        await callback.answer(L.admin.announce.CANCELLED)
-        return
-
     async with async_session_maker() as session:
-        sent, total = await _send_announce(bot, session, filters, text)
+        announce = await get_announce_or_none(
+            session, callback_data.source_message_id
+        )
+        if announce is None:
+            await callback.answer()
+            return
 
+        if callback_data.action == "cancel":
+            await session.delete(announce)
+            await session.commit()
+            await callback.answer(L.admin.announce.CANCELLED)
+            return
+
+        text = announce.text
+        users = [m.user for m in announce.group.members]
+        await update_announce_status(session, announce, "sending")
+
+    sent, total = await _send_announce(
+        bot, users, text, callback_data.source_message_id
+    )
     await post_to_admin(
         bot,
         L.admin.announce.DONE.format(sent=sent, total=total),
@@ -146,17 +155,27 @@ async def handle_announce_callback(
 
 
 async def _send_announce(
-    bot: Bot, session: AsyncSession, filters: dict[str, Any], text: str
+    bot: Bot, users: list[User], text: str, source_message_id: int
 ) -> tuple[int, int]:
-    users = await filter_users(session, filters)
     sent = 0
     for user in users:
         try:
             await global_throttler.wait()
-            await send_to_user(bot, user.telegram_id, text, session)
+            async with async_session_maker() as session:
+                await send_to_user(bot, user.telegram_id, text, session)
             sent += 1
         except Exception:
             logger.exception(
                 "Failed to send announce to telegram_id=%d", user.telegram_id
             )
+
+    async with async_session_maker() as session:
+        announce = await get_announce_or_none(session, source_message_id)
+        if announce is not None:
+            await update_announce_status(
+                session,
+                announce,
+                "sent" if sent == len(users) else "failed",
+            )
+
     return sent, len(users)

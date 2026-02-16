@@ -6,7 +6,7 @@ from sqlalchemy import BigInteger, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import (
     Column,
-    Field,  # pyright: ignore [reportUnknownVariableType]
+    Field,
     Relationship,
     SQLModel,
 )

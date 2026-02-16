@@ -3,8 +3,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import VARCHAR, BigInteger, DateTime, Index, Integer, Text, func
-from sqlmodel import Field  # pyright: ignore [reportUnknownVariableType]
-from sqlmodel import Column, Relationship, SQLModel
+from sqlmodel import Field, Column, Relationship, SQLModel
 
 from .types import JSONBList
 
