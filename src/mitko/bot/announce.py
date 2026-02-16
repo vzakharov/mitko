@@ -27,7 +27,7 @@ from ..i18n import L
 from ..models import async_session_maker
 from ..models.user import User
 from ..services.admin_channel import post_to_admin
-from ..services.chat_utils import global_throttler, send_to_user
+from ..services.chat_utils import send_to_user
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +160,6 @@ async def _send_announce(
     sent = 0
     for user in users:
         try:
-            await global_throttler.wait()
             async with async_session_maker() as session:
                 await send_to_user(bot, user.telegram_id, text, session)
             sent += 1
@@ -175,7 +174,8 @@ async def _send_announce(
             await update_announce_status(
                 session,
                 announce,
-                "sent" if sent == len(users) else "failed",
+                # TODO: handle partial failures with an additional m2m table
+                "sent" if sent > 0 else "failed",
             )
 
     return sent, len(users)
