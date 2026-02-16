@@ -1,6 +1,6 @@
 """Plain model lookup helpers — thin wrappers around common SELECT queries."""
 
-from typing import TypeVar
+from typing import Any, TypeVar
 from uuid import UUID
 
 from sqlalchemy import Result, select
@@ -74,3 +74,14 @@ async def get_match_or_none(
     return (
         await session.execute(select(Match).where(col(Match.id) == match_id))
     ).scalar_one_or_none()
+
+
+async def filter_users(
+    session: AsyncSession, filters: dict[str, Any]
+) -> list[User]:
+    # TODO: support array-contains filtering (e.g. {"flags": ["test"]}
+    #       meaning User.flags must contain all these values)
+    query = select(User)
+    for key, value in filters.items():
+        query = query.where(col(getattr(User, key)) == value)
+    return list((await session.execute(query)).scalars().all())

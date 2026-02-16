@@ -7,6 +7,7 @@ from .base import (
     AgentExamples,
     AgentExamplesChat,
     AgentExamplesRationale,
+    Announce,
     Commands,
     CommandsReset,
     CommandsStart,
@@ -111,6 +112,7 @@ class EnglishLocale(Locale):
             UNAUTHORIZED="You're not authorized for this action",
             USER_NOT_FOUND="User not found",
             MESSAGE_UNAVAILABLE="Hmm, can't access that message anymore. Try again?",
+            MESSAGE_EMPTY="I see no message. Try again?",
             GENERATION_FAILED="Oops, something went wrong on my end. Please try again!",
             SOMETHING_WENT_WRONG="Oops, something went wrong. Chances are, we're on it (no promises though).",
         ),
@@ -170,7 +172,17 @@ class EnglishLocale(Locale):
         ),
     )
     admin = Admin(
-        CHAT_HEADER="Chat with user [{user_id}](tg://user?id={user_id})"
+        CHAT_HEADER="Chat with user [{user_id}](tg://user?id={user_id})",
+        announce=Announce(
+            PREVIEW="About to send to {count} user(s), including: {users_preview}\n\n{text}",
+            YES="Yes, send",
+            CANCEL="Cancel",
+            SENDING="Sending...",
+            DONE="Sent to {sent}/{total} users.",
+            CANCELLED="Cancelled.",
+            PARSE_ERROR="Could not parse filter: {error}",
+            UNKNOWN_FIELD="Unknown filter field: {field}",
+        ),
     )
     OFF_TOPIC_REDIRECT = (
         "Hey, I'm having fun talking about <...> too, but you're holding up the queue and "

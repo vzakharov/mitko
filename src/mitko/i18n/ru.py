@@ -7,6 +7,7 @@ from .base import (
     AgentExamples,
     AgentExamplesChat,
     AgentExamplesRationale,
+    Announce,
     Commands,
     CommandsReset,
     CommandsStart,
@@ -111,6 +112,7 @@ class RussianLocale(Locale):
             UNAUTHORIZED="У вас нет доступа к этому действию",
             USER_NOT_FOUND="Пользователь не найден",
             MESSAGE_UNAVAILABLE="Хм, что-то не могу найти это сообщение. Попробуй ещё раз?",
+            MESSAGE_EMPTY="Что-то не вижу сообщения. Попробуй ещё раз?",
             GENERATION_FAILED="Упс, у меня что-то пошло не так. Попробуй ещё раз!",
             SOMETHING_WENT_WRONG="Упс, что-то пошло не так. Возможно, мы уже работаем над этим (но это не точно).",
         ),
@@ -171,7 +173,17 @@ class RussianLocale(Locale):
         ),
     )
     admin = Admin(
-        CHAT_HEADER="Чат с пользователем [{user_id}](tg://user?id={user_id})"
+        CHAT_HEADER="Чат с пользователем [{user_id}](tg://user?id={user_id})",
+        announce=Announce(
+            PREVIEW="Сейчас отправлю {count} пользователю(ям), включая: {users_preview}\n\n{text}",
+            YES="Да, отправить",
+            CANCEL="Отмена",
+            SENDING="Отправляю...",
+            DONE="Отправлено {sent}/{total} пользователям.",
+            CANCELLED="Отменено.",
+            PARSE_ERROR="Не удалось разобрать фильтр: {error}",
+            UNKNOWN_FIELD="Неизвестное поле фильтра: {field}",
+        ),
     )
     OFF_TOPIC_REDIRECT = (
         "Слушай, мне тоже тут весело обсуждать <...>, но ты забиваешь очередь, и кто-то "

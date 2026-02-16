@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-async def _post_to_admin(
+async def post_to_admin(
     bot: Bot,
     text: str,
     *,
@@ -71,7 +71,7 @@ async def mirror_to_admin_thread(
     try:
         if not chat.admin_thread_id:
             chat.admin_thread_id = (
-                await _post_to_admin(
+                await post_to_admin(
                     bot,
                     L.admin.CHAT_HEADER.format(user_id=chat.telegram_id),
                     parse_mode="Markdown",
@@ -80,6 +80,6 @@ async def mirror_to_admin_thread(
             session.add(chat)
             await session.commit()
 
-        await _post_to_admin(bot, text, thread_id=chat.admin_thread_id)
+        await post_to_admin(bot, text, thread_id=chat.admin_thread_id)
     except Exception as e:
         logger.exception("Failed to mirror message to admin thread: %s", e)

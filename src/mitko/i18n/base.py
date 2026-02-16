@@ -71,6 +71,7 @@ class SystemErrors:
     UNAUTHORIZED: str
     USER_NOT_FOUND: str
     MESSAGE_UNAVAILABLE: str
+    MESSAGE_EMPTY: str
     GENERATION_FAILED: str
     SOMETHING_WENT_WRONG: str
 
@@ -107,8 +108,21 @@ class AgentExamples:
 
 
 @dataclass
+class Announce:
+    PREVIEW: str  # Template: {count}, {users_preview}, {text}
+    YES: str
+    CANCEL: str
+    SENDING: str
+    DONE: str  # Template: {sent}, {total}
+    CANCELLED: str
+    PARSE_ERROR: str  # Template: {error}
+    UNKNOWN_FIELD: str  # Template: {field}
+
+
+@dataclass
 class Admin:
     CHAT_HEADER: str  # Template with {user_id}
+    announce: Announce
 
 
 # Abstract base class
