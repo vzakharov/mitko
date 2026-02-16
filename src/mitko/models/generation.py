@@ -1,6 +1,6 @@
 import uuid  # noqa: I001
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal, Optional
 
 from pydantic import HttpUrl
 from sqlalchemy import DateTime, Index, String, func
@@ -8,10 +8,8 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, Column, Relationship, SQLModel
 
 from .types import HttpUrlType
-
-if TYPE_CHECKING:
-    from .chat import Chat
-    from .match import Match
+from .chat import Chat
+from .match import Match
 
 GenerationStatus = Literal["pending", "started", "completed", "failed"]
 
@@ -86,5 +84,5 @@ class Generation(SQLModel, table=True):
         description="Total cost in USD for this generation",
     )
 
-    chat: "Chat | None" = Relationship(back_populates="generations")
-    match: "Match | None" = Relationship(back_populates="generations")
+    chat: Optional[Chat] = Relationship(back_populates="generations")
+    match: Optional[Match] = Relationship(back_populates="generations")

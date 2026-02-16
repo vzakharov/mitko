@@ -13,7 +13,6 @@ from ..db import get_chat, get_chat_or_none
 from ..models.chat import Chat
 from ..utils.async_utils import Throttler
 from ..utils.typing_utils import raise_error
-from .admin_channel import mirror_to_admin_thread
 
 # 1 msg/s per DM chat (Telegram limit)
 _DM_MIN_INTERVAL = 1.0
@@ -70,6 +69,8 @@ async def _mirror_outgoing(
     chat: Chat | None,
 ) -> None:
     """Mirror an outgoing message to the admin channel thread for this user."""
+    from .admin_channel import mirror_to_admin_thread
+
     try:
         chat = (
             chat

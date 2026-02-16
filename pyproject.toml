@@ -48,7 +48,8 @@ select = [
     "SIM", # flake8-simplify
 ]
 ignore = [
-    "E501", # line-too-long
+    "E501",  # line-too-long
+    "UP045", # Optional[X] -> X | None (breaks SQLModel mapper resolution)
 ]
 
 [tool.pytest.ini_options]

@@ -1,6 +1,6 @@
 import uuid  # noqa: I001
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, Optional
 
 from sqlalchemy import (
     BigInteger,
@@ -15,10 +15,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, Column, Relationship, SQLModel
+from .user import User
 
 if TYPE_CHECKING:
     from .generation import Generation
-    from .user import User
 
 # TODO: Update RationaleAgent (or rename to QualifyingAgent) to evaluate match quality
 # and set status to "qualified" or "disqualified" instead of only explaining good matches.
@@ -77,11 +77,11 @@ class Match(SQLModel, table=True):
         Index("ix_matches_matching_round", "matching_round"),
     )
 
-    user_a: "User" = Relationship(
+    user_a: User = Relationship(
         back_populates="matches_a",
         sa_relationship_kwargs={"foreign_keys": "Match.user_a_id"},
     )
-    user_b: "User | None" = Relationship(
+    user_b: Optional[User] = Relationship(
         back_populates="matches_b",
         sa_relationship_kwargs={"foreign_keys": "Match.user_b_id"},
     )
