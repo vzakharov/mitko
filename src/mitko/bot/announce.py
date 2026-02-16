@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 def register_announce_handlers(router: Router) -> None:
     router.message.register(handle_announce, Command("announce"))
+    router.channel_post.register(handle_announce, Command("announce"))
     router.callback_query.register(
         handle_announce_callback, AnnounceAction.filter()
     )

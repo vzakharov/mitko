@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +17,15 @@ class Settings(BaseSettings):
     telegram_webhook_url: str | None = None
     telegram_mode: Literal["webhook", "polling"] = "polling"
     admin_channel_id: int
+
+    @field_validator("admin_channel_id")
+    @classmethod
+    def validate_channel_id(cls, v: int) -> int:
+        if v >= 0 or not str(v).startswith("-100"):
+            raise ValueError(
+                f"ADMIN_CHANNEL_ID must be a Telegram channel ID in -100XXXXXXXXX format, got {v}"
+            )
+        return v
 
     llm_provider: Literal["openai", "anthropic"] = "openai"
     use_openai_responses_api: bool = False
