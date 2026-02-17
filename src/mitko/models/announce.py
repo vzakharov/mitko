@@ -27,7 +27,7 @@ class Announce(SQLModel, table=True):
             unique=True,
         )
     )
-    source_message_id: int = Field(
+    thread_id: int = Field(
         sa_column=Column(BigInteger(), nullable=False, unique=True)
     )
     text: str = Field(sa_column=Column(Text(), nullable=False))

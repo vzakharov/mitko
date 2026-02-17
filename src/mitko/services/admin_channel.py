@@ -30,7 +30,7 @@ async def post_to_admin(
     thread_id: int | None = None,
     parse_mode: str | None = None,
 ) -> Message:
-    """Send a message to the admin channel, optionally in a thread.
+    """Send a message to the admin supergroup, optionally in a forum topic.
 
     Returns the sent Message on success.
     Raises on send failures.
@@ -38,7 +38,7 @@ async def post_to_admin(
     Args:
         bot: Telegram Bot instance
         text: Message text
-        thread_id: If provided, reply to this message_id to post in its thread
+        thread_id: If provided, post into this forum topic (message_thread_id)
         parse_mode: Optional Telegram parse mode ("HTML", "Markdown", etc.)
     """
 
@@ -51,7 +51,7 @@ async def post_to_admin(
     return await bot.send_message(
         chat_id=SETTINGS.admin_channel_id,
         text=text,
-        reply_to_message_id=thread_id,
+        message_thread_id=thread_id,
         parse_mode=parse_mode,
     )
 
@@ -62,21 +62,20 @@ async def mirror_to_admin_thread(
     text: str,
     session: AsyncSession,
 ) -> None:
-    """Post text to the admin thread for this chat, creating the thread root if needed.
+    """Post text to the admin forum topic for this chat, creating the topic if needed.
 
-    Sends a separate header message (from i18n) as the thread root on first call.
-    Persists admin_thread_id via session.add() + session.commit() when a new thread is created.
+    Creates a named forum topic on first call and persists its message_thread_id.
+    Persists admin_thread_id via session.add() + session.commit() when a new topic is created.
     Silent failure: never raises.
     """
     try:
         if not chat.admin_thread_id:
             chat.admin_thread_id = (
-                await post_to_admin(
-                    bot,
-                    L.admin.CHAT_HEADER.format(user_id=chat.telegram_id),
-                    parse_mode="Markdown",
+                await bot.create_forum_topic(
+                    chat_id=SETTINGS.admin_channel_id,
+                    name=L.admin.CHAT_HEADER.format(user_id=chat.telegram_id),
                 )
-            ).message_id
+            ).message_thread_id
             session.add(chat)
             await session.commit()
 
