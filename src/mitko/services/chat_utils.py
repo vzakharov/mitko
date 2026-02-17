@@ -32,7 +32,7 @@ async def send_to_user(
     session: AsyncSession,
     **kwargs: Any,
 ) -> Message:
-    """Send a message to the user and mirror it to their admin channel thread.
+    """Send a message to the user and mirror it to their admin group thread.
 
     Args:
         bot: Telegram Bot instance
@@ -68,8 +68,8 @@ async def _mirror_outgoing(
     session: AsyncSession,
     chat: Chat | None,
 ) -> None:
-    """Mirror an outgoing message to the admin channel thread for this user."""
-    from .admin_channel import mirror_to_admin_thread
+    """Mirror an outgoing message to the admin group thread for this user."""
+    from .admin_group import mirror_to_admin_thread
 
     try:
         chat = (

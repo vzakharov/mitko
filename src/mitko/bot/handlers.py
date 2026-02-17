@@ -30,7 +30,7 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 for observer in [router.message, router.callback_query]:
-    observer.filter(F.chat.id != SETTINGS.admin_channel_id)
+    observer.filter(F.chat.id != SETTINGS.admin_group_id)
 
 # Delay before nudging processor to allow rapid successive messages to be processed
 # (e.g., long messages split by Telegram into multiple parts)

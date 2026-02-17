@@ -1,4 +1,4 @@
-"""Admin channel router — handles messages from the configured admin channel."""
+"""Admin group router — handles messages from the configured admin group."""
 
 from aiogram import F, Router
 
@@ -11,6 +11,6 @@ for observer in [
     admin_router.channel_post,
     admin_router.callback_query,
 ]:
-    observer.filter(F.chat.id == SETTINGS.admin_channel_id)
+    observer.filter(F.chat.id == SETTINGS.admin_group_id)
 
 register_announce_handlers(admin_router)

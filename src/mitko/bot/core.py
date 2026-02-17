@@ -21,7 +21,7 @@ def create_dispatcher() -> Dispatcher:
     dp.include_router(admin_router)  # Admin first — higher priority than user router
     dp.include_router(router)
     router.message.middleware(MessageMirrorMiddleware())
-    logger.info("Admin router registered for channel %d", SETTINGS.admin_channel_id)
+    logger.info("Admin router registered for group %d", SETTINGS.admin_group_id)
     return dp
 
 

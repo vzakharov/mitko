@@ -1,4 +1,4 @@
-"""Announce command handler — broadcasts messages to filtered users from the admin channel."""
+"""Announce command handler — broadcasts messages to filtered users from the admin group."""
 
 import json
 import logging
@@ -26,7 +26,7 @@ from ..db import (
 from ..i18n import L
 from ..models import async_session_maker
 from ..models.user import User
-from ..services.admin_channel import post_to_admin
+from ..services.admin_group import post_to_admin
 from ..services.chat_utils import send_to_user
 
 logger = logging.getLogger(__name__)

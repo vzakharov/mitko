@@ -100,16 +100,16 @@ uv run alembic upgrade head
 - Type-safe i18n: nested dataclasses with full IDE autocomplete, single language per deployment via `MITKO_LANGUAGE` env var
 - Migration strategy: Default to `alembic revision --autogenerate` for schema changes; only write manual migrations for data transformations, complex refactoring, or PostgreSQL-specific features (pgvector extensions, custom indexes)
 - Budget control: Weekly budget (`WEEKLY_BUDGET_USD`) dynamically spaces ALL generations (conversation, match rationale, future agents) proportional to cost via universal GenerationOrchestrator
-- Admin channel: required private channel for admin commands and logs. Configured via `ADMIN_CHANNEL_ID` env var (required at startup). Uses a separate aiogram Router (registered before the user router) with a router-level chat ID filter, so admin and user handlers are fully isolated with zero boilerplate. All admin posting goes through `services/admin_channel.py:post_to_admin()`. `Chat.admin_thread_id` stores the thread root message ID for logs-in-threads.
+- Admin group: required private group for admin commands and logs. Configured via `ADMIN_GROUP_ID` env var (required at startup). Uses a separate aiogram Router (registered before the user router) with a router-level chat ID filter, so admin and user handlers are fully isolated with zero boilerplate. All admin posting goes through `services/admin_group.py:post_to_admin()`. `Chat.admin_thread_id` stores the thread root message ID for logs-in-threads.
 
 **Structure**:
 
 - `models/`: SQLModel ORM (User with embeddings, Chat, Match) - Pydantic-powered validation
 - `agents/`: PydanticAI agents for structured outputs (ChatAgent for chat+profiles, QualifierAgent for match qualification)
-- `bot/`: Telegram handlers, keyboards, bot initialization, and admin channel router
+- `bot/`: Telegram handlers, keyboards, bot initialization, and admin group router
 - `runtime/`: Modular runtime implementations (webhook, polling)
 - `llm/`: Provider abstraction (OpenAI/Anthropic) for embeddings
-- `services/`: Business logic (profiler with create/update support, matcher, admin channel posting)
+- `services/`: Business logic (profiler with create/update support, matcher, admin group posting)
 - `jobs/`: Background matching scheduler (round-robin matcher with explicit round progression)
 - `i18n.py`: Type-safe internationalization with nested dataclasses (EN/RU support)
 

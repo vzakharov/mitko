@@ -1,4 +1,4 @@
-"""Admin channel service for posting messages and events."""
+"""Admin group service for posting messages and events."""
 
 import asyncio
 import logging
@@ -13,9 +13,9 @@ from ..i18n import L
 from ..utils.async_utils import Throttler
 from .chat_utils import global_throttler
 
-# 20 msg/min channel Telegram limit
-_CHANNEL_MIN_INTERVAL = 3.0
-_channel_throttler = Throttler(_CHANNEL_MIN_INTERVAL)
+# 20 msg/min group Telegram limit
+_GROUP_MIN_INTERVAL = 3.0
+_group_throttler = Throttler(_GROUP_MIN_INTERVAL)
 
 if TYPE_CHECKING:
     from ..models.chat import Chat
@@ -45,11 +45,11 @@ async def post_to_admin(
     await asyncio.gather(
         *[
             throttler.wait()
-            for throttler in [_channel_throttler, global_throttler]
+            for throttler in [_group_throttler, global_throttler]
         ]
     )
     return await bot.send_message(
-        chat_id=SETTINGS.admin_channel_id,
+        chat_id=SETTINGS.admin_group_id,
         text=text,
         message_thread_id=thread_id,
         parse_mode=parse_mode,
@@ -72,7 +72,7 @@ async def mirror_to_admin_thread(
         if not chat.admin_thread_id:
             chat.admin_thread_id = (
                 await bot.create_forum_topic(
-                    chat_id=SETTINGS.admin_channel_id,
+                    chat_id=SETTINGS.admin_group_id,
                     name=L.admin.CHAT_HEADER.format(user_id=chat.telegram_id),
                 )
             ).message_thread_id

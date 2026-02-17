@@ -1,4 +1,4 @@
-"""Middleware that mirrors incoming user messages to the admin channel."""
+"""Middleware that mirrors incoming user messages to the admin group."""
 
 import logging
 from collections.abc import Awaitable, Callable
@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import SETTINGS
 from ..db import get_chat_or_none
 from ..models import async_session_maker
-from ..services.admin_channel import mirror_to_admin_thread
+from ..services.admin_group import mirror_to_admin_thread
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class MessageMirrorMiddleware(BaseMiddleware):
             isinstance(event, Message)
             and event.text
             and event.from_user
-            and event.chat.id != SETTINGS.admin_channel_id
+            and event.chat.id != SETTINGS.admin_group_id
         ):
             await self._mirror_incoming(
                 event.from_user.id, event.text, data["bot"]

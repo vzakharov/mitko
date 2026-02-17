@@ -16,14 +16,14 @@ class Settings(BaseSettings):
     telegram_webhook_secret: str | None = None
     telegram_webhook_url: str | None = None
     telegram_mode: Literal["webhook", "polling"] = "polling"
-    admin_channel_id: int
+    admin_group_id: int
 
-    @field_validator("admin_channel_id")
+    @field_validator("admin_group_id")
     @classmethod
     def validate_channel_id(cls, v: int) -> int:
         if v >= 0 or not str(v).startswith("-100"):
             raise ValueError(
-                f"ADMIN_CHANNEL_ID must be a Telegram channel ID in -100XXXXXXXXX format, got {v}"
+                f"ADMIN_GROUP_ID must be a Telegram group ID in -100XXXXXXXXX format, got {v}"
             )
         return v
 
