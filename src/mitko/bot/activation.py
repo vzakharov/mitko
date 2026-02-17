@@ -14,6 +14,7 @@ from mitko.bot.handlers import get_callback_message
 
 from ..db import get_user
 from ..i18n import L
+from ..jobs.matching_scheduler import start_matching_loop
 from ..models import get_db
 from ..services.profiler import ProfileService
 
@@ -55,5 +56,6 @@ async def handle_activate_profile(
             await get_user(session, callback_data.telegram_id)
         )
 
+    start_matching_loop()
     await get_callback_message(callback).edit_reply_markup(reply_markup=None)
     await callback.answer(L.keyboards.activate.ACTIVATED)

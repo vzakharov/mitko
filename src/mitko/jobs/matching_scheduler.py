@@ -25,10 +25,12 @@ async def run_matching_loop() -> None:
     2. Handles round advancement when current round exhausted
     3. Creates generation for real matches (not participation records)
     4. Sleeps only when no complete users exist at all
+    5. Stops when a full round produces no real matches (externally restarted when needed)
     """
     logger.info("Starting matching loop")
 
     forced_round: int | None = None
+    matched_in_round = False
 
     while True:
         async with async_session_maker() as session:
@@ -50,6 +52,7 @@ async def run_matching_loop() -> None:
                         forced_round = match.matching_round
                         continue
 
+                    matched_in_round = True
                     await GenerationOrchestrator(session).create_generation(
                         match_id=match.id
                     )
@@ -66,6 +69,13 @@ async def run_matching_loop() -> None:
                     return
 
                 case RoundExhausted(current_round):
+                    if not matched_in_round:
+                        logger.info(
+                            "Round %d had no matches; stopping loop",
+                            current_round,
+                        )
+                        return
+
                     new_round = await matcher.advance_round()
 
                     logger.info(
@@ -73,6 +83,7 @@ async def run_matching_loop() -> None:
                         current_round,
                         new_round,
                     )
+                    matched_in_round = False
                     forced_round = new_round
                     continue
 
