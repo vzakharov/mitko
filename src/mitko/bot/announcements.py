@@ -145,6 +145,7 @@ async def handle_announcement_callback(
     await post_to_admin(
         bot,
         L.admin.announcement.DONE.format(sent=sent, total=total),
+        reply_to_message_id=source_message_id,
     )
 
 

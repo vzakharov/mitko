@@ -169,7 +169,8 @@ class RussianLocale(Locale):
         ),
     )
     admin = Admin(
-        CHAT_HEADER="Чат с пользователем [{user_id}](tg://user?id={user_id})",
+        CHAT_HEADER="#{user_id}",
+        CHAT_INTRO="Это начало чата с пользователем [#{user_id}](tg://user?id={user_id})",
         announcement=Announcement(
             PREVIEW="Сейчас отправлю {count} пользователю(ям), включая: {users_preview}\n\n{text}",
             YES="Да, отправить",

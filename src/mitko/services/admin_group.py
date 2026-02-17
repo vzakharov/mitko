@@ -5,6 +5,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from aiogram import Bot
+from aiogram.enums import ParseMode
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +29,7 @@ async def post_to_admin(
     text: str,
     *,
     thread_id: int | None = None,
+    reply_to_message_id: int | None = None,
     parse_mode: str | None = None,
 ) -> Message:
     """Send a message to the admin supergroup, optionally in a forum topic.
@@ -52,6 +54,7 @@ async def post_to_admin(
         chat_id=SETTINGS.admin_group_id,
         text=text,
         message_thread_id=thread_id,
+        reply_to_message_id=reply_to_message_id,
         parse_mode=parse_mode,
     )
 
@@ -76,6 +79,12 @@ async def mirror_to_admin_thread(
                     name=L.admin.CHAT_HEADER.format(user_id=chat.telegram_id),
                 )
             ).message_thread_id
+            await bot.send_message(
+                chat_id=SETTINGS.admin_group_id,
+                text=L.admin.CHAT_INTRO.format(user_id=chat.telegram_id),
+                message_thread_id=chat.admin_thread_id,
+                parse_mode=ParseMode.MARKDOWN,
+            )
             session.add(chat)
             await session.commit()
 
