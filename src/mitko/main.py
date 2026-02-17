@@ -48,7 +48,7 @@ async def main():
 
     try:
         await runtime.startup(bot, dp)
-        start_matching_loop(bot)
+        start_matching_loop()
         start_generation_processor(bot)
         await runtime.run(bot, dp)
     finally:

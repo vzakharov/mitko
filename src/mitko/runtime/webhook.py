@@ -45,7 +45,7 @@ class WebhookRuntime:
         @asynccontextmanager
         async def lifespan(app: FastAPI):
             await self.startup(bot, dp)
-            start_matching_loop(bot)
+            start_matching_loop()
             start_generation_processor(bot)
             yield
             await stop_generation_processor()

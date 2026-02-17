@@ -3,8 +3,6 @@
 import asyncio
 import logging
 
-from aiogram import Bot
-
 from ..models import async_session_maker
 from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.match_result import AllUsersMatched, MatchFound, RoundExhausted
@@ -92,9 +90,12 @@ async def run_matching_loop() -> None:
                     )
 
 
-def start_matching_loop(bot: Bot) -> None:
+def start_matching_loop() -> None:
     """Start the matching loop as a background task."""
     global _matching_task
+    if _matching_task and not _matching_task.done():
+        logger.info("Matching loop already running, ignoring start request")
+        return
     _matching_task = asyncio.create_task(run_matching_loop())
     logger.info("Matching loop started")
 

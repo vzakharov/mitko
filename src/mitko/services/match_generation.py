@@ -206,7 +206,7 @@ Internal Notes: {user_b.private_observations or "None"}"""
         """Restart the matching loop to find the next match."""
         from ..jobs.matching_scheduler import start_matching_loop
 
-        start_matching_loop(self.bot)
         logger.info(
-            "Restarted matching loop after generation %s", self.generation.id
+            "Restarting matching loop after generation %s", self.generation.id
         )
+        start_matching_loop()
