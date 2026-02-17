@@ -6,6 +6,7 @@ import re
 from typing import Any, Literal
 
 from aiogram import Bot, Router
+from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import (
@@ -77,10 +78,12 @@ async def handle_announce(message: Message) -> None:
         L.admin.announce.PREVIEW.format(
             count=len(users),
             users_preview=", ".join(
-                f"tg://user?id={user.telegram_id}" for user in users[:10]
+                f"[{user.telegram_id}](tg://user?id={user.telegram_id})"
+                for user in users[:10]
             ),
             text=text,
         ),
+        parse_mode=ParseMode.MARKDOWN,
         reply_markup=announce_confirmation_keyboard(message.message_thread_id),
     )
 
