@@ -69,7 +69,6 @@ def _format_profile_for_display(user: User) -> str:
     return "\n\n".join(parts)
 
 
-
 @router.message(Command("start"))
 async def cmd_start(message: Message) -> None:
     assert message.from_user is not None

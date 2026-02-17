@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 
 def register_announce_handlers(router: Router) -> None:
     router.message.register(handle_announce, Command("announce"))
-    router.channel_post.register(handle_announce, Command("announce"))
     router.callback_query.register(
         handle_announce_callback, AnnounceAction.filter()
     )
@@ -66,12 +65,10 @@ async def handle_announce(message: Message) -> None:
             )
             return
 
-    assert message.message_thread_id is not None
-
     async with async_session_maker() as session:
         users = await filter_users(session, filters)
         group = await create_user_group(session, users)
-        await create_announce(session, group, message.message_thread_id, text)
+        await create_announce(session, group, message.message_id, text)
 
     await message.reply(
         L.admin.announce.PREVIEW.format(
@@ -83,22 +80,22 @@ async def handle_announce(message: Message) -> None:
             text=text,
         ),
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=announce_confirmation_keyboard(message.message_thread_id),
+        reply_markup=announce_confirmation_keyboard(message.message_id),
     )
 
 
 class AnnounceAction(CallbackData, prefix="announce"):
     """Callback data for announce confirmation actions.
 
-    The announce payload is stored in the DB keyed by thread_id.
+    The announce payload is stored in the DB keyed by source_message_id.
     """
 
     action: Literal["yes", "cancel"]
-    thread_id: int
+    source_message_id: int
 
 
 def announce_confirmation_keyboard(
-    thread_id: int,
+    source_message_id: int,
 ) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -106,13 +103,13 @@ def announce_confirmation_keyboard(
                 InlineKeyboardButton(
                     text=L.admin.announce.YES,
                     callback_data=AnnounceAction(
-                        action="yes", thread_id=thread_id
+                        action="yes", source_message_id=source_message_id
                     ).pack(),
                 ),
                 InlineKeyboardButton(
                     text=L.admin.announce.CANCEL,
                     callback_data=AnnounceAction(
-                        action="cancel", thread_id=thread_id
+                        action="cancel", source_message_id=source_message_id
                     ).pack(),
                 ),
             ]
@@ -124,7 +121,9 @@ async def handle_announce_callback(
     callback: CallbackQuery, callback_data: AnnounceAction, bot: Bot
 ) -> None:
     async with async_session_maker() as session:
-        announce = await get_announce_or_none(session, callback_data.thread_id)
+        announce = await get_announce_or_none(
+            session, callback_data.source_message_id
+        )
         if announce is None:
             await callback.answer()
             return
@@ -136,20 +135,19 @@ async def handle_announce_callback(
             return
 
         text = announce.text
-        thread_id = announce.thread_id
+        source_message_id = announce.source_message_id
         users = [m.user for m in announce.group.members]
         await update_announce_status(session, announce, "sending")
 
-    sent, total = await _send_announce(bot, users, text, thread_id)
+    sent, total = await _send_announce(bot, users, text, source_message_id)
     await post_to_admin(
         bot,
         L.admin.announce.DONE.format(sent=sent, total=total),
-        thread_id=thread_id,
     )
 
 
 async def _send_announce(
-    bot: Bot, users: list[User], text: str, thread_id: int
+    bot: Bot, users: list[User], text: str, source_message_id: int
 ) -> tuple[int, int]:
     sent = 0
     for user in users:
@@ -163,7 +161,7 @@ async def _send_announce(
             )
 
     async with async_session_maker() as session:
-        announce = await get_announce_or_none(session, thread_id)
+        announce = await get_announce_or_none(session, source_message_id)
         if announce is not None:
             await update_announce_status(
                 session,

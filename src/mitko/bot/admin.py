@@ -8,7 +8,6 @@ from .announce import register_announce_handlers
 admin_router = Router(name="admin")
 for observer in [
     admin_router.message,
-    admin_router.channel_post,
     admin_router.callback_query,
 ]:
     observer.filter(F.chat.id == SETTINGS.admin_group_id)

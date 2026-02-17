@@ -115,21 +115,23 @@ async def create_user_group(
 async def create_announce(
     session: AsyncSession,
     group: UserGroup,
-    thread_id: int,
+    source_message_id: int,
     text: str,
 ) -> Announce:
     return await _create(
         session,
-        Announce(group_id=group.id, thread_id=thread_id, text=text),
+        Announce(group_id=group.id, source_message_id=source_message_id, text=text),
     )
 
 
 async def get_announce_or_none(
-    session: AsyncSession, thread_id: int
+    session: AsyncSession, source_message_id: int
 ) -> Announce | None:
     if announce := (
         await session.execute(
-            select(Announce).where(col(Announce.thread_id) == thread_id)
+            select(Announce).where(
+                col(Announce.source_message_id) == source_message_id
+            )
         )
     ).scalar_one_or_none():
         await session.refresh(announce, ["group"])
