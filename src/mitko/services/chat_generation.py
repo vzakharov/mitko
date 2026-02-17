@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from aiogram import Bot
+from aiogram.types import InlineKeyboardMarkup
 from genai_prices import calc_price
 from pydantic import HttpUrl
 from pydantic_ai.models.openai import (
@@ -196,18 +197,24 @@ class ChatGeneration:
 
         # Handle profile creation/update
         if response.profile:
-            profiler = ProfileService(self.session)
-            is_update = chat.user.is_complete
-            await profiler.create_or_update_profile(
-                chat.user, response.profile, is_update=is_update
+            from ..bot.activation import activation_keyboard
+
+            await ProfileService(self.session).create_or_update_profile(
+                chat.user,
+                response.profile,
+                is_update=chat.user.state == "active",
             )
 
             profile_card = self._format_profile_card(response.profile)
-            response_text = f"{response.utterance}\n\n{profile_card}"
+            response_text = f"{response.utterance}\n\n{profile_card}\n\n{L.PROFILE_ACTIVATION_PROMPT}"
+            reply_markup = activation_keyboard(chat.telegram_id)
         else:
             response_text = response.utterance
+            reply_markup = None
 
-        await self._send_response_to_user(response_text)
+        await self._send_response_to_user(
+            response_text, reply_markup=reply_markup
+        )
 
         # Update chat history for fallback
         chat.message_history = [
@@ -242,6 +249,7 @@ class ChatGeneration:
     async def _send_response_to_user(
         self,
         response_text: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
     ) -> None:
         """Send response to user, handling placeholder message logic."""
         chat = self.chat
@@ -265,6 +273,7 @@ class ChatGeneration:
                         text=response_text,
                         chat_id=chat.telegram_id,
                         message_id=generation.placeholder_message_id,
+                        reply_markup=reply_markup,
                     )
                 except Exception as e:
                     logger.warning(
@@ -273,7 +282,11 @@ class ChatGeneration:
                         e,
                     )
                     await send_to_user(
-                        self.bot, chat, response_text, self.session
+                        self.bot,
+                        chat,
+                        response_text,
+                        self.session,
+                        reply_markup=reply_markup,
                     )
             else:
                 # Delete placeholder message and send response as new message (user gets notification)
@@ -293,10 +306,22 @@ class ChatGeneration:
                         e,
                     )
 
-                await send_to_user(self.bot, chat, response_text, self.session)
+                await send_to_user(
+                    self.bot,
+                    chat,
+                    response_text,
+                    self.session,
+                    reply_markup=reply_markup,
+                )
         else:
             # No placeholder message (old generation) - just send response
-            await send_to_user(self.bot, chat, response_text, self.session)
+            await send_to_user(
+                self.bot,
+                chat,
+                response_text,
+                self.session,
+                reply_markup=reply_markup,
+            )
 
     def _record_usage_and_cost(
         self,

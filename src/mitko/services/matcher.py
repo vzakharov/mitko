@@ -181,7 +181,7 @@ class MatcherService:
 
     async def _find_next_user_a(self, exclude_users: set[int]) -> User | None:
         query_conditions = [
-            col(User.is_complete).is_(True),
+            col(User.state) == "active",
             col(User.embedding).isnot(None),
             or_(
                 col(User.is_seeker).is_(True),
@@ -235,7 +235,7 @@ class MatcherService:
                                 "seeker": User.is_seeker,
                             }[target_role]
                         ).is_(True),
-                        col(User.is_complete).is_(True),
+                        col(User.state) == "active",
                         col(User.embedding).isnot(None),
                         col(User.telegram_id) != source_user.telegram_id,
                         similarity_expr >= SETTINGS.similarity_threshold,

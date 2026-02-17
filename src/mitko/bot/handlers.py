@@ -24,6 +24,7 @@ from ..models import Chat, Generation, User, get_db
 from ..services.chat_utils import send_to_user
 from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
+from .activation import register_activation_handlers
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 
 router = Router()
@@ -31,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 for observer in [router.message, router.callback_query]:
     observer.filter(F.chat.id != SETTINGS.admin_group_id)
+
+register_activation_handlers(router)
 
 # Delay before nudging processor to allow rapid successive messages to be processed
 # (e.g., long messages split by Telegram into multiple parts)

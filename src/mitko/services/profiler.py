@@ -18,6 +18,10 @@ class ProfileService:
         """
         Create a new profile or update an existing one.
 
+        After this call the user's state is "ready" (new) or "updated" (existing active
+        profile changed). They must explicitly press the activation button to become
+        matchable (state = "active").
+
         Args:
             user: User to update
             profile_data: New or updated profile data
@@ -42,15 +46,20 @@ class ProfileService:
         if not is_update or matching_summary_changed:
             user.embedding = await get_embedding(profile_data.matching_summary)
 
-        # Mark profile as complete
-        user.is_complete = True
-        user.state = "active"
+        # Require explicit activation — user must press the keyboard button
+        user.state = "updated" if is_update else "ready"
         user.profiler_version = CURRENT_PROFILER_VERSION
         user.profile_updated_at = datetime.now()
 
         await self.session.commit()
         await self.session.refresh(user)
 
+        return user
+
+    async def activate_profile(self, user: User) -> User:
+        user.state = "active"
+        await self.session.commit()
+        await self.session.refresh(user)
         return user
 
     async def create_profile(
@@ -76,7 +85,6 @@ class ProfileService:
         user.practical_context = None
         user.private_observations = None
         user.embedding = None
-        user.is_complete = False
         user.state = "onboarding"
         user.profiler_version = None
         user.profile_updated_at = None

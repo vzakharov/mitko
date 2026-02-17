@@ -12,6 +12,7 @@ from .base import (
     CommandsReset,
     CommandsStart,
     Keyboards,
+    KeyboardsActivate,
     KeyboardsMatch,
     KeyboardsReset,
     Locale,
@@ -66,6 +67,10 @@ class RussianLocale(Locale):
     keyboards = Keyboards(
         match=KeyboardsMatch(ACCEPT="Давай, познакомь!", REJECT="Не, мимо"),
         reset=KeyboardsReset(CONFIRM="Да, стереть всё", CANCEL="Не, оставить"),
+        activate=KeyboardsActivate(
+            ACTIVATE="Начать матчинг 🚀",
+            ACTIVATED="Готово! Начинаю искать матчи.",
+        ),
     )
     matching = Matching(
         FOUND=dedent(
@@ -184,6 +189,10 @@ class RussianLocale(Locale):
             PARSE_ERROR="Не удалось разобрать фильтр: {error}",
             UNKNOWN_FIELD="Неизвестное поле фильтра: {field}",
         ),
+    )
+    PROFILE_ACTIVATION_PROMPT = (
+        "Нажми кнопку ниже, если хочешь, чтобы твой профиль стал доступен для матчинга, "
+        "или попроси внести любые правки."
     )
     OFF_TOPIC_REDIRECT = (
         "Слушай, мне тоже тут весело обсуждать <...>, но ты забиваешь очередь, и кто-то "

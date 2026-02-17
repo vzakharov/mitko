@@ -12,6 +12,7 @@ from .base import (
     CommandsReset,
     CommandsStart,
     Keyboards,
+    KeyboardsActivate,
     KeyboardsMatch,
     KeyboardsReset,
     Locale,
@@ -66,6 +67,10 @@ class EnglishLocale(Locale):
     keyboards = Keyboards(
         match=KeyboardsMatch(ACCEPT="Yeah, let's connect!", REJECT="Nah, pass"),
         reset=KeyboardsReset(CONFIRM="Yep, wipe it", CANCEL="Nah, keep it"),
+        activate=KeyboardsActivate(
+            ACTIVATE="Start matching 🚀",
+            ACTIVATED="You're live! I'll start looking for matches.",
+        ),
     )
     matching = Matching(
         FOUND=dedent(
@@ -183,6 +188,10 @@ class EnglishLocale(Locale):
             PARSE_ERROR="Could not parse filter: {error}",
             UNKNOWN_FIELD="Unknown filter field: {field}",
         ),
+    )
+    PROFILE_ACTIVATION_PROMPT = (
+        "Click the button below if you want your profile to become available for matching, "
+        "or feel free to request any edits first."
     )
     OFF_TOPIC_REDIRECT = (
         "Hey, I'm having fun talking about <...> too, but you're holding up the queue and "

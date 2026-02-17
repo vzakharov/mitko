@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 CURRENT_PROFILER_VERSION = 2
 
-UserState = Literal["onboarding", "profiling", "active", "paused"]
+UserState = Literal["onboarding", "ready", "updated", "active", "paused"]
 
 
 class User(SQLModel, table=True):
@@ -48,7 +48,6 @@ class User(SQLModel, table=True):
     embedding: list[float] | None = Field(
         default=None, sa_column=Column(Vector(1536), nullable=True)
     )
-    is_complete: bool = Field(default=False)
 
     profiler_version: int | None = Field(
         default=None, sa_column=Column(Integer, nullable=True)

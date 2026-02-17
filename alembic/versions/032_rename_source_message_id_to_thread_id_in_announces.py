@@ -28,7 +28,9 @@ def upgrade() -> None:
     op.drop_constraint(
         op.f("announces_source_message_id_key"), "announces", type_="unique"
     )
-    op.create_unique_constraint("announces_thread_id_key", "announces", ["thread_id"])
+    op.create_unique_constraint(
+        "announces_thread_id_key", "announces", ["thread_id"]
+    )
     op.drop_column("announces", "source_message_id")
     # ### end Alembic commands ###
 

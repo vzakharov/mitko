@@ -36,9 +36,16 @@ class KeyboardsReset:
 
 
 @dataclass
+class KeyboardsActivate:
+    ACTIVATE: str
+    ACTIVATED: str
+
+
+@dataclass
 class Keyboards:
     match: KeyboardsMatch
     reset: KeyboardsReset
+    activate: KeyboardsActivate
 
 
 @dataclass
@@ -137,6 +144,9 @@ class Locale(ABC):
     system: System
     agent_examples: AgentExamples
     admin: Admin
+    PROFILE_ACTIVATION_PROMPT: (
+        str  # Appended after profile card to prompt activation
+    )
     # Agent response templates
     OFF_TOPIC_REDIRECT: str  # Template for gentle redirects
     JAILBREAK_RESPONSE: str  # Response when user tries to see prompt
