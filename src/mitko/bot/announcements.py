@@ -1,4 +1,4 @@
-"""Announce command handler — broadcasts messages to filtered users from the admin group."""
+"""Announcement command handler — broadcasts messages to filtered users from the admin group."""
 
 import json
 import logging
@@ -17,11 +17,11 @@ from aiogram.types import (
 )
 
 from ..db import (
-    create_announce,
+    create_announcement,
     create_user_group,
     filter_users,
-    get_announce_or_none,
-    update_announce_status,
+    get_announcement_or_none,
+    update_announcement_status,
 )
 from ..i18n import L
 from ..models import async_session_maker
@@ -32,14 +32,14 @@ from ..services.chat_utils import send_to_user
 logger = logging.getLogger(__name__)
 
 
-def register_announce_handlers(router: Router) -> None:
-    router.message.register(handle_announce, Command("announce"))
+def register_announcement_handlers(router: Router) -> None:
+    router.message.register(handle_announcement, Command("announce"))
     router.callback_query.register(
-        handle_announce_callback, AnnounceAction.filter()
+        handle_announcement_callback, AnnouncementAction.filter()
     )
 
 
-async def handle_announce(message: Message) -> None:
+async def handle_announcement(message: Message) -> None:
     if not message.text:
         await message.reply(L.system.errors.MESSAGE_EMPTY)
         return
@@ -55,23 +55,25 @@ async def handle_announce(message: Message) -> None:
             filters, end_idx = decoder.raw_decode(remainder)
             text = remainder[end_idx:].strip()
         except json.JSONDecodeError as e:
-            await message.reply(L.admin.announce.PARSE_ERROR.format(error=e))
+            await message.reply(
+                L.admin.announcement.PARSE_ERROR.format(error=e)
+            )
             return
 
     for field in filters:
         if not hasattr(User, field):
             await message.reply(
-                L.admin.announce.UNKNOWN_FIELD.format(field=field)
+                L.admin.announcement.UNKNOWN_FIELD.format(field=field)
             )
             return
 
     async with async_session_maker() as session:
         users = await filter_users(session, filters)
         group = await create_user_group(session, users)
-        await create_announce(session, group, message.message_id, text)
+        await create_announcement(session, group, message.message_id, text)
 
     await message.reply(
-        L.admin.announce.PREVIEW.format(
+        L.admin.announcement.PREVIEW.format(
             count=len(users),
             users_preview=", ".join(
                 f"[{user.telegram_id}](tg://user?id={user.telegram_id})"
@@ -80,35 +82,35 @@ async def handle_announce(message: Message) -> None:
             text=text,
         ),
         parse_mode=ParseMode.MARKDOWN,
-        reply_markup=announce_confirmation_keyboard(message.message_id),
+        reply_markup=announcement_confirmation_keyboard(message.message_id),
     )
 
 
-class AnnounceAction(CallbackData, prefix="announce"):
-    """Callback data for announce confirmation actions.
+class AnnouncementAction(CallbackData, prefix="announcement"):
+    """Callback data for announcement confirmation actions.
 
-    The announce payload is stored in the DB keyed by source_message_id.
+    The announcement payload is stored in the DB keyed by source_message_id.
     """
 
     action: Literal["yes", "cancel"]
     source_message_id: int
 
 
-def announce_confirmation_keyboard(
+def announcement_confirmation_keyboard(
     source_message_id: int,
 ) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=L.admin.announce.YES,
-                    callback_data=AnnounceAction(
+                    text=L.admin.announcement.YES,
+                    callback_data=AnnouncementAction(
                         action="yes", source_message_id=source_message_id
                     ).pack(),
                 ),
                 InlineKeyboardButton(
-                    text=L.admin.announce.CANCEL,
-                    callback_data=AnnounceAction(
+                    text=L.admin.announcement.CANCEL,
+                    callback_data=AnnouncementAction(
                         action="cancel", source_message_id=source_message_id
                     ).pack(),
                 ),
@@ -117,36 +119,36 @@ def announce_confirmation_keyboard(
     )
 
 
-async def handle_announce_callback(
-    callback: CallbackQuery, callback_data: AnnounceAction, bot: Bot
+async def handle_announcement_callback(
+    callback: CallbackQuery, callback_data: AnnouncementAction, bot: Bot
 ) -> None:
     async with async_session_maker() as session:
-        announce = await get_announce_or_none(
+        announcement = await get_announcement_or_none(
             session, callback_data.source_message_id
         )
-        if announce is None:
+        if announcement is None:
             await callback.answer()
             return
 
         if callback_data.action == "cancel":
-            await session.delete(announce)
+            await session.delete(announcement)
             await session.commit()
-            await callback.answer(L.admin.announce.CANCELLED)
+            await callback.answer(L.admin.announcement.CANCELLED)
             return
 
-        text = announce.text
-        source_message_id = announce.source_message_id
-        users = [m.user for m in announce.group.members]
-        await update_announce_status(session, announce, "sending")
+        text = announcement.text
+        source_message_id = announcement.source_message_id
+        users = [m.user for m in announcement.group.members]
+        await update_announcement_status(session, announcement, "sending")
 
-    sent, total = await _send_announce(bot, users, text, source_message_id)
+    sent, total = await _send_announcement(bot, users, text, source_message_id)
     await post_to_admin(
         bot,
-        L.admin.announce.DONE.format(sent=sent, total=total),
+        L.admin.announcement.DONE.format(sent=sent, total=total),
     )
 
 
-async def _send_announce(
+async def _send_announcement(
     bot: Bot, users: list[User], text: str, source_message_id: int
 ) -> tuple[int, int]:
     sent = 0
@@ -157,15 +159,18 @@ async def _send_announce(
             sent += 1
         except Exception:
             logger.exception(
-                "Failed to send announce to telegram_id=%d", user.telegram_id
+                "Failed to send announcement to telegram_id=%d",
+                user.telegram_id,
             )
 
     async with async_session_maker() as session:
-        announce = await get_announce_or_none(session, source_message_id)
-        if announce is not None:
-            await update_announce_status(
+        announcement = await get_announcement_or_none(
+            session, source_message_id
+        )
+        if announcement is not None:
+            await update_announcement_status(
                 session,
-                announce,
+                announcement,
                 # TODO: handle partial failures with an additional m2m table
                 "sent" if sent > 0 else "failed",
             )

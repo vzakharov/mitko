@@ -14,7 +14,7 @@ from sqlmodel import SQLModel
 
 from mitko.config import SETTINGS
 from mitko.models import (  # Import all models
-    Announce,
+    Announcement,
     Chat,
     Generation,
     Match,
@@ -24,7 +24,7 @@ from mitko.models import (  # Import all models
 )
 
 # Ensure models are registered with SQLModel.metadata for Alembic auto-discovery
-_ = (User, Chat, Generation, Match, Announce, UserGroup, UserGroupMember)
+_ = (User, Chat, Generation, Match, Announcement, UserGroup, UserGroupMember)
 
 config = context.config
 

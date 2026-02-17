@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
 from .models import (
-    Announce,
-    AnnounceStatus,
+    Announcement,
+    AnnouncementStatus,
     Chat,
     Match,
     User,
@@ -36,7 +36,7 @@ async def get_chat(session: AsyncSession, telegram_id: int) -> Chat:
     return (await _select_chat(session, telegram_id)).scalar_one()
 
 
-TModel = TypeVar("TModel", Announce, Chat, User, UserGroup, UserGroupMember)
+TModel = TypeVar("TModel", Announcement, Chat, User, UserGroup, UserGroupMember)
 
 
 async def _create(session: AsyncSession, instance: TModel) -> TModel:
@@ -112,37 +112,41 @@ async def create_user_group(
     return group
 
 
-async def create_announce(
+async def create_announcement(
     session: AsyncSession,
     group: UserGroup,
     source_message_id: int,
     text: str,
-) -> Announce:
+) -> Announcement:
     return await _create(
         session,
-        Announce(group_id=group.id, source_message_id=source_message_id, text=text),
+        Announcement(
+            group_id=group.id, source_message_id=source_message_id, text=text
+        ),
     )
 
 
-async def get_announce_or_none(
+async def get_announcement_or_none(
     session: AsyncSession, source_message_id: int
-) -> Announce | None:
-    if announce := (
+) -> Announcement | None:
+    if announcement := (
         await session.execute(
-            select(Announce).where(
-                col(Announce.source_message_id) == source_message_id
+            select(Announcement).where(
+                col(Announcement.source_message_id) == source_message_id
             )
         )
     ).scalar_one_or_none():
-        await session.refresh(announce, ["group"])
-        await session.refresh(announce.group, ["members"])
-        for member in announce.group.members:
+        await session.refresh(announcement, ["group"])
+        await session.refresh(announcement.group, ["members"])
+        for member in announcement.group.members:
             await session.refresh(member, ["user"])
-        return announce
+        return announcement
 
 
-async def update_announce_status(
-    session: AsyncSession, announce: Announce, status: AnnounceStatus
+async def update_announcement_status(
+    session: AsyncSession,
+    announcement: Announcement,
+    status: AnnouncementStatus,
 ) -> None:
-    announce.status = status
+    announcement.status = status
     await session.commit()

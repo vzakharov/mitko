@@ -3,7 +3,7 @@
 from aiogram import F, Router
 
 from ..config import SETTINGS
-from .announce import register_announce_handlers
+from .announcements import register_announcement_handlers
 
 admin_router = Router(name="admin")
 for observer in [
@@ -12,4 +12,4 @@ for observer in [
 ]:
     observer.filter(F.chat.id == SETTINGS.admin_group_id)
 
-register_announce_handlers(admin_router)
+register_announcement_handlers(admin_router)

@@ -7,7 +7,7 @@ from .base import (
     AgentExamples,
     AgentExamplesChat,
     AgentExamplesRationale,
-    Announce,
+    Announcement,
     Commands,
     CommandsReset,
     CommandsStart,
@@ -169,7 +169,7 @@ class EnglishLocale(Locale):
     )
     admin = Admin(
         CHAT_HEADER="Chat with user [{user_id}](tg://user?id={user_id})",
-        announce=Announce(
+        announcement=Announcement(
             PREVIEW="About to send to {count} user(s), including: {users_preview}\n\n{text}",
             YES="Yes, send",
             CANCEL="Cancel",

@@ -104,7 +104,7 @@ class AgentExamples:
 
 
 @dataclass
-class Announce:
+class Announcement:
     PREVIEW: str  # Template: {count}, {users_preview}, {text}
     YES: str
     CANCEL: str
@@ -118,7 +118,7 @@ class Announce:
 @dataclass
 class Admin:
     CHAT_HEADER: str  # Template with {user_id}
-    announce: Announce
+    announcement: Announcement
 
 
 # Abstract base class

@@ -1,4 +1,4 @@
-from .announce import Announce, AnnounceStatus
+from .announcement import Announcement, AnnouncementStatus
 from .base import async_session_maker, engine, get_db, init_db
 from .chat import Chat
 from .generation import Generation, GenerationStatus
@@ -12,8 +12,8 @@ __all__ = [
     "async_session_maker",
     "get_db",
     "init_db",
-    "Announce",
-    "AnnounceStatus",
+    "Announcement",
+    "AnnouncementStatus",
     "User",
     "UserState",
     "UserGroup",

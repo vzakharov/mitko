@@ -9,11 +9,11 @@ from sqlmodel import Column, Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from .user_group import UserGroup
 
-AnnounceStatus = Literal["pending", "sending", "sent", "failed"]
+AnnouncementStatus = Literal["pending", "sending", "sent", "failed"]
 
 
-class Announce(SQLModel, table=True):
-    __tablename__: ClassVar[Any] = "announces"
+class Announcement(SQLModel, table=True):
+    __tablename__: ClassVar[Any] = "announcements"
 
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
@@ -31,7 +31,7 @@ class Announce(SQLModel, table=True):
         sa_column=Column(BigInteger(), nullable=False, unique=True)
     )
     text: str = Field(sa_column=Column(Text(), nullable=False))
-    status: AnnounceStatus = Field(
+    status: AnnouncementStatus = Field(
         default="pending",
         sa_column=Column(VARCHAR(20), nullable=False, server_default="pending"),
     )
