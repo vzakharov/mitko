@@ -14,8 +14,22 @@ from sqlmodel import Field
 class HistoryMessage(TypedDict):
     """A message in the conversation history (user or assistant)."""
 
-    role: Literal["user", "assistant"]
+    role: Literal["user", "assistant", "system"]
     content: str
+
+
+class _Says:
+    def user(self, content: str) -> HistoryMessage:
+        return HistoryMessage(role="user", content=content)
+
+    def assistant(self, content: str) -> HistoryMessage:
+        return HistoryMessage(role="assistant", content=content)
+
+    def system(self, content: str) -> HistoryMessage:
+        return HistoryMessage(role="system", content=content)
+
+
+says = _Says()
 
 
 class ProfileData(BaseModel):

@@ -23,7 +23,7 @@ from ..agents.config import LANGUAGE_MODEL
 from ..config import SETTINGS
 from ..i18n import L
 from ..models import Chat, Generation
-from ..types.messages import HistoryMessage, ProfileData
+from ..types.messages import HistoryMessage, ProfileData, says
 from ..utils.typing_utils import raise_error
 from .chat_utils import send_to_user
 from .profiler import ProfileService
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-MESSAGE_HISTORY_MAX_LENGTH = 20
+MESSAGE_HISTORY_MAX_LENGTH = 50
 
 
 @dataclass
@@ -219,13 +219,10 @@ class ChatGeneration:
         # Update chat history for fallback
         chat.message_history = [
             *chat.message_history,
-            {"role": "user", "content": user_prompt},
-            {
-                "role": "assistant",
-                "content": json.dumps(
-                    response.model_dump(), ensure_ascii=False
-                ),
-            },
+            says.user(user_prompt),
+            says.assistant(
+                json.dumps(response.model_dump(), ensure_ascii=False)
+            ),
         ]
 
         self._record_usage_and_cost(result)

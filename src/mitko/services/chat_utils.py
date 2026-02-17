@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_chat, get_chat_or_none
 from ..models.chat import Chat
+from ..types.messages import says
 from ..utils.async_utils import Throttler
 from ..utils.typing_utils import raise_error
 
@@ -123,7 +124,7 @@ async def send_and_record_bot_message(
     _, chat = await _get_telegram_id_and_chat(chat, session)
     chat.message_history = [
         *chat.message_history,
-        {"role": "assistant", "content": f"{prefix} {message_text}"},
+        says.assistant(f"{prefix} {message_text}"),
     ]
 
     chat.last_responses_api_response_id = None
