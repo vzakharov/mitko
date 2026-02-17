@@ -68,27 +68,16 @@ def _format_profile_for_display(user: User) -> str:
     return "\n\n".join(parts)
 
 
-async def validate_callback_message(callback: CallbackQuery) -> Message | None:
-    """
-    Validate callback.message is accessible and return it, or send error and return None.
-
-    Returns:
-        Message if accessible, None if inaccessible (error already sent to user)
-    """
-    if callback.message is None or isinstance(
+def get_callback_message(callback: CallbackQuery) -> Message:
+    assert callback.message is not None and not isinstance(
         callback.message, InaccessibleMessage
-    ):
-        await callback.answer(
-            L.system.errors.MESSAGE_UNAVAILABLE, show_alert=True
-        )
-        return None
+    )
     return callback.message
 
 
 @router.message(Command("start"))
 async def cmd_start(message: Message) -> None:
-    if message.from_user is None:
-        return
+    assert message.from_user is not None
     async for session in get_db():
         (user, chat) = await asyncio.gather(
             get_or_create_user(session, message.from_user.id),
@@ -188,8 +177,9 @@ async def _delayed_nudge() -> None:
 
 @router.message()
 async def handle_message(message: Message) -> None:
-    if not message.text or message.from_user is None:
+    if not message.text:
         return
+    assert message.from_user is not None
 
     async for session in get_db():
         (_, chat) = await asyncio.gather(
@@ -293,15 +283,8 @@ async def handle_match_accept(
 
     async for session in get_db():
         match = await get_match_or_none(session, match_id)
-        if not match:
-            await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
-            return
-        if not match.user_b_id:
-            logger.exception("Match %s has no user_b_id", match_id)
-            await callback.answer(
-                L.system.errors.SOMETHING_WENT_WRONG, show_alert=True
-            )
-            return
+        assert match is not None
+        assert match.user_b_id is not None
 
         (user_a, user_b) = await asyncio.gather(
             *(
@@ -310,18 +293,13 @@ async def handle_match_accept(
             )
         )
 
-        current_user = None
         if user_a.telegram_id == callback.from_user.id:
-            current_user = user_a
-            other_user = user_b
-        elif user_b.telegram_id == callback.from_user.id:
-            current_user = user_b
-            other_user = user_a
+            current_user, other_user = user_a, user_b
         else:
-            await callback.answer(
-                L.matching.errors.UNAUTHORIZED, show_alert=True
-            )
-            return
+            assert user_b.telegram_id == callback.from_user.id
+            current_user, other_user = user_b, user_a
+
+        assert match.status in ("qualified", "a_accepted", "b_accepted")
 
         if match.status == "qualified":
             is_user_a = current_user.telegram_id == user_a.telegram_id
@@ -347,10 +325,6 @@ async def handle_match_accept(
                     session,
                 ),
             )
-        else:
-            await callback.answer(
-                L.matching.errors.ALREADY_PROCESSED, show_alert=True
-            )
 
 
 @router.callback_query(MatchAction.filter(F.action == "reject"))
@@ -360,30 +334,20 @@ async def handle_match_reject(
     match_id = UUID(callback_data.match_id)
 
     async for session in get_db():
-        if match := await get_match_or_none(session, match_id):
-            match.status = "rejected"
-            await session.commit()
-            await callback.answer(L.matching.REJECT_NOTED)
-        else:
-            await callback.answer(L.matching.errors.NOT_FOUND, show_alert=True)
+        match = await get_match_or_none(session, match_id)
+        assert match is not None
+        match.status = "rejected"
+        await session.commit()
+        await callback.answer(L.matching.REJECT_NOTED)
 
 
 @router.callback_query(ResetAction.filter(F.action == "confirm"))
 async def handle_reset_confirm(
     callback: CallbackQuery, callback_data: ResetAction
 ) -> None:
-    """Handler for reset confirmation button"""
     telegram_id = callback_data.telegram_id
-
-    # Authorization check
-    if callback.from_user.id != telegram_id:
-        await callback.answer(L.system.errors.UNAUTHORIZED, show_alert=True)
-        return
-
-    # Validate callback.message is accessible
-    message = await validate_callback_message(callback)
-    if message is None:
-        return
+    assert callback.from_user.id == telegram_id
+    message = get_callback_message(callback)
 
     async for session in get_db():
         # Get or create user and chat (defensive programming)
@@ -429,18 +393,7 @@ async def handle_reset_confirm(
 async def handle_reset_cancel(
     callback: CallbackQuery, callback_data: ResetAction
 ) -> None:
-    """Handler for reset cancellation button"""
-    telegram_id = callback_data.telegram_id
+    assert callback.from_user.id == callback_data.telegram_id
 
-    # Authorization check
-    if callback.from_user.id != telegram_id:
-        await callback.answer(L.system.errors.UNAUTHORIZED, show_alert=True)
-        return
-
-    # Validate callback.message is accessible
-    message = await validate_callback_message(callback)
-    if message is None:
-        return
-
-    await message.edit_text(L.commands.reset.CANCELLED)
+    await get_callback_message(callback).edit_text(L.commands.reset.CANCELLED)
     await callback.answer()

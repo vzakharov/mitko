@@ -6,17 +6,24 @@ from aiogram import Router
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import (
     CallbackQuery,
-    InaccessibleMessage,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
 
-from ..db import get_or_create_user
+from mitko.bot.handlers import get_callback_message
+
+from ..db import get_user
 from ..i18n import L
 from ..models import get_db
 from ..services.profiler import ProfileService
 
 logger = logging.getLogger(__name__)
+
+
+def register_activation_handlers(router: Router) -> None:
+    router.callback_query.register(
+        handle_activate_profile, ActivateAction.filter()
+    )
 
 
 class ActivateAction(CallbackData, prefix="activate"):
@@ -38,37 +45,15 @@ def activation_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
     )
 
 
-def register_activation_handlers(router: Router) -> None:
-    router.callback_query.register(
-        handle_activate_profile, ActivateAction.filter()
-    )
-
-
 async def handle_activate_profile(
     callback: CallbackQuery, callback_data: ActivateAction
 ) -> None:
-    if callback.from_user.id != callback_data.telegram_id:
-        await callback.answer(L.system.errors.UNAUTHORIZED, show_alert=True)
-        return
-
-    if callback.message is None or isinstance(
-        callback.message, InaccessibleMessage
-    ):
-        await callback.answer(
-            L.system.errors.MESSAGE_UNAVAILABLE, show_alert=True
-        )
-        return
+    assert callback.from_user.id == callback_data.telegram_id
 
     async for session in get_db():
-        user = await get_or_create_user(session, callback_data.telegram_id)
+        await ProfileService(session).activate_profile(
+            await get_user(session, callback_data.telegram_id)
+        )
 
-        if user.state not in ("ready", "updated"):
-            await callback.answer(
-                L.matching.errors.ALREADY_PROCESSED, show_alert=True
-            )
-            return
-
-        await ProfileService(session).activate_profile(user)
-
-    await callback.message.edit_reply_markup(reply_markup=None)
+    await get_callback_message(callback).edit_reply_markup(reply_markup=None)
     await callback.answer(L.keyboards.activate.ACTIVATED)

@@ -17,7 +17,6 @@ from .base import (
     KeyboardsReset,
     Locale,
     Matching,
-    MatchingErrors,
     Profile,
     System,
     SystemErrors,
@@ -93,11 +92,6 @@ class EnglishLocale(Locale):
             You can reach out to them directly now."""
         ),
         REJECT_NOTED="Cool, got it. I'll find someone better!",
-        errors=MatchingErrors(
-            NOT_FOUND="Match not found",
-            UNAUTHORIZED="You don't have access to this match",
-            ALREADY_PROCESSED="This match is already processed",
-        ),
     )
     profile = Profile(
         CARD_HEADER="📋 Your Profile:",
@@ -114,9 +108,6 @@ class EnglishLocale(Locale):
         TIME_UNIT_HOUR="h",
         TIME_UNIT_MINUTE="min",
         errors=SystemErrors(
-            UNAUTHORIZED="You're not authorized for this action",
-            USER_NOT_FOUND="User not found",
-            MESSAGE_UNAVAILABLE="Hmm, can't access that message anymore. Try again?",
             MESSAGE_EMPTY="I see no message. Try again?",
             GENERATION_FAILED="Oops, something went wrong on my end. Please try again!",
             SOMETHING_WENT_WRONG="Oops, something went wrong. Chances are, we're on it (no promises though).",

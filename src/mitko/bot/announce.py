@@ -11,7 +11,6 @@ from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import (
     CallbackQuery,
-    InaccessibleMessage,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
@@ -124,12 +123,6 @@ def announce_confirmation_keyboard(
 async def handle_announce_callback(
     callback: CallbackQuery, callback_data: AnnounceAction, bot: Bot
 ) -> None:
-    if callback.message is None or isinstance(
-        callback.message, InaccessibleMessage
-    ):
-        await callback.answer()
-        return
-
     async with async_session_maker() as session:
         announce = await get_announce_or_none(session, callback_data.thread_id)
         if announce is None:

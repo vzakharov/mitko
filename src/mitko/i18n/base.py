@@ -49,19 +49,11 @@ class Keyboards:
 
 
 @dataclass
-class MatchingErrors:
-    NOT_FOUND: str
-    UNAUTHORIZED: str
-    ALREADY_PROCESSED: str
-
-
-@dataclass
 class Matching:
     FOUND: str  # Template with {profile} and {rationale}
     ACCEPT_WAITING: str
     CONNECTION_MADE: str  # Template with {profile}
     REJECT_NOTED: str
-    errors: MatchingErrors
 
 
 @dataclass
@@ -75,9 +67,6 @@ class Profile:
 
 @dataclass
 class SystemErrors:
-    UNAUTHORIZED: str
-    USER_NOT_FOUND: str
-    MESSAGE_UNAVAILABLE: str
     MESSAGE_EMPTY: str
     GENERATION_FAILED: str
     SOMETHING_WENT_WRONG: str
