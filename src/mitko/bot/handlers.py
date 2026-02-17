@@ -6,7 +6,7 @@ from uuid import UUID
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
-from aiogram.types import CallbackQuery, InaccessibleMessage, Message
+from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
@@ -26,6 +26,7 @@ from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
 from .activation import register_activation_handlers
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
+from .utils import get_callback_message
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -67,12 +68,6 @@ def _format_profile_for_display(user: User) -> str:
         parts.append(user.practical_context)
     return "\n\n".join(parts)
 
-
-def get_callback_message(callback: CallbackQuery) -> Message:
-    assert callback.message is not None and not isinstance(
-        callback.message, InaccessibleMessage
-    )
-    return callback.message
 
 
 @router.message(Command("start"))

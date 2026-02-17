@@ -10,7 +10,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
 )
 
-from mitko.bot.handlers import get_callback_message
+from mitko.bot.utils import get_callback_message
 
 from ..db import get_user
 from ..i18n import L
