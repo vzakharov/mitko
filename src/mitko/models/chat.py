@@ -63,5 +63,8 @@ class Chat(SQLModel, table=True):
         description="Admin group message ID used as thread root for this chat's logs",
     )
 
-    user: "User" = Relationship(back_populates="chats")
+    user: "User" = Relationship(
+        back_populates="chats",
+        sa_relationship_kwargs={"lazy": "selectin"},
+    )
     generations: list["Generation"] = Relationship(back_populates="chat")
