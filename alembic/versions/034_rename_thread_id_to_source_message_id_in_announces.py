@@ -10,7 +10,6 @@ from typing import Sequence  # noqa: UP035
 
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
 revision: str = "13e2be4e1b7c"
 down_revision: str | None = "2b69efc08e25"

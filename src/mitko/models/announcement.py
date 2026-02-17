@@ -31,6 +31,9 @@ class Announcement(SQLModel, table=True):
         sa_column=Column(BigInteger(), nullable=False, unique=True)
     )
     text: str = Field(sa_column=Column(Text(), nullable=False))
+    system_message: str | None = Field(
+        default=None, sa_column=Column(Text(), nullable=True)
+    )
     status: AnnouncementStatus = Field(
         default="pending",
         sa_column=Column(VARCHAR(20), nullable=False, server_default="pending"),

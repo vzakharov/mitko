@@ -2,7 +2,6 @@
 
 import json
 import logging
-import re
 from typing import Any, Literal
 
 from aiogram import Bot, Router
@@ -44,16 +43,18 @@ async def handle_announcement(message: Message) -> None:
         await message.reply(L.system.errors.MESSAGE_EMPTY)
         return
 
-    remainder = re.sub(r"^/announce\S*\s*", "", message.text).strip()
+    # Format: /announce\n[optional JSON]\ntext\n[optional "system: ..."]
+    lines = message.text.split("\n", 1)
+    remainder = lines[1].strip() if len(lines) > 1 else ""
 
     filters = dict[str, Any]()
     text = remainder
 
-    if remainder.startswith("{"):
+    parts = remainder.split("\n", 1)
+    if parts[0].strip().startswith("{"):
         try:
-            decoder = json.JSONDecoder()
-            filters, end_idx = decoder.raw_decode(remainder)
-            text = remainder[end_idx:].strip()
+            filters = json.loads(parts[0].strip())
+            text = parts[1].strip() if len(parts) > 1 else ""
         except json.JSONDecodeError as e:
             await message.reply(
                 L.admin.announcement.PARSE_ERROR.format(error=e)
@@ -67,10 +68,18 @@ async def handle_announcement(message: Message) -> None:
             )
             return
 
+    system_message: str | None = None
+    text_lines = text.splitlines()
+    if text_lines and text_lines[-1].startswith("system:"):
+        system_message = text_lines[-1].removeprefix("system:").strip()
+        text = "\n".join(text_lines[:-1]).strip()
+
     async with async_session_maker() as session:
         users = await filter_users(session, filters)
         group = await create_user_group(session, users)
-        await create_announcement(session, group, message.message_id, text)
+        await create_announcement(
+            session, group, message.message_id, text, system_message
+        )
 
     await message.reply(
         L.admin.announcement.PREVIEW.format(
@@ -137,11 +146,14 @@ async def handle_announcement_callback(
             return
 
         text = announcement.text
+        system_message = announcement.system_message
         source_message_id = announcement.source_message_id
         users = [m.user for m in announcement.group.members]
         await update_announcement_status(session, announcement, "sending")
 
-    sent, total = await _send_announcement(bot, users, text, source_message_id)
+    sent, total = await _send_announcement(
+        bot, users, text, system_message, source_message_id
+    )
     await post_to_admin(
         bot,
         L.admin.announcement.DONE.format(sent=sent, total=total),
@@ -150,14 +162,22 @@ async def handle_announcement_callback(
 
 
 async def _send_announcement(
-    bot: Bot, users: list[User], text: str, source_message_id: int
+    bot: Bot,
+    users: list[User],
+    text: str,
+    system_message: str | None,
+    source_message_id: int,
 ) -> tuple[int, int]:
     sent = 0
     for user in users:
         try:
             async with async_session_maker() as session:
                 await send_and_record_bot_message(
-                    bot, user.telegram_id, text, session
+                    bot,
+                    user.telegram_id,
+                    text,
+                    session,
+                    system_message=system_message,
                 )
             sent += 1
         except Exception:

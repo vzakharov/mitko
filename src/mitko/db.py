@@ -117,11 +117,15 @@ async def create_announcement(
     group: UserGroup,
     source_message_id: int,
     text: str,
+    system_message: str | None = None,
 ) -> Announcement:
     return await _create(
         session,
         Announcement(
-            group_id=group.id, source_message_id=source_message_id, text=text
+            group_id=group.id,
+            source_message_id=source_message_id,
+            text=text,
+            system_message=system_message,
         ),
     )
 
