@@ -84,5 +84,5 @@ class Generation(SQLModel, table=True):
         description="Total cost in USD for this generation",
     )
 
-    chat: Optional[Chat] = Relationship(back_populates="generations")
-    match: Optional[Match] = Relationship(back_populates="generations")
+    chat: Optional[Chat] = Relationship(back_populates="generations", sa_relationship_kwargs={"lazy": "selectin"})
+    match: Optional[Match] = Relationship(back_populates="generations", sa_relationship_kwargs={"lazy": "selectin"})
