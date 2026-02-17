@@ -25,6 +25,17 @@ _GLOBAL_MIN_INTERVAL = 1 / 30  # 30 msg/s global Telegram limit
 global_throttler = Throttler(_GLOBAL_MIN_INTERVAL)
 
 
+async def _get_telegram_id_and_chat(
+    recipient: Chat | int,
+    session: AsyncSession,
+) -> tuple[int, Chat]:
+    return (
+        (recipient.telegram_id, recipient)
+        if isinstance(recipient, Chat)
+        else (recipient, await get_chat(session, recipient))
+    )
+
+
 async def send_to_user(
     bot: Bot,
     recipient: Chat | int,
@@ -41,11 +52,7 @@ async def send_to_user(
         session: DB session (used to persist admin_thread_id if a new thread is created)
         **kwargs: Forwarded to bot.send_message (e.g. reply_markup, parse_mode)
     """
-    telegram_id, chat = (
-        (recipient.telegram_id, recipient)
-        if isinstance(recipient, Chat)
-        else (recipient, await get_chat(session, recipient))
-    )
+    telegram_id, chat = await _get_telegram_id_and_chat(recipient, session)
 
     if (
         remaining := _DM_MIN_INTERVAL
@@ -90,9 +97,9 @@ async def _mirror_outgoing(
 
 
 async def send_and_record_bot_message(
-    chat: Chat,
-    message_text: str,
     bot: Bot,
+    chat: Chat | int,
+    message_text: str,
     session: AsyncSession,
     prefix: str = INJECTED_MESSAGE_PREFIX,
 ) -> None:
@@ -108,11 +115,12 @@ async def send_and_record_bot_message(
     Invalidates OpenAI Responses API state to force history injection on next turn.
 
     Args:
-        chat: Chat object with telegram_id and message_history
+        chat: Either a Chat object with telegram_id and message_history or a raw telegram_id (int)
         message_text: The text to send (plain text, formatted with markdown)
         bot: Telegram Bot instance
         session: DB session for committing history
     """
+    _, chat = await _get_telegram_id_and_chat(chat, session)
     chat.message_history = [
         *chat.message_history,
         {"role": "assistant", "content": f"{prefix} {message_text}"},

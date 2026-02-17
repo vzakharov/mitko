@@ -27,7 +27,7 @@ from ..i18n import L
 from ..models import async_session_maker
 from ..models.user import User
 from ..services.admin_group import post_to_admin
-from ..services.chat_utils import send_to_user
+from ..services.chat_utils import send_and_record_bot_message
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +156,9 @@ async def _send_announcement(
     for user in users:
         try:
             async with async_session_maker() as session:
-                await send_to_user(bot, user.telegram_id, text, session)
+                await send_and_record_bot_message(
+                    bot, user.telegram_id, text, session
+                )
             sent += 1
         except Exception:
             logger.exception(
