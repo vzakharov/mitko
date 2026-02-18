@@ -4,8 +4,8 @@ from textwrap import dedent
 
 from pydantic_ai import Agent, NativeOutput
 
-from ..config import SETTINGS
 from ..i18n import LANGUAGE_NAME, L
+from ..settings_instance import SETTINGS
 from ..types.messages import ConversationResponse
 from .config import LANGUAGE_MODEL
 

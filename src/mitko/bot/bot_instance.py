@@ -1,6 +1,6 @@
 from aiogram import Bot
 
-from ..config import SETTINGS
+from ..settings_instance import SETTINGS
 
 _bot_instance: Bot | None = None
 

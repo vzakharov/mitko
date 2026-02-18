@@ -9,8 +9,8 @@ from aiogram.enums import ParseMode
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import SETTINGS
 from ..i18n import L
+from ..settings_instance import SETTINGS
 from ..utils.async_utils import Throttler
 from .chat_utils import global_throttler
 

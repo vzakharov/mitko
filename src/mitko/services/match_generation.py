@@ -13,10 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..agents.config import LANGUAGE_MODEL
 from ..agents.qualifier_agent import QUALIFIER_AGENT
 from ..bot.keyboards import match_consent_keyboard
-from ..config import SETTINGS
 from ..db import get_user
 from ..i18n import L
 from ..models import Match, User
+from ..settings_instance import SETTINGS
 from ..utils.typing_utils import raise_error
 from .chat_utils import send_to_user
 

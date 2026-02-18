@@ -4,7 +4,6 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import Update
 from fastapi import FastAPI, Request, Response
 
-from ..config import SETTINGS
 from ..jobs.generation_processor import (
     start_generation_processor,
     stop_generation_processor,
@@ -13,6 +12,7 @@ from ..jobs.matching_scheduler import (
     start_matching_loop,
     stop_matching_loop,
 )
+from ..settings_instance import SETTINGS
 
 
 class WebhookRuntime:

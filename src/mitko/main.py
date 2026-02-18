@@ -4,7 +4,6 @@ import logging
 from fastapi import FastAPI
 
 from .bot.core import initialize_bot_and_dispatcher
-from .config import SETTINGS
 from .jobs.generation_processor import (
     start_generation_processor,
     stop_generation_processor,
@@ -15,6 +14,7 @@ from .jobs.matching_scheduler import (
 )
 from .runtime.polling import PollingRuntime
 from .runtime.webhook import WebhookRuntime
+from .settings_instance import SETTINGS
 
 logger = logging.getLogger(__name__)
 

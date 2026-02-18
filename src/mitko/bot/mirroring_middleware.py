@@ -8,10 +8,10 @@ from aiogram import BaseMiddleware, Bot
 from aiogram.types import Message, TelegramObject
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import SETTINGS
 from ..db import get_chat_or_none
 from ..models import async_session_maker
 from ..services.admin_group import mirror_to_admin_thread
+from ..settings_instance import SETTINGS
 
 logger = logging.getLogger(__name__)
 

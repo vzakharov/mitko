@@ -71,4 +71,4 @@ def get_settings() -> Settings:
     return settings
 
 
-SETTINGS = get_settings()
+# SETTINGS moved to settings_instance.py to avoid initialization during Docker build

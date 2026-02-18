@@ -2,7 +2,7 @@
 
 from aiogram import F, Router
 
-from ..config import SETTINGS
+from ..settings_instance import SETTINGS
 from .announcements import register_announcement_handlers
 
 admin_router = Router(name="admin")

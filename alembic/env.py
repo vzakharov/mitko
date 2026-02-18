@@ -12,8 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from sqlmodel import SQLModel
 
-# Use get_settings() instead of SETTINGS constant to defer initialization until runtime.
-# Railway env vars are only available at runtime (CMD), not during build (RUN uv sync).
+# Use get_settings() instead of SETTINGS to avoid importing settings_instance.py.
+# That module has module-level SETTINGS initialization which would fail during build.
 from mitko.config import get_settings
 from mitko.models import (  # Import all models
     Announcement,

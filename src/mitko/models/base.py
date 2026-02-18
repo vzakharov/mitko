@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
-# Use get_settings() instead of SETTINGS constant to defer initialization until runtime.
-# Railway env vars are only available at runtime (CMD), not during build (RUN uv sync).
+# Use get_settings() instead of SETTINGS to avoid importing settings_instance.py.
+# That module has module-level SETTINGS initialization which would fail during build.
 from ..config import get_settings
 
 # SQLModel.metadata replaces Base.metadata

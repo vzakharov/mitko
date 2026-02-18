@@ -2,7 +2,7 @@
 
 from functools import lru_cache
 
-from ..config import SETTINGS
+from ..settings_instance import SETTINGS
 from .base import Locale
 from .en import EnglishLocale
 from .ru import RussianLocale

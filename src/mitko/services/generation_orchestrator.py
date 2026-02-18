@@ -16,8 +16,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
-from ..config import SETTINGS
 from ..models import Generation
+from ..settings_instance import SETTINGS
 
 
 class GenerationOrchestrator:
