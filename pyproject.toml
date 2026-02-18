@@ -2,7 +2,7 @@
 name = "mitko"
 version = "0.1.0"
 description = "IT Matchmaker Telegram Bot"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -39,7 +39,7 @@ packages = ["src/mitko"]
 
 [tool.ruff]
 line-length = 80
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = [
@@ -60,7 +60,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.pyright]
-pythonVersion = "3.11"
+pythonVersion = "3.12"
 typeCheckingMode = "strict"
 reportUnusedVariable = true
 reportUnusedImport = true
