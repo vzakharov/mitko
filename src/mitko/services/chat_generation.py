@@ -1,34 +1,15 @@
 """Chat generation service for LLM-powered dialogue."""
 
-import json
 import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
-from genai_prices import calc_price
-from pydantic import HttpUrl
-from pydantic_ai.messages import (
-    ModelRequest,
-    ModelResponse,
-    SystemPromptPart,
-    TextPart,
-    UserPromptPart,
-)
-from pydantic_ai.models.openai import (
-    OpenAIChatModelSettings,
-    OpenAIResponsesModelSettings,
-)
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..agents.chat_agent import CHAT_AGENT
-from ..agents.config import LANGUAGE_MODEL
-from ..config import SETTINGS
 from ..i18n import L
-from ..models import Chat, Generation
-from ..types.messages import ProfileData, says
+from ..types.messages import ProfileData
 from ..utils.typing_utils import raise_error
+from .chat_based_generation import ChatBasedGeneration
 from .chat_utils import send_to_user
 from .profiler import ProfileService
 
@@ -39,17 +20,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-MESSAGE_HISTORY_MAX_LENGTH = 50
-
 
 @dataclass
-class ChatGeneration:
+class ChatGeneration(ChatBasedGeneration):
     """Service for processing chat generations."""
-
-    bot: Bot
-    session: AsyncSession
-    generation: Generation
-    chat: Chat
 
     async def execute(self) -> None:
         """Process a chat generation: run agent, update profile, send message."""
@@ -121,63 +95,6 @@ class ChatGeneration:
         await self.session.commit()
         return user_prompt
 
-    async def _run_chat_agent(
-        self, user_prompt: str
-    ) -> "AgentRunResult[ConversationResponse]":
-        """Run the chat agent to generate a response."""
-
-        chat = self.chat
-
-        if SETTINGS.use_openai_responses_api:
-            model_settings = OpenAIResponsesModelSettings(
-                openai_prompt_cache_retention="24h",
-            )
-
-            async def run_fallback():
-                return await CHAT_AGENT.run(
-                    user_prompt,
-                    model_settings=model_settings,
-                    message_history=self._build_message_history(),
-                )
-
-            if chat.last_responses_api_response_id:
-                model_settings["openai_previous_response_id"] = (
-                    chat.last_responses_api_response_id
-                )
-                try:
-                    return await CHAT_AGENT.run(
-                        user_prompt,
-                        model_settings=model_settings,
-                    )
-                except Exception as e:
-                    if self._is_expired_response_error(e):
-                        logger.warning(
-                            "Responses API state expired for chat %s (response_id=%s): %s. Falling back to history injection.",
-                            chat.id,
-                            chat.last_responses_api_response_id,
-                            str(e),
-                        )
-
-                        chat.last_responses_api_response_id = None
-                        await self.session.commit()
-
-                        model_settings.pop("openai_previous_response_id", None)
-                        return await run_fallback()
-                    raise
-            return await run_fallback()
-
-        return await CHAT_AGENT.run(
-            user_prompt,
-            model_settings=(
-                OpenAIChatModelSettings(
-                    openai_prompt_cache_key=str(chat.id),
-                )
-                if SETTINGS.llm_provider == "openai"
-                else None
-            ),
-            message_history=self._build_message_history(),
-        )
-
     async def _handle_agent_response(
         self,
         user_prompt: str,
@@ -208,25 +125,17 @@ class ChatGeneration:
             response_text, reply_markup=reply_markup
         )
 
-        # Update chat history for fallback
-        chat.message_history = [
-            *chat.message_history,
-            says.user(user_prompt),
-            says.assistant(
-                json.dumps(response.model_dump(), ensure_ascii=False)
-            ),
-        ]
+        # Update chat history and Responses API state
+        self._update_chat_history(user_prompt, response)
 
-        self._record_usage_and_cost(result)
+        self.record_usage_and_cost(result, "generation")
+        self.record_provider_response(result)
 
-        if response_id := result.response.provider_response_id:
-            self.generation.provider_response_id = response_id
-            if SETTINGS.llm_provider == "openai":
-                self.generation.log_url = HttpUrl(
-                    f"https://platform.openai.com/logs/{response_id}"
-                )
-            if SETTINGS.use_openai_responses_api:
-                chat.last_responses_api_response_id = response_id
+        # Update Responses API state for future generations
+        if result.response.provider_response_id:
+            chat.last_responses_api_response_id = (
+                result.response.provider_response_id
+            )
 
         await self.session.commit()
 
@@ -311,81 +220,6 @@ class ChatGeneration:
                 self.session,
                 reply_markup=reply_markup,
             )
-
-    def _record_usage_and_cost(
-        self,
-        result: "AgentRunResult[ConversationResponse]",
-    ) -> None:
-        """Record token usage and calculate cost."""
-        usage = result.usage()
-        gen = self.generation
-        gen.cached_input_tokens = usage.cache_read_tokens
-        gen.uncached_input_tokens = usage.input_tokens - usage.cache_read_tokens
-        gen.output_tokens = usage.output_tokens
-
-        # Calculate cost using genai-prices
-        try:
-            price_data = calc_price(
-                usage,
-                model_ref=LANGUAGE_MODEL.model_name,
-                provider_id=SETTINGS.llm_provider,
-            )
-            gen.cost_usd = float(price_data.total_price)
-
-            logger.info(
-                "Calculated cost for generation %s: $%.6f (%d cached + %d uncached input, %d output tokens)",
-                gen.id,
-                gen.cost_usd,
-                gen.cached_input_tokens or 0,
-                gen.uncached_input_tokens or 0,
-                gen.output_tokens or 0,
-            )
-        except Exception as e:
-            # Fail gracefully - cost calculation should not break generation processing
-            logger.warning(
-                "Failed to calculate cost for generation %s: %s",
-                gen.id,
-                str(e),
-                exc_info=True,
-            )
-            gen.cost_usd = None
-
-    def _build_message_history(self) -> list[ModelRequest | ModelResponse]:
-        """Convert stored HistoryMessage list to PydanticAI ModelMessage objects."""
-        return [
-            ModelResponse(parts=[TextPart(content=msg["content"])])
-            if msg["role"] == "assistant"
-            else ModelRequest(
-                parts=[
-                    (
-                        UserPromptPart
-                        if msg["role"] == "user"
-                        else SystemPromptPart
-                    )(content=msg["content"])
-                ]
-            )
-            for msg in self.chat.message_history[-MESSAGE_HISTORY_MAX_LENGTH:]
-        ]
-
-    def _is_expired_response_error(self, error: Exception) -> bool:
-        """Check if error indicates expired/missing Responses API response.
-
-        Be conservative: only match specific known patterns from OpenAI.
-        """
-        from pydantic_ai.exceptions import ModelHTTPError
-
-        if not isinstance(error, ModelHTTPError):
-            return False
-
-        error_message = str(error).lower()
-
-        # Known patterns from OpenAI Responses API:
-        # - "Container is expired" (HTTP 400)
-        # - "not found" (HTTP 404)
-        return (
-            "container is expired" in error_message
-            or "not found" in error_message
-        )
 
     def _format_profile_card(self, profile: ProfileData) -> str:
         """Format profile as a user-visible card (Parts 1 + 2 only)."""

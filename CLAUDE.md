@@ -101,6 +101,14 @@ uv run alembic upgrade head
 - Migration strategy: Default to `alembic revision --autogenerate` for schema changes; only write manual migrations for data transformations, complex refactoring, or PostgreSQL-specific features (pgvector extensions, custom indexes)
 - Budget control: Weekly budget (`WEEKLY_BUDGET_USD`) dynamically spaces ALL generations (conversation, match rationale, future agents) proportional to cost via universal GenerationOrchestrator
 - Admin group: required private group for admin commands and logs. Configured via `ADMIN_GROUP_ID` env var (required at startup). Uses a separate aiogram Router (registered before the user router) with a router-level chat ID filter, so admin and user handlers are fully isolated with zero boilerplate. All admin posting goes through `services/admin_group.py:post_to_admin()`. `Chat.admin_thread_id` stores the thread root message ID for logs-in-threads.
+- **Generation Services Architecture**: Three-layer hierarchy for DRY code and consistent behavior:
+  ```
+  BaseGenerationService[T]  (all services)
+  ├── ChatBasedGeneration[T]  (chat-based services with Responses API)
+  │   ├── ChatGeneration[ConversationResponse]  (user conversations)
+  │   └── MatchIntroGeneration[ConversationResponse]  (match intros)
+  └── MatchGeneration[MatchQualification]  (match qualification)
+  ```
 
 **Structure**:
 

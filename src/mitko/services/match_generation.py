@@ -4,14 +4,9 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from textwrap import dedent
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
-from aiogram import Bot
-from genai_prices import calc_price
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from ..agents.config import LANGUAGE_MODEL
-from ..agents.qualifier_agent import QUALIFIER_AGENT
+from ..agents.qualifier_agent import QUALIFIER_AGENT, MatchQualification
 from ..bot.keyboards import match_consent_keyboard
 from ..config import SETTINGS
 from ..db import get_chat, get_user
@@ -22,14 +17,9 @@ from ..services.match_intro_generation import (
 )
 from ..types.messages import says
 from ..utils.typing_utils import raise_error
+from .base_generation import BaseGenerationService
 from .chat_utils import send_to_user
 from .generation_orchestrator import GenerationOrchestrator
-
-if TYPE_CHECKING:
-    from pydantic_ai.run import AgentRunResult
-
-    from ..agents.qualifier_agent import MatchQualification
-    from ..models import Generation
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +33,9 @@ def _format_profile_for_display(user: User) -> str:
 
 
 @dataclass
-class MatchGeneration:
+class MatchGeneration(BaseGenerationService[MatchQualification]):
     """Service for processing match generations."""
 
-    bot: Bot
-    session: AsyncSession
-    generation: "Generation"
     match: Match
 
     async def execute(self) -> None:
@@ -145,7 +132,7 @@ Internal Notes: {user_b.private_observations or "None"}"""
         rationale = result.output
 
         # Record usage and cost
-        self._record_usage_and_cost(result)
+        self.record_usage_and_cost(result, "match generation")
 
         return rationale.explanation, rationale.decision
 
@@ -205,40 +192,6 @@ Internal Notes: {user_b.private_observations or "None"}"""
                 for user in (user_a, user_b)
             )
         )
-
-    def _record_usage_and_cost(
-        self,
-        result: "AgentRunResult[MatchQualification]",
-    ) -> None:
-        """Record token usage and calculate cost."""
-        usage = result.usage()
-        gen = self.generation
-        gen.cached_input_tokens = usage.cache_read_tokens
-        gen.uncached_input_tokens = usage.input_tokens - usage.cache_read_tokens
-        gen.output_tokens = usage.output_tokens
-
-        # Calculate cost using genai-prices
-        try:
-            price_data = calc_price(
-                usage,
-                model_ref=LANGUAGE_MODEL.model_name,
-                provider_id=SETTINGS.llm_provider,
-            )
-            gen.cost_usd = float(price_data.total_price)
-
-            logger.info(
-                "Match generation %s: cost=$%.4f (input=%d cached=%d output=%d)",
-                gen.id,
-                gen.cost_usd,
-                gen.uncached_input_tokens or 0,
-                gen.cached_input_tokens or 0,
-                gen.output_tokens or 0,
-            )
-        except Exception:
-            logger.exception(
-                "Failed to calculate cost for match generation %s", gen.id
-            )
-            gen.cost_usd = 0.0
 
     async def _restart_matching_loop(self) -> None:
         """Restart the matching loop to find the next match."""

@@ -1,30 +1,12 @@
 """Match intro generation service for personalized match notifications."""
 
-import json
 import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from aiogram import Bot
-from genai_prices import calc_price
-from pydantic import HttpUrl
-from pydantic_ai.messages import (
-    ModelRequest,
-    ModelResponse,
-    SystemPromptPart,
-    TextPart,
-    UserPromptPart,
-)
-from pydantic_ai.models.openai import OpenAIChatModelSettings
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from ..agents.chat_agent import CHAT_AGENT
-from ..agents.config import LANGUAGE_MODEL
 from ..bot.keyboards import match_consent_keyboard
-from ..config import SETTINGS
 from ..i18n import L
-from ..models import Chat, Generation
-from ..types.messages import says
+from .chat_based_generation import ChatBasedGeneration
 from .chat_utils import send_to_user
 
 if TYPE_CHECKING:
@@ -33,8 +15,6 @@ if TYPE_CHECKING:
     from ..types.messages import ConversationResponse
 
 logger = logging.getLogger(__name__)
-
-MESSAGE_HISTORY_MAX_LENGTH = 50
 
 MATCH_INTRO_SYSTEM_MESSAGE_TEMPLATE = """
 You have found a potential match for this user!
@@ -64,13 +44,8 @@ The match consent buttons will be automatically attached to your message.
 
 
 @dataclass
-class MatchIntroGeneration:
+class MatchIntroGeneration(ChatBasedGeneration):
     """Service for processing match intro generations."""
-
-    bot: Bot
-    session: AsyncSession
-    generation: Generation
-    chat: Chat
 
     async def execute(self) -> None:
         """Generate personalized match intro and send to user.
@@ -82,7 +57,7 @@ class MatchIntroGeneration:
         """
 
         try:
-            result = await self._run_chat_agent()
+            result = await self._run_chat_agent(None)
             await self._send_intro_to_user(result)
         except Exception:
             # Notify user of failure before re-raising
@@ -94,62 +69,34 @@ class MatchIntroGeneration:
             )
             raise
 
-    async def _run_chat_agent(self) -> "AgentRunResult[ConversationResponse]":
-        """Run the chat agent to generate a personalized intro.
-
-        The system message in chat history contains match context and instructions.
-        No user_prompt is needed - the system message drives generation.
-        """
-        # Use empty user prompt - system message drives the generation
-        user_prompt = ""
-
-        return await CHAT_AGENT.run(
-            user_prompt,
-            model_settings=(
-                OpenAIChatModelSettings(
-                    openai_prompt_cache_key=str(self.chat.id),
-                )
-                if SETTINGS.llm_provider == "openai"
-                else None
-            ),
-            message_history=self._build_message_history(),
-        )
-
     async def _send_intro_to_user(
         self,
         result: "AgentRunResult[ConversationResponse]",
     ) -> None:
         """Send personalized intro with match consent keyboard."""
         response = result.output
-        chat = self.chat
         assert self.generation.match is not None
 
         # Send intro message with match consent keyboard
         await send_to_user(
             self.bot,
-            chat,
+            self.chat,
             response.utterance,
             self.session,
             reply_markup=match_consent_keyboard(self.generation.match.id),
         )
 
-        # Record in chat history as assistant message
-        # Note: The system message was already added by MatchGeneration
-        chat.message_history = [
-            *chat.message_history,
-            says.assistant(
-                json.dumps(response.model_dump(), ensure_ascii=False)
-            ),
-        ]
+        # Update chat history (no user prompt - system message drives generation)
+        self._update_chat_history(None, response)
 
-        self._record_usage_and_cost(result)
+        # Update Responses API state for future generations
+        if self.generation.match.status == "qualified":
+            self.chat.last_responses_api_response_id = (
+                result.response.provider_response_id
+            )
 
-        if response_id := result.response.provider_response_id:
-            self.generation.provider_response_id = response_id
-            if SETTINGS.llm_provider == "openai":
-                self.generation.log_url = HttpUrl(
-                    f"https://platform.openai.com/logs/{response_id}"
-                )
+        self.record_usage_and_cost(result, "match intro generation")
+        self.record_provider_response(result)
 
         await self.session.commit()
 
@@ -158,58 +105,3 @@ class MatchIntroGeneration:
             self.generation.id,
             self.generation.match.id,
         )
-
-    def _record_usage_and_cost(
-        self,
-        result: "AgentRunResult[ConversationResponse]",
-    ) -> None:
-        """Record token usage and calculate cost."""
-        usage = result.usage()
-        gen = self.generation
-        gen.cached_input_tokens = usage.cache_read_tokens
-        gen.uncached_input_tokens = usage.input_tokens - usage.cache_read_tokens
-        gen.output_tokens = usage.output_tokens
-
-        # Calculate cost using genai-prices
-        try:
-            price_data = calc_price(
-                usage,
-                model_ref=LANGUAGE_MODEL.model_name,
-                provider_id=SETTINGS.llm_provider,
-            )
-            gen.cost_usd = float(price_data.total_price)
-
-            logger.info(
-                "Calculated cost for match intro generation %s: $%.6f (%d cached + %d uncached input, %d output tokens)",
-                gen.id,
-                gen.cost_usd,
-                gen.cached_input_tokens or 0,
-                gen.uncached_input_tokens or 0,
-                gen.output_tokens or 0,
-            )
-        except Exception as e:
-            # Fail gracefully - cost calculation should not break generation processing
-            logger.warning(
-                "Failed to calculate cost for generation %s: %s",
-                gen.id,
-                str(e),
-                exc_info=True,
-            )
-            gen.cost_usd = None
-
-    def _build_message_history(self) -> list[ModelRequest | ModelResponse]:
-        """Convert stored HistoryMessage list to PydanticAI ModelMessage objects."""
-        return [
-            ModelResponse(parts=[TextPart(content=msg["content"])])
-            if msg["role"] == "assistant"
-            else ModelRequest(
-                parts=[
-                    (
-                        UserPromptPart
-                        if msg["role"] == "user"
-                        else SystemPromptPart
-                    )(content=msg["content"])
-                ]
-            )
-            for msg in self.chat.message_history[-MESSAGE_HISTORY_MAX_LENGTH:]
-        ]
