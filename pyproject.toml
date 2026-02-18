@@ -67,4 +67,9 @@ reportUnusedImport = true
 stubPath = "typings"
 
 [dependency-groups]
-dev = ["aiosqlite>=0.22.1"]
+dev = [
+    "aiosqlite>=0.22.1",
+    "pytest-async-sqlalchemy>=0.2.0",
+    "factory-boy>=3.3.0",
+    "pytest-cov>=6.0.0",
+]
