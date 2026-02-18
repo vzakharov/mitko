@@ -3,8 +3,8 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.types import ErrorEvent
 
+from ..config import SETTINGS
 from ..i18n import L
-from ..settings_instance import SETTINGS
 from .admin import admin_router
 from .bot_instance import create_bot
 from .errors import BotError

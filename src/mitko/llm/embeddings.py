@@ -2,7 +2,7 @@
 
 from openai import AsyncOpenAI
 
-from ..settings_instance import SETTINGS
+from ..config import SETTINGS
 
 _client: AsyncOpenAI | None = None
 

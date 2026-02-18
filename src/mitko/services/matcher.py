@@ -7,8 +7,8 @@ from sqlalchemy import func as sql_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
+from ..config import SETTINGS
 from ..models import Match, User
-from ..settings_instance import SETTINGS
 from .match_result import (
     AllUsersMatched,
     MatchFound,

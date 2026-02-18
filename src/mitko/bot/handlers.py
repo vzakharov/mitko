@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
 
+from ..config import SETTINGS
 from ..db import (
     get_match_or_none,
     get_or_create_chat,
@@ -23,7 +24,6 @@ from ..models import Chat, Generation, User, get_db
 from ..services.chat_utils import send_to_user
 from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
-from ..settings_instance import SETTINGS
 from .activation import register_activation_handlers
 from .bot_instance import get_bot
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard

@@ -24,9 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agents.chat_agent import CHAT_AGENT
 from ..agents.config import LANGUAGE_MODEL
+from ..config import SETTINGS
 from ..i18n import L
 from ..models import Chat, Generation
-from ..settings_instance import SETTINGS
 from ..types.messages import ProfileData, says
 from ..utils.typing_utils import raise_error
 from .chat_utils import send_to_user
