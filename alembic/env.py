@@ -12,7 +12,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from sqlmodel import SQLModel
 
-from mitko.config import SETTINGS
+# Use get_settings() instead of SETTINGS constant to defer initialization until runtime.
+# Railway env vars are only available at runtime (CMD), not during build (RUN uv sync).
+from mitko.config import get_settings
 from mitko.models import (  # Import all models
     Announcement,
     Chat,
@@ -31,7 +33,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", SETTINGS.database_url)
+config.set_main_option("sqlalchemy.url", get_settings().database_url)
 
 target_metadata = SQLModel.metadata
 
