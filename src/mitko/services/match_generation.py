@@ -12,14 +12,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agents.config import LANGUAGE_MODEL
 from ..agents.qualifier_agent import QUALIFIER_AGENT
+from ..bot.keyboards import match_consent_keyboard
 from ..config import SETTINGS
 from ..db import get_chat, get_user
+from ..i18n import L
 from ..models import Match, User
 from ..services.match_intro_generation import (
     MATCH_INTRO_SYSTEM_MESSAGE_TEMPLATE,
 )
 from ..types.messages import says
 from ..utils.typing_utils import raise_error
+from .chat_utils import send_to_user
 from .generation_orchestrator import GenerationOrchestrator
 
 if TYPE_CHECKING:
@@ -68,9 +71,11 @@ class MatchGeneration:
 
             # Only notify users if match is qualified
             if decision == "qualified":
-                await self._create_intro_generations(
-                    user_a, user_b, explanation
-                )
+                await (
+                    self._notify_users_hardcoded
+                    if SETTINGS.use_hardcoded_match_intros
+                    else self._create_intro_generations
+                )(user_a, user_b, explanation)
 
             logger.info(
                 "Processed match generation %s: decision=%s for users %s and %s",
@@ -177,6 +182,29 @@ Internal Notes: {user_b.private_observations or "None"}"""
         # Commit persists BOTH the system messages AND the generations
         await self.session.commit()
         nudge_processor()
+
+    async def _notify_users_hardcoded(
+        self, user_a: User, user_b: User, rationale: str
+    ) -> None:
+        """Send match notifications with raw rationale (legacy behavior)."""
+
+        await asyncio.gather(
+            *(
+                send_to_user(
+                    self.bot,
+                    user.telegram_id,
+                    L.matching.FOUND.format(
+                        profile=_format_profile_for_display(
+                            user_b if user == user_a else user_a
+                        ),
+                        rationale=rationale,
+                    ),
+                    self.session,
+                    reply_markup=match_consent_keyboard(self.match.id),
+                )
+                for user in (user_a, user_b)
+            )
+        )
 
     def _record_usage_and_cost(
         self,

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     llm_provider: Literal["openai", "anthropic"] = "openai"
     use_openai_responses_api: bool = False
+    use_hardcoded_match_intros: bool = False
     openai_api_key: str | None = None
     anthropic_api_key: str | None = None
 
