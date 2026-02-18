@@ -7,14 +7,12 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlmodel import SQLModel
 
-# Use get_settings() instead of SETTINGS constant to defer initialization until runtime.
-# Railway env vars are only available at runtime (CMD), not during build (RUN uv sync).
-from ..config import get_settings
+from ..config import SETTINGS
 
 # SQLModel.metadata replaces Base.metadata
 # Models now inherit from SQLModel directly
 
-engine = create_async_engine(get_settings().database_url, echo=False)
+engine = create_async_engine(SETTINGS.database_url, echo=False)
 async_session_maker = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
