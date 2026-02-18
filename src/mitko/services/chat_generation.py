@@ -9,21 +9,25 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup
 from genai_prices import calc_price
 from pydantic import HttpUrl
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelResponse,
+    SystemPromptPart,
+    TextPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.openai import (
     OpenAIChatModelSettings,
     OpenAIResponsesModelSettings,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..agents.chat_agent import (
-    CHAT_AGENT,
-    CHAT_AGENT_INSTRUCTIONS,
-)
+from ..agents.chat_agent import CHAT_AGENT
 from ..agents.config import LANGUAGE_MODEL
 from ..config import SETTINGS
 from ..i18n import L
 from ..models import Chat, Generation
-from ..types.messages import HistoryMessage, ProfileData, says
+from ..types.messages import ProfileData, says
 from ..utils.typing_utils import raise_error
 from .chat_utils import send_to_user
 from .profiler import ProfileService
@@ -124,21 +128,17 @@ class ChatGeneration:
 
         chat = self.chat
 
-        instructions_with_history = "\n\n".join(
-            [
-                piece
-                for piece in [
-                    CHAT_AGENT_INSTRUCTIONS,
-                    self._format_history_for_instructions(chat.message_history),
-                ]
-                if piece
-            ]
-        )
-
         if SETTINGS.use_openai_responses_api:
             model_settings = OpenAIResponsesModelSettings(
                 openai_prompt_cache_retention="24h",
             )
+
+            async def run_fallback():
+                return await CHAT_AGENT.run(
+                    user_prompt,
+                    model_settings=model_settings,
+                    message_history=self._build_message_history(),
+                )
 
             if chat.last_responses_api_response_id:
                 model_settings["openai_previous_response_id"] = (
@@ -162,17 +162,9 @@ class ChatGeneration:
                         await self.session.commit()
 
                         model_settings.pop("openai_previous_response_id", None)
-                        return await CHAT_AGENT.run(
-                            user_prompt,
-                            model_settings=model_settings,
-                            instructions=instructions_with_history,
-                        )
+                        return await run_fallback()
                     raise
-            return await CHAT_AGENT.run(
-                user_prompt,
-                model_settings=model_settings,
-                instructions=instructions_with_history,
-            )
+            return await run_fallback()
 
         return await CHAT_AGENT.run(
             user_prompt,
@@ -183,7 +175,7 @@ class ChatGeneration:
                 if SETTINGS.llm_provider == "openai"
                 else None
             ),
-            instructions=instructions_with_history,
+            message_history=self._build_message_history(),
         )
 
     async def _handle_agent_response(
@@ -358,31 +350,22 @@ class ChatGeneration:
             )
             gen.cost_usd = None
 
-    def _format_history_for_instructions(
-        self,
-        history: list[HistoryMessage],
-    ) -> str | None:
-        """Format history as readable text for instructions injection.
-
-        Includes truncation for very long conversations to avoid token overflow.
-        TODO: implement summarization for longer histories.
-        """
-        if not history:
-            return None
-
-        # Truncate to last MESSAGE_HISTORY_MAX_LENGTH messages to avoid excessive token usage
-        truncated_history = history[-MESSAGE_HISTORY_MAX_LENGTH:]
-        truncation_notice = ""
-        if len(history) > MESSAGE_HISTORY_MAX_LENGTH:
-            truncation_notice = f"[Earlier messages truncated - showing last {MESSAGE_HISTORY_MAX_LENGTH} of {len(history)} messages]\n\n"
-
-        formatted_messages = list[str]()
-        for msg in truncated_history:
-            formatted_messages.append(
-                f"{msg['role'].capitalize()}: {msg['content']}"
+    def _build_message_history(self) -> list[ModelRequest | ModelResponse]:
+        """Convert stored HistoryMessage list to PydanticAI ModelMessage objects."""
+        return [
+            ModelResponse(parts=[TextPart(content=msg["content"])])
+            if msg["role"] == "assistant"
+            else ModelRequest(
+                parts=[
+                    (
+                        UserPromptPart
+                        if msg["role"] == "user"
+                        else SystemPromptPart
+                    )(content=msg["content"])
+                ]
             )
-
-        return f"Previous chat history:\n{truncation_notice}{chr(10).join(formatted_messages)}"
+            for msg in self.chat.message_history[-MESSAGE_HISTORY_MAX_LENGTH:]
+        ]
 
     def _is_expired_response_error(self, error: Exception) -> bool:
         """Check if error indicates expired/missing Responses API response.
