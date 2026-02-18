@@ -31,8 +31,8 @@ from .utils import get_callback_message
 router = Router()
 logger = logging.getLogger(__name__)
 
-for observer in [router.message, router.callback_query]:
-    observer.filter(F.chat.id != SETTINGS.admin_group_id)
+router.message.filter(F.chat.id != SETTINGS.admin_group_id)
+router.callback_query.filter(F.message.chat.id != SETTINGS.admin_group_id)
 
 register_activation_handlers(router)
 

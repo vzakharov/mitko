@@ -378,8 +378,9 @@ class ChatGeneration:
 
         formatted_messages = list[str]()
         for msg in truncated_history:
-            role_label = "User" if msg["role"] == "user" else "Assistant"
-            formatted_messages.append(f"{role_label}: {msg['content']}")
+            formatted_messages.append(
+                f"{msg['role'].capitalize()}: {msg['content']}"
+            )
 
         return f"Previous chat history:\n{truncation_notice}{chr(10).join(formatted_messages)}"
 
