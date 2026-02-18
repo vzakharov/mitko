@@ -1,9 +1,4 @@
-from typing import TypeVar
-
-_T = TypeVar("_T")
-
-
-def compact(*args: _T | None) -> list[_T]:
+def compact[T](*args: T | None) -> list[T]:
     """
     Remove all None values from the arguments.
     """

@@ -1,6 +1,6 @@
 """Plain model lookup helpers — thin wrappers around common SELECT queries."""
 
-from typing import Any, TypeVar
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import Result, select
@@ -36,10 +36,9 @@ async def get_chat(session: AsyncSession, telegram_id: int) -> Chat:
     return (await _select_chat(session, telegram_id)).scalar_one()
 
 
-TModel = TypeVar("TModel", Announcement, Chat, User, UserGroup, UserGroupMember)
-
-
-async def _create(session: AsyncSession, instance: TModel) -> TModel:
+async def _create[
+    TModel: (Announcement, Chat, User, UserGroup, UserGroupMember)
+](session: AsyncSession, instance: TModel) -> TModel:
     session.add(instance)
     await session.commit()
     await session.refresh(instance)
