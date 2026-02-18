@@ -236,7 +236,6 @@ async def handle_message(message: Message) -> None:
             generation = await generation_service.create_generation(
                 chat_id=chat.id
             )
-            nudge_processor()
 
             # Send acknowledgment with estimated reply time
             status_text = _format_time_delta(generation.scheduled_for)

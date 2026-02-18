@@ -30,3 +30,4 @@ htmlcov/
 .env.local
 *.log
 
+/tmp
