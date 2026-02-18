@@ -40,15 +40,19 @@ async def _create[
     TModel: (Announcement, Chat, User, UserGroup, UserGroupMember)
 ](session: AsyncSession, instance: TModel) -> TModel:
     session.add(instance)
-    await session.commit()
+    await session.flush()
     await session.refresh(instance)
     return instance
 
 
 async def get_or_create_chat(session: AsyncSession, telegram_id: int) -> Chat:
-    return await get_chat_or_none(session, telegram_id) or await _create(
+    if chat := await get_chat_or_none(session, telegram_id):
+        return chat
+    chat = await _create(
         session, Chat(telegram_id=telegram_id, message_history=[])
     )
+    await session.commit()
+    return chat
 
 
 async def _select_user(
@@ -70,9 +74,13 @@ async def get_user(session: AsyncSession, telegram_id: int) -> User:
 
 
 async def get_or_create_user(session: AsyncSession, telegram_id: int) -> User:
-    return await get_user_or_none(session, telegram_id) or await _create(
+    if user := await get_user_or_none(session, telegram_id):
+        return user
+    user = await _create(
         session, User(telegram_id=telegram_id, state="onboarding")
     )
+    await session.commit()
+    return user
 
 
 async def get_match_or_none(
@@ -118,7 +126,7 @@ async def create_announcement(
     text: str,
     system_message: str | None = None,
 ) -> Announcement:
-    return await _create(
+    announcement = await _create(
         session,
         Announcement(
             group_id=group.id,
@@ -127,6 +135,8 @@ async def create_announcement(
             system_message=system_message,
         ),
     )
+    await session.commit()
+    return announcement
 
 
 async def get_announcement_or_none(

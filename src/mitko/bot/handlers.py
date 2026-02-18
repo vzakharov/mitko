@@ -61,10 +61,8 @@ def _format_profile_for_display(user: User) -> str:
 async def cmd_start(message: Message) -> None:
     assert message.from_user is not None
     async for session in get_db():
-        (user, chat) = await asyncio.gather(
-            get_or_create_user(session, message.from_user.id),
-            get_or_create_chat(session, message.from_user.id),
-        )
+        user = await get_or_create_user(session, message.from_user.id)
+        chat = await get_or_create_chat(session, message.from_user.id)
 
         # Check if user has ANY existing data
         has_data = (
