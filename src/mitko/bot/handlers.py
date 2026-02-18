@@ -93,11 +93,12 @@ async def cmd_start(message: Message) -> None:
 async def _has_pending_generation(
     chat_id: uuid.UUID, session: AsyncSession
 ) -> bool:
-    """Check if chat has a pending generation."""
+    """Check if chat has a pending ChatGeneration (not MatchIntroGeneration)."""
     result = await session.execute(
         select(Generation)
         .where(col(Generation.chat_id) == chat_id)
         .where(col(Generation.status) == "pending")
+        .where(col(Generation.match_id).is_(None))  # Exclude match intros
         .limit(1)
     )
     return result.scalar_one_or_none() is not None

@@ -39,8 +39,8 @@ class GenerationOrchestrator:
         - Proper queueing (sequential, respects max_scheduled_for)
         """
 
-        if sum(1 for id in [chat_id, match_id] if id is not None) != 1:
-            raise ValueError("Must provide exactly one of chat_id or match_id")
+        if not chat_id and not match_id:
+            raise ValueError("Must provide either chat_id or match_id or both")
 
         interval = await self._calculate_budget_interval()
         max_scheduled = await self._get_max_scheduled_time()

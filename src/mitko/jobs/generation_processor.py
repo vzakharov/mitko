@@ -46,8 +46,20 @@ def nudge_processor() -> None:
 async def _route_and_process(
     bot: Bot, generation: Generation, session: AsyncSession
 ) -> None:
-    """Route to task-specific processor based on which FK is set."""
-    if generation.chat is not None:
+    """Route to task-specific processor based on which FK is set.
+
+    Routing logic:
+    - chat_id only: user-initiated message (ChatGeneration)
+    - match_id only: match qualification (MatchGeneration)
+    - both chat_id and match_id: personalized match intro (MatchIntroGeneration)
+    """
+    if generation.chat is not None and generation.match is not None:
+        from ..services.match_intro_generation import MatchIntroGeneration
+
+        await MatchIntroGeneration(
+            bot, session, generation, generation.chat
+        ).execute()
+    elif generation.chat is not None:
         await ChatGeneration(
             bot, session, generation, generation.chat
         ).execute()

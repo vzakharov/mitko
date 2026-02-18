@@ -12,13 +12,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agents.config import LANGUAGE_MODEL
 from ..agents.qualifier_agent import QUALIFIER_AGENT
-from ..bot.keyboards import match_consent_keyboard
 from ..config import SETTINGS
-from ..db import get_user
-from ..i18n import L
+from ..db import get_chat, get_user
 from ..models import Match, User
+from ..services.match_intro_generation import (
+    MATCH_INTRO_SYSTEM_MESSAGE_TEMPLATE,
+)
+from ..types.messages import says
 from ..utils.typing_utils import raise_error
-from .chat_utils import send_to_user
+from .generation_orchestrator import GenerationOrchestrator
 
 if TYPE_CHECKING:
     from pydantic_ai.run import AgentRunResult
@@ -66,12 +68,9 @@ class MatchGeneration:
 
             # Only notify users if match is qualified
             if decision == "qualified":
-                # TODO: Create MatchSuggesterAgent to convert internal explanation into
-                # natural user-facing messages like "Hey Bob, we figured you might want to
-                # talk to Alice, she's ..." For now, showing internal explanation directly.
-                # TODO: Implement safeguards to prevent red flag information from leaking
-                # between users in the explanation.
-                await self._notify_both_users(user_a, user_b, explanation)
+                await self._create_intro_generations(
+                    user_a, user_b, explanation
+                )
 
             logger.info(
                 "Processed match generation %s: decision=%s for users %s and %s",
@@ -145,28 +144,39 @@ Internal Notes: {user_b.private_observations or "None"}"""
 
         return rationale.explanation, rationale.decision
 
-    async def _notify_both_users(
+    async def _create_intro_generations(
         self, user_a: User, user_b: User, rationale: str
     ) -> None:
-        """Send match notifications to both users."""
+        """Create match intro generations for both users."""
+        from ..jobs.generation_processor import nudge_processor
 
-        await asyncio.gather(
-            *(
-                send_to_user(
-                    self.bot,
-                    user.telegram_id,
-                    L.matching.FOUND.format(
-                        profile=_format_profile_for_display(
-                            user_b if user == user_a else user_a
+        for user, matched_user in [(user_a, user_b), (user_b, user_a)]:
+            chat = await get_chat(self.session, user.telegram_id)
+
+            # Inject system message with match context into history
+            # NOTE: This persists in the database via commit() below
+            # Future conversations will see this system message in history
+            chat.message_history = [
+                *chat.message_history,
+                says.system(
+                    MATCH_INTRO_SYSTEM_MESSAGE_TEMPLATE.format(
+                        profile_display=_format_profile_for_display(
+                            matched_user
                         ),
                         rationale=rationale,
-                    ),
-                    self.session,
-                    reply_markup=match_consent_keyboard(self.match.id),
-                )
-                for user in (user_a, user_b)
+                    )
+                ),
+            ]
+
+            # Create generation with BOTH chat_id AND match_id
+            # This routes to MatchIntroGeneration (not ChatGeneration)
+            await GenerationOrchestrator(self.session).create_generation(
+                chat_id=chat.id, match_id=self.match.id
             )
-        )
+
+        # Commit persists BOTH the system messages AND the generations
+        await self.session.commit()
+        nudge_processor()
 
     def _record_usage_and_cost(
         self,
