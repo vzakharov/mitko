@@ -3,7 +3,7 @@ import logging
 
 from fastapi import FastAPI
 
-from .bot.core import initialize_bot
+from .bot.core import initialize_bot_and_dispatcher
 from .config import SETTINGS
 from .jobs.generation_processor import (
     start_generation_processor,
@@ -35,7 +35,7 @@ def get_runtime():
 # Only initialize when imported by uvicorn, not when run directly
 app: FastAPI | None = None
 if SETTINGS.telegram_mode == "webhook" and __name__ != "__main__":
-    bot, dp = initialize_bot()
+    bot, dp = initialize_bot_and_dispatcher()
     runtime = WebhookRuntime()
     app = runtime.create_app(bot, dp)
 
@@ -43,7 +43,7 @@ if SETTINGS.telegram_mode == "webhook" and __name__ != "__main__":
 # For polling mode (direct execution)
 async def main():
     """Main entry point for polling mode"""
-    bot, dp = initialize_bot()
+    bot, dp = initialize_bot_and_dispatcher()
     runtime = get_runtime()
 
     try:

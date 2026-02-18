@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from uuid import UUID
 
-from aiogram import Bot, F, Router
+from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy import select
@@ -25,6 +25,7 @@ from ..services.chat_utils import send_to_user
 from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
 from .activation import register_activation_handlers
+from .bot_instance import get_bot
 from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
 from .utils import get_callback_message
 
@@ -40,25 +41,12 @@ register_activation_handlers(router)
 # (e.g., long messages split by Telegram into multiple parts)
 NUDGE_DELAY_SECONDS = 1.0
 
-_bot_instance: Bot | None = None
 
-
-def reset_chat_state(chat: Chat) -> None:
+def _reset_chat_state(chat: Chat) -> None:
     """Reset chat to empty state, clearing all history and Responses API state."""
     chat.message_history = []
     chat.user_prompt = None
     chat.last_responses_api_response_id = None
-
-
-def set_bot_instance(bot: Bot) -> None:
-    global _bot_instance
-    _bot_instance = bot
-
-
-def get_bot() -> Bot:
-    if _bot_instance is None:
-        raise RuntimeError("Bot instance not set")
-    return _bot_instance
 
 
 def _format_profile_for_display(user: User) -> str:
@@ -96,7 +84,7 @@ async def cmd_start(message: Message) -> None:
         else:
             # New user - just send greeting and initialize with empty history
             await message.answer(L.commands.start.GREETING)
-            reset_chat_state(chat)
+            _reset_chat_state(chat)
             await session.commit()
             logger.info(
                 "Started chat for user %d: empty history",
@@ -359,7 +347,7 @@ async def handle_reset_confirm(
 
         # Send standard greeting (same as /start)
         await message.answer(L.commands.start.GREETING)
-        reset_chat_state(chat)
+        _reset_chat_state(chat)
         # Cancel any pending generations for this chat
         pending_gens = (
             (

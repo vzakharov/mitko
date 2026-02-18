@@ -6,16 +6,12 @@ from aiogram.types import ErrorEvent
 from ..config import SETTINGS
 from ..i18n import L
 from .admin import admin_router
+from .bot_instance import create_bot
 from .errors import BotError
-from .handlers import router, set_bot_instance
+from .handlers import router
 from .mirroring_middleware import MessageMirrorMiddleware
 
 logger = logging.getLogger(__name__)
-
-
-def create_bot() -> Bot:
-    """Create and configure Bot instance"""
-    return Bot(token=SETTINGS.telegram_bot_token)
 
 
 def create_dispatcher() -> Dispatcher:
@@ -51,9 +47,6 @@ def create_dispatcher() -> Dispatcher:
     return dp
 
 
-def initialize_bot() -> tuple[Bot, Dispatcher]:
+def initialize_bot_and_dispatcher() -> tuple[Bot, Dispatcher]:
     """Initialize bot, dispatcher, and set global instance"""
-    bot = create_bot()
-    set_bot_instance(bot)
-    dp = create_dispatcher()
-    return bot, dp
+    return create_bot(), create_dispatcher()

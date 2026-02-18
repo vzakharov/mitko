@@ -16,7 +16,7 @@ from ..jobs.matching_scheduler import start_matching_loop
 from ..models import get_db
 from ..services.chat_utils import send_and_record_bot_message
 from ..services.profiler import ProfileService
-from .handlers import get_bot
+from .bot_instance import get_bot
 from .utils import get_callback_message
 
 logger = logging.getLogger(__name__)
