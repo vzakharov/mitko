@@ -10,12 +10,13 @@ from aiogram.types import (
     InlineKeyboardMarkup,
 )
 
-from ..db import get_chat, get_user
+from ..db import get_user
 from ..i18n import L
 from ..jobs.matching_scheduler import start_matching_loop
 from ..models import get_db
+from ..services.chat_utils import send_and_record_bot_message
 from ..services.profiler import ProfileService
-from ..types.messages import says
+from .handlers import get_bot
 from .utils import get_callback_message
 
 logger = logging.getLogger(__name__)
@@ -57,15 +58,15 @@ async def handle_activate_profile(
         await ProfileService(session).activate_profile(
             await get_user(session, callback_data.telegram_id)
         )
-        chat = await get_chat(session, callback_data.telegram_id)
-        chat.message_history = [
-            *chat.message_history,
-            says.system(ACTIVATED_SYSTEM_MESSAGE),
-            says.assistant(L.keyboards.activate.ACTIVATED),
-        ]
-        session.add(chat)
-        await session.commit()
+        await send_and_record_bot_message(
+            get_bot(),
+            callback_data.telegram_id,
+            L.keyboards.activate.ACTIVATED,
+            session,
+            prefix=None,
+            system_message=ACTIVATED_SYSTEM_MESSAGE,
+            system_before_assistant=True,
+        )
 
     start_matching_loop()
     await get_callback_message(callback).edit_reply_markup(reply_markup=None)
-    await callback.answer(L.keyboards.activate.ACTIVATED)

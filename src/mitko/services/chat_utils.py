@@ -100,11 +100,12 @@ async def _mirror_outgoing(
 
 async def send_and_record_bot_message(
     bot: Bot,
-    chat: Chat | int,
+    recipient: Chat | int,
     message_text: str,
     session: AsyncSession,
-    prefix: str = INJECTED_MESSAGE_PREFIX,
+    prefix: str | None = INJECTED_MESSAGE_PREFIX,
     system_message: str | None = None,
+    system_before_assistant: bool = False,
 ) -> None:
     """
     Send a bot-initiated message to the user and record it in chat history.
@@ -118,20 +119,27 @@ async def send_and_record_bot_message(
     Invalidates OpenAI Responses API state to force history injection on next turn.
 
     If system_message is provided, it is appended to history as a system role
-    message after the assistant message (not sent to the user).
+    message after or before the assistant message (not sent to the user).
 
     Args:
-        chat: Either a Chat object with telegram_id and message_history or a raw telegram_id (int)
+        recipient: Either a Chat object with telegram_id and message_history or a raw telegram_id (int)
         message_text: The text to send (plain text, formatted with markdown)
         bot: Telegram Bot instance
         session: DB session for committing history
+        prefix: Optional prefix to inject into history only (not sent to user). To omit, set literally None, otherwise the default prefix is used.
         system_message: Optional system message to inject into history only (not sent to user)
+        system_before_assistant: Whether to inject the system message before the assistant message instead of after
     """
-    _, chat = await _get_telegram_id_and_chat(chat, session)
+    _, chat = await _get_telegram_id_and_chat(recipient, session)
+    addition = [
+        says.assistant(" ".join(compact(prefix, message_text))),
+        says.system(system_message) if system_message else None,
+    ]
+    if system_before_assistant:
+        addition.reverse()
     chat.message_history = compact(
         *chat.message_history,
-        says.assistant(f"{prefix} {message_text}"),
-        says.system(system_message) if system_message else None,
+        *addition,
     )
 
     chat.last_responses_api_response_id = None
