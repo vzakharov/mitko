@@ -56,32 +56,6 @@ class Settings(BaseSettings):
 
 def get_settings() -> Settings:
     import os
-    from pathlib import Path
-
-    # DEBUG: Log environment state before Settings instantiation
-    print("=" * 80)
-    print("DEBUG: get_settings() called")
-    print(f"DEBUG: .env file exists: {Path('.env').exists()}")
-    print(f"DEBUG: Current working directory: {Path.cwd()}")
-    print("DEBUG: Environment variables:")
-    for key in [
-        "DATABASE_URL",
-        "TELEGRAM_BOT_TOKEN",
-        "ADMIN_GROUP_ID",
-        "OPENAI_API_KEY",
-        "TELEGRAM_MODE",
-    ]:
-        value = os.environ.get(key)
-        if value:
-            # Mask sensitive values, show first/last few chars
-            if len(value) > 20:
-                masked = f"{value[:8]}...{value[-4:]}"
-            else:
-                masked = f"{value[:4]}...{value[-2:]}"
-            print(f"  {key}: {masked} (length: {len(value)})")
-        else:
-            print(f"  {key}: NOT SET")
-    print("=" * 80)
 
     settings = Settings()  # pyright: ignore[reportCallIssue]  # pydantic-settings loads required fields from .env
     settings.validate_llm_keys()
