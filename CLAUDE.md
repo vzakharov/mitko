@@ -174,6 +174,10 @@ sent = await _post_to_admin(
   - `qualified`/`disqualified`: Actively used by QualifierAgent to evaluate match quality
   - Matches are created with `pending` status, then QualifierAgent evaluates and sets to `qualified` or `disqualified`
   - Only `qualified` matches notify users and can be accepted
+- **Pending match blocking**: Users with unanswered matches are excluded from receiving new matches:
+  - Users with `qualified` matches are blocked (neither user has responded yet)
+  - Users awaiting their turn to respond in partial matches are blocked (`a_accepted` blocks user_b, `b_accepted` blocks user_a)
+  - Once a user accepts or rejects, they can immediately receive new matches (even if the other party hasn't responded)
 - **Re-matching logic**: Users are re-matched ONLY when BOTH conditions are true:
   1. Previous match status IS `disqualified` (LLM rejected the match)
   2. AND at least one user has updated their profile since the match was created (tracked via `latest_profile_updated_at`)

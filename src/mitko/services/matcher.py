@@ -1,8 +1,9 @@
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from sqlalchemy import Float, Select, and_, or_, select
+from sqlalchemy import Float, Select, and_, exists, or_, select
 from sqlalchemy import func as sql_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
@@ -108,6 +109,47 @@ class MatcherService:
         """
         return await self._get_current_round() + 1
 
+    def _build_pending_match_check(self) -> Select[tuple[uuid.UUID]]:
+        """Build query to check if the current user has pending matches requiring their response.
+
+        Returns a correlated subquery that checks if there exists a match where:
+        - User has a match with status "qualified" (awaiting response from this user)
+        - User is user_a with status "b_accepted" (user_b accepted, awaiting user_a's response)
+        - User is user_b with status "a_accepted" (user_a accepted, awaiting user_b's response)
+
+        Note: Users who have already accepted are NOT blocked - only users who haven't responded yet.
+
+        This query must be used in a WHERE EXISTS clause with User.telegram_id as correlation.
+
+        Returns:
+            Select query that returns matching match IDs (for use in EXISTS checks)
+        """
+        return select(col(Match.id)).where(
+            or_(
+                # Case 1: qualified match (user hasn't responded yet, either as user_a or user_b)
+                and_(
+                    col(Match.status) == "qualified",
+                    or_(
+                        *(
+                            col(id) == col(User.telegram_id)
+                            for id in (Match.user_a_id, Match.user_b_id)
+                        )
+                    ),
+                ),
+                # Case 2/3: user hasn't responded yet (the other user already accepted)
+                *(
+                    and_(
+                        col(Match.status) == status,
+                        col(id) == col(User.telegram_id),
+                    )
+                    for status, id in (
+                        ("b_accepted", Match.user_a_id),
+                        ("a_accepted", Match.user_b_id),
+                    )
+                ),
+            )
+        )
+
     def _build_match_exclusion_query(
         self,
         source_user: User,
@@ -187,6 +229,7 @@ class MatcherService:
                 col(User.is_seeker).is_(True),
                 col(User.is_provider).is_(True),
             ),
+            ~exists(self._build_pending_match_check()),
         ]
 
         if exclude_users:
@@ -239,6 +282,7 @@ class MatcherService:
                         col(User.embedding).isnot(None),
                         col(User.telegram_id) != source_user.telegram_id,
                         similarity_expr >= SETTINGS.similarity_threshold,
+                        ~exists(self._build_pending_match_check()),
                         col(User.telegram_id).not_in(
                             # Get user IDs already matched with source_user, excluding those eligible for re-matching.
                             # Re-matching is ONLY allowed when BOTH conditions are true:
