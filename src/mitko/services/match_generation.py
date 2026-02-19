@@ -1,6 +1,5 @@
 """Match generation service for LLM-powered match rationale generation."""
 
-import asyncio
 import logging
 from dataclasses import dataclass
 from textwrap import dedent
@@ -85,15 +84,11 @@ class MatchGeneration(BaseGenerationService[MatchQualification]):
 
     async def _fetch_users(self) -> tuple[User, User]:
         """Fetch both users involved in the match."""
-        (user_a, user_b) = await asyncio.gather(
-            *(
-                get_user(self.session, id)
-                for id in (
-                    self.match.user_a_id,
-                    self.match.user_b_id
-                    or raise_error(ValueError("Match has no user_b_id")),
-                )
-            )
+        user_a = await get_user(self.session, self.match.user_a_id)
+        user_b = await get_user(
+            self.session,
+            self.match.user_b_id
+            or raise_error(ValueError("Match has no user_b_id")),
         )
         return user_a, user_b
 
@@ -175,22 +170,25 @@ Internal Notes: {user_b.private_observations or "None"}"""
     ) -> None:
         """Send match notifications with raw rationale (legacy behavior)."""
 
-        await asyncio.gather(
-            *(
-                send_to_user(
-                    self.bot,
-                    user.telegram_id,
-                    L.matching.FOUND.format(
-                        profile=_format_profile_for_display(
-                            user_b if user == user_a else user_a
-                        ),
-                        rationale=rationale,
-                    ),
-                    self.session,
-                    reply_markup=match_consent_keyboard(self.match.id),
-                )
-                for user in (user_a, user_b)
-            )
+        await send_to_user(
+            self.bot,
+            user_a.telegram_id,
+            L.matching.FOUND.format(
+                profile=_format_profile_for_display(user_b),
+                rationale=rationale,
+            ),
+            self.session,
+            reply_markup=match_consent_keyboard(self.match.id),
+        )
+        await send_to_user(
+            self.bot,
+            user_b.telegram_id,
+            L.matching.FOUND.format(
+                profile=_format_profile_for_display(user_a),
+                rationale=rationale,
+            ),
+            self.session,
+            reply_markup=match_consent_keyboard(self.match.id),
         )
 
     async def _restart_matching_loop(self) -> None:

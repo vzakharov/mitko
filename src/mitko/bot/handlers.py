@@ -120,6 +120,9 @@ async def _has_started_generation(
 def _format_time_delta(scheduled_for: datetime) -> str:
     """Format time delta with rounding and i18n support."""
     now = datetime.now(UTC)
+    # Handle both naive (SQLite) and aware (PostgreSQL) datetimes
+    if scheduled_for.tzinfo is None:
+        scheduled_for = scheduled_for.replace(tzinfo=UTC)
     delta = scheduled_for - now
     total_seconds = delta.total_seconds()
 
@@ -163,10 +166,8 @@ async def handle_message(message: Message) -> None:
     assert message.from_user is not None
 
     async for session in get_db():
-        (_, chat) = await asyncio.gather(
-            get_or_create_user(session, message.from_user.id),
-            get_or_create_chat(session, message.from_user.id),
-        )
+        await get_or_create_user(session, message.from_user.id)
+        chat = await get_or_create_chat(session, message.from_user.id)
 
         # Set or append to user_prompt
         if chat.user_prompt:
@@ -266,12 +267,8 @@ async def handle_match_accept(
         assert match is not None
         assert match.user_b_id is not None
 
-        (user_a, user_b) = await asyncio.gather(
-            *(
-                get_user(session, id)
-                for id in (match.user_a_id, match.user_b_id)
-            )
-        )
+        user_a = await get_user(session, match.user_a_id)
+        user_b = await get_user(session, match.user_b_id)
 
         if user_a.telegram_id == callback.from_user.id:
             current_user, other_user = user_a, user_b
@@ -290,20 +287,18 @@ async def handle_match_accept(
             match.status = "connected"
             await session.commit()
 
-            await asyncio.gather(
-                callback.answer(
-                    L.matching.CONNECTION_MADE.format(
-                        profile=_format_profile_for_display(other_user)
-                    )
+            await callback.answer(
+                L.matching.CONNECTION_MADE.format(
+                    profile=_format_profile_for_display(other_user)
+                )
+            )
+            await send_to_user(
+                get_bot(),
+                other_user.telegram_id,
+                L.matching.CONNECTION_MADE.format(
+                    profile=_format_profile_for_display(current_user)
                 ),
-                send_to_user(
-                    get_bot(),
-                    other_user.telegram_id,
-                    L.matching.CONNECTION_MADE.format(
-                        profile=_format_profile_for_display(current_user)
-                    ),
-                    session,
-                ),
+                session,
             )
 
 
@@ -331,10 +326,8 @@ async def handle_reset_confirm(
 
     async for session in get_db():
         # Get or create user and chat (defensive programming)
-        (user, chat) = await asyncio.gather(
-            get_or_create_user(session, telegram_id),
-            get_or_create_chat(session, telegram_id),
-        )
+        user = await get_or_create_user(session, telegram_id)
+        chat = await get_or_create_chat(session, telegram_id)
 
         # Use ProfileService to reset
         profiler = ProfileService(session)
