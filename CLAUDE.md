@@ -59,6 +59,9 @@ uv run alembic upgrade head
 # - test: test additions/changes
 # - chore: maintenance tasks
 #
+# Always include a detailed commit body describing what changed and why.
+# The subject line is the summary; the body provides context.
+#
 # Commit when you've completed a self-contained, logical unit of work that:
 # - Implements a complete feature or fix
 # - Passes basic validation (syntax check, type check if available)
