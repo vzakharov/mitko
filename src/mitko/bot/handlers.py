@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from aiogram import F, Router
+from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from aiogram.types import User as TgUser
@@ -22,7 +23,7 @@ from ..db import (
 from ..i18n import L
 from ..jobs.generation_processor import nudge_processor
 from ..models import Chat, Generation, User, get_db
-from ..services.chat_utils import send_to_user
+from ..services.chat_utils import send_and_record_bot_message
 from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
 from .activation import register_activation_handlers
@@ -57,14 +58,6 @@ def _reset_chat_state(chat: Chat) -> None:
     chat.message_history = []
     chat.user_prompt = None
     chat.last_responses_api_response_id = None
-
-
-def _format_profile_for_display(user: User) -> str:
-    """Combine matching_summary + practical_context for display"""
-    parts = [user.matching_summary or ""]
-    if user.practical_context:
-        parts.append(user.practical_context)
-    return "\n\n".join(parts)
 
 
 @router.message(Command("start"))
@@ -297,18 +290,24 @@ async def handle_match_accept(
             match.status = "connected"
             await session.commit()
 
-            await callback.answer(
+            await callback.answer("✓")
+            await send_and_record_bot_message(
+                get_bot(),
+                current_user.telegram_id,
                 L.matching.CONNECTION_MADE.format(
-                    profile=_format_profile_for_display(other_user)
-                )
+                    contact=f"[{other_user.username or 'Contact'}](tg://user?id={other_user.telegram_id})"
+                ),
+                session,
+                parse_mode=ParseMode.MARKDOWN,
             )
-            await send_to_user(
+            await send_and_record_bot_message(
                 get_bot(),
                 other_user.telegram_id,
                 L.matching.CONNECTION_MADE.format(
-                    profile=_format_profile_for_display(current_user)
+                    contact=f"[{current_user.username or 'Contact'}](tg://user?id={current_user.telegram_id})"
                 ),
                 session,
+                parse_mode=ParseMode.MARKDOWN,
             )
 
 

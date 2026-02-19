@@ -9,7 +9,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..bot.utils import get_user_ref
+from ..bot.utils import format_user_label
 from ..config import SETTINGS
 from ..i18n import L
 from ..utils.async_utils import Throttler
@@ -74,7 +74,7 @@ async def mirror_to_admin_thread(
     """
     try:
         user = chat.user
-        user_ref = get_user_ref(user)
+        user_ref = format_user_label(user)
         if not chat.admin_thread_id:
             chat.admin_thread_id = (
                 await bot.create_forum_topic(
