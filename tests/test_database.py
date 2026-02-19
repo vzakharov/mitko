@@ -8,7 +8,7 @@ from mitko.models.user import User
 
 async def test_insert_user(db_session: AsyncSession):
     """Insert a user with commit — next test verifies it was rolled back."""
-    db_session.add(User(telegram_id=12345, username="test_user"))
+    db_session.add(User(telegram_id=12345))
     await db_session.commit()
 
     assert len((await db_session.execute(select(User))).scalars().all()) == 1
