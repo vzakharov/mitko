@@ -79,6 +79,23 @@ uv run alembic upgrade head
 # - Include these as explicit tasks in the implementation plan
 ```
 
+## Testing
+
+**Coverage**: 57% (35 tests) - critical paths covered (Matcher 90%, Profiler 98%, Handlers 72%)
+
+**Strategy**: In-memory SQLite with savepoint-based isolation - no Docker/pgvector needed, mocked embeddings
+
+**Key Patterns**:
+- Savepoint rollback for test isolation (`session.commit()` is safe in tests, see `tests/conftest.py`)
+- Mock embeddings with `embedding=[0.1] * 1536` instead of OpenAI/Anthropic calls
+- Mock `MatcherService._find_similar_users()` instead of vector similarity search
+- Direct handler invocation with `MockedBot` from aiogram (no webhook/polling setup)
+- Inline `_create_user()` / `_create_match()` helpers (no factory-boy needed)
+- Custom SQLite functions (`greatest()`, `least()`) registered in `conftest.py` for PostgreSQL compatibility
+- Use `# pyright: ignore[reportPrivateUsage]` only when testing internal query-building logic
+
+**CI**: Tests run automatically on push/PR via GitHub Actions (SQLite, no PostgreSQL needed)
+
 ## Architecture
 
 **Stack**: FastAPI (webhooks) + aiogram v3 (Telegram) + SQLModel (Pydantic + SQLAlchemy 2.0) async + PostgreSQL/pgvector + APScheduler + PydanticAI

@@ -196,6 +196,31 @@ graph LR
 - **Neon PostgreSQL + pgvector** - Database with vector similarity search
 - **APScheduler** - Background job scheduling for matching
 
+## Testing
+
+The project has **57% test coverage** (35 tests) covering all critical paths:
+- Matcher service (90% coverage) - round-robin fairness, re-matching logic, pending match blocking
+- Profiler service (98% coverage) - profile CRUD, embedding generation
+- Telegram handlers (72% coverage) - /start, conversation, match acceptance
+
+### Running Tests
+
+```bash
+uv run pytest                          # Run all tests
+uv run pytest --cov=src/mitko          # With coverage report
+uv run pytest tests/integration/       # Specific directory
+uv run pytest -k "matcher"             # Filter by name
+```
+
+### Test Infrastructure
+
+- **In-memory SQLite** with savepoint-based isolation (no Docker/PostgreSQL needed)
+- **Mock embeddings** (no OpenAI/Anthropic API calls required)
+- **Direct handler testing** with aiogram's `MockedBot` (no webhook/polling setup)
+- Tests run automatically in CI on every push/PR
+
+See [CLAUDE.md](CLAUDE.md#testing) for detailed testing patterns and examples.
+
 ## Setup
 
 1. Install dependencies:
