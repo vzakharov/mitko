@@ -29,4 +29,9 @@ jobs:
         run: uv run pyright
 
       - name: Run tests
+        env:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          TELEGRAM_BOT_TOKEN: "test-token"
+          ADMIN_GROUP_ID: "-1001234567890"
+          OPENAI_API_KEY: "test-key"
         run: uv run pytest
