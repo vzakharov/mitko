@@ -290,3 +290,147 @@ async def test_round_robin_picks_oldest_updated_first(
 
     assert isinstance(result, MatchFound)
     assert result.match.user_a_id == user_old.telegram_id
+
+
+# --- Re-matching logic (exclusion query) ---
+
+
+async def test_exclusion_allows_rematching_when_disqualified_and_profile_updated(
+    db_session: AsyncSession,
+):
+    """Exclusion query allows re-matching if disqualified + at least one profile updated."""
+    user_a = await _create_user(db_session, 20001, is_seeker=True)
+    user_a.profile_updated_at = datetime(2025, 1, 1)
+
+    user_b = await _create_user(db_session, 20002, is_provider=True)
+    user_b.profile_updated_at = datetime(2025, 1, 1)
+
+    # Create disqualified match with latest_profile_updated_at BEFORE recent update
+    await _create_match(
+        db_session,
+        user_a.telegram_id,
+        user_b.telegram_id,
+        status="disqualified",
+        latest_profile_updated_at=datetime(2024, 12, 31),
+    )
+
+    # Update user_b's profile AFTER the match
+    user_b.profile_updated_at = datetime(2025, 1, 5)
+    await db_session.flush()
+
+    # Build exclusion query (user_b_id where user_a_id = user_a)
+    from mitko.models.match import Match
+
+    exclusion_query = MatcherService(db_session)._build_match_exclusion_query(  # pyright: ignore[reportPrivateUsage]
+        user_a, Match.user_b_id, Match.user_a_id
+    )
+
+    excluded_ids = [id for (id,) in await db_session.execute(exclusion_query)]
+
+    # user_b should NOT be in the exclusion list (re-matching allowed)
+    assert user_b.telegram_id not in excluded_ids
+
+
+async def test_exclusion_blocks_rematching_when_disqualified_but_no_update(
+    db_session: AsyncSession,
+):
+    """Exclusion query blocks re-matching if disqualified but no profile updates."""
+    user_a = await _create_user(db_session, 20101, is_seeker=True)
+    user_a.profile_updated_at = datetime(2025, 1, 1)
+
+    user_b = await _create_user(db_session, 20102, is_provider=True)
+    user_b.profile_updated_at = datetime(2025, 1, 1)
+
+    # Create disqualified match with latest_profile_updated_at EQUAL to both users
+    await _create_match(
+        db_session,
+        user_a.telegram_id,
+        user_b.telegram_id,
+        status="disqualified",
+        latest_profile_updated_at=datetime(2025, 1, 1),
+    )
+
+    await db_session.flush()
+
+    from mitko.models.match import Match
+
+    exclusion_query = MatcherService(db_session)._build_match_exclusion_query(  # pyright: ignore[reportPrivateUsage]
+        user_a, Match.user_b_id, Match.user_a_id
+    )
+
+    excluded_ids = [id for (id,) in await db_session.execute(exclusion_query)]
+
+    # user_b SHOULD be in the exclusion list (no updates, no re-matching)
+    assert user_b.telegram_id in excluded_ids
+
+
+async def test_exclusion_always_blocks_rejected_matches(
+    db_session: AsyncSession,
+):
+    """Exclusion query always blocks user-rejected matches, even with profile updates."""
+    user_a = await _create_user(db_session, 20201, is_seeker=True)
+    user_a.profile_updated_at = datetime(2025, 1, 1)
+
+    user_b = await _create_user(db_session, 20202, is_provider=True)
+    user_b.profile_updated_at = datetime(2025, 1, 1)
+
+    # Create rejected match
+    await _create_match(
+        db_session,
+        user_a.telegram_id,
+        user_b.telegram_id,
+        status="rejected",
+        latest_profile_updated_at=datetime(2024, 12, 31),
+    )
+
+    # Update both profiles AFTER the match
+    user_a.profile_updated_at = datetime(2025, 1, 5)
+    user_b.profile_updated_at = datetime(2025, 1, 5)
+    await db_session.flush()
+
+    from mitko.models.match import Match
+
+    exclusion_query = MatcherService(db_session)._build_match_exclusion_query(  # pyright: ignore[reportPrivateUsage]
+        user_a, Match.user_b_id, Match.user_a_id
+    )
+
+    excluded_ids = [id for (id,) in await db_session.execute(exclusion_query)]
+
+    # user_b SHOULD be excluded (status != disqualified)
+    assert user_b.telegram_id in excluded_ids
+
+
+async def test_exclusion_always_blocks_connected_matches(
+    db_session: AsyncSession,
+):
+    """Exclusion query always blocks connected matches, even with profile updates."""
+    user_a = await _create_user(db_session, 20301, is_seeker=True)
+    user_a.profile_updated_at = datetime(2025, 1, 1)
+
+    user_b = await _create_user(db_session, 20302, is_provider=True)
+    user_b.profile_updated_at = datetime(2025, 1, 1)
+
+    # Create connected match
+    await _create_match(
+        db_session,
+        user_a.telegram_id,
+        user_b.telegram_id,
+        status="connected",
+        latest_profile_updated_at=datetime(2024, 12, 31),
+    )
+
+    # Update both profiles AFTER the match
+    user_a.profile_updated_at = datetime(2025, 1, 5)
+    user_b.profile_updated_at = datetime(2025, 1, 5)
+    await db_session.flush()
+
+    from mitko.models.match import Match
+
+    exclusion_query = MatcherService(db_session)._build_match_exclusion_query(  # pyright: ignore[reportPrivateUsage]
+        user_a, Match.user_b_id, Match.user_a_id
+    )
+
+    excluded_ids = [id for (id,) in await db_session.execute(exclusion_query)]
+
+    # user_b SHOULD be excluded (status != disqualified)
+    assert user_b.telegram_id in excluded_ids

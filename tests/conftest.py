@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import AsyncGenerator
 
 import pytest
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
     AsyncEngine,
@@ -31,11 +32,25 @@ async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
     )
 
     async with engine.begin() as conn:
+        # Register SQLite custom functions for PostgreSQL compatibility
+        await conn.run_sync(_register_sqlite_functions)
         await conn.run_sync(SQLModel.metadata.create_all)
 
     yield engine
 
     await engine.dispose()
+
+
+def _register_sqlite_functions(connection: Connection) -> None:
+    """Register custom SQLite functions for PostgreSQL compatibility."""
+    # Get the underlying aiosqlite connection, then the actual sqlite3.Connection
+    aiosqlite_conn = connection.connection.driver_connection
+    assert aiosqlite_conn is not None
+    sqlite3_conn = aiosqlite_conn._conn  # Access the raw sqlite3.Connection
+
+    # Register greatest() function (returns maximum of all arguments)
+    sqlite3_conn.create_function("greatest", -1, lambda *args: max(args))  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
+    sqlite3_conn.create_function("least", -1, lambda *args: min(args))  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
 
 
 @pytest.fixture(scope="session")

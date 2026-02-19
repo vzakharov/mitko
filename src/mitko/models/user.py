@@ -90,27 +90,3 @@ class User(SQLModel, table=True):
             "cascade": "all, delete-orphan",
         },
     )
-
-    @property
-    def has_role(self) -> bool:
-        """Check if user has at least one role assigned"""
-        return bool(self.is_seeker or self.is_provider)
-
-    @property
-    def roles_display(self) -> str:
-        """Human-readable role description"""
-        if self.is_seeker and self.is_provider:
-            return "both seeker and provider"
-        elif self.is_seeker:
-            return "seeker"
-        elif self.is_provider:
-            return "provider"
-        else:
-            return "unknown"
-
-    def can_match_with(self, other: "User") -> bool:
-        """Check if this user can be matched with another (seeker ↔ provider only)"""
-        return bool(
-            (self.is_seeker and other.is_provider)
-            or (self.is_provider and other.is_seeker)
-        )
