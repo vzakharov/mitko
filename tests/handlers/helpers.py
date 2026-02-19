@@ -1,36 +1,59 @@
-"""Reusable factories for fake aiogram types used in handler tests."""
+"""Reusable factories for fake aiogram types used in handler tests.
+
+Uses aiogram's own MockedBot pattern: real Message/CallbackQuery objects
+with a MockedBot injected via .as_(bot).  Outgoing API calls are captured
+and can be inspected via bot.get_request().
+"""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import NamedTuple
-from unittest.mock import AsyncMock
+from unittest.mock import patch
 
+from aiogram.methods import AnswerCallbackQuery, SendMessage
 from aiogram.types import CallbackQuery, Message
 from aiogram.types import Chat as TgChat
 from aiogram.types import User as TgUser
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .mocked_bot import MockedBot
 
-class FakeMessage(NamedTuple):
-    message: Message
-    answer: AsyncMock
+# Reusable dummy Message result for staging SendMessage responses.
+_DUMMY_MSG = Message(
+    message_id=999,
+    date=datetime.now(),
+    chat=TgChat(id=1, type="private"),
+)
 
 
-class FakeCallback(NamedTuple):
-    callback: CallbackQuery
-    answer: AsyncMock
-    msg_edit_text: AsyncMock
-    msg_answer: AsyncMock
+def make_bot() -> MockedBot:
+    return MockedBot()
+
+
+def _stage_send_message(bot: MockedBot) -> None:
+    """Pre-stage a successful SendMessage response."""
+    bot.add_result_for(SendMessage, ok=True, result=_DUMMY_MSG)
+
+
+def _stage_callback_answer(bot: MockedBot) -> None:
+    """Pre-stage a successful AnswerCallbackQuery response."""
+    bot.add_result_for(AnswerCallbackQuery, ok=True, result=True)
 
 
 def make_message(
+    bot: MockedBot,
     text: str = "hello",
     user_id: int = 12345,
     message_id: int = 1,
-) -> FakeMessage:
-    """Create a fake Message with mocked answer/reply methods."""
-    answer_mock = AsyncMock(name="message.answer")
+    *,
+    stage_replies: int = 1,
+) -> Message:
+    """Create a real Message with MockedBot injected.
+
+    Args:
+        stage_replies: how many SendMessage responses to pre-stage
+                       (one per expected message.answer() call).
+    """
     msg = Message(
         message_id=message_id,
         date=datetime.now(),
@@ -38,20 +61,25 @@ def make_message(
         from_user=TgUser(id=user_id, is_bot=False, first_name="Test"),
         text=text,
     )
-    object.__setattr__(msg, "answer", answer_mock)
-    return FakeMessage(message=msg, answer=answer_mock)
+    msg.as_(bot)
+    for _ in range(stage_replies):
+        _stage_send_message(bot)
+    return msg
 
 
 def make_callback(
+    bot: MockedBot,
     data: str,
     user_id: int = 12345,
     message_id: int = 1,
-) -> FakeCallback:
-    """Create a fake CallbackQuery with mocked answer method and attached message."""
-    edit_text_mock = AsyncMock(name="message.edit_text")
-    msg_answer_mock = AsyncMock(name="message.answer")
-    cb_answer_mock = AsyncMock(name="callback.answer")
+    *,
+    stage_replies: int = 1,
+) -> CallbackQuery:
+    """Create a real CallbackQuery with MockedBot injected.
 
+    Args:
+        stage_replies: how many AnswerCallbackQuery responses to pre-stage.
+    """
     inner_msg = Message(
         message_id=message_id,
         date=datetime.now(),
@@ -59,14 +87,6 @@ def make_callback(
         from_user=TgUser(id=user_id, is_bot=False, first_name="Test"),
         text="original",
     )
-    object.__setattr__(inner_msg, "edit_text", edit_text_mock)
-    object.__setattr__(inner_msg, "answer", msg_answer_mock)
-    object.__setattr__(
-        inner_msg,
-        "edit_reply_markup",
-        AsyncMock(name="message.edit_reply_markup"),
-    )
-
     cb = CallbackQuery(
         id="test_cb_1",
         chat_instance="test",
@@ -74,13 +94,10 @@ def make_callback(
         message=inner_msg,
         data=data,
     )
-    object.__setattr__(cb, "answer", cb_answer_mock)
-    return FakeCallback(
-        callback=cb,
-        answer=cb_answer_mock,
-        msg_edit_text=edit_text_mock,
-        msg_answer=msg_answer_mock,
-    )
+    cb.as_(bot)
+    for _ in range(stage_replies):
+        _stage_callback_answer(bot)
+    return cb
 
 
 @asynccontextmanager
@@ -88,7 +105,6 @@ async def patch_get_db(
     session: AsyncSession,
 ) -> AsyncGenerator[None, None]:
     """Context manager that patches get_db in both handlers and activation module."""
-    from unittest.mock import patch
 
     async def fake_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
