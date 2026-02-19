@@ -15,6 +15,7 @@ from aiogram.types import (
     Message,
 )
 
+from ..bot.utils import get_user_ref
 from ..db import (
     create_announcement,
     create_user_group,
@@ -85,7 +86,7 @@ async def handle_announcement(message: Message) -> None:
         L.admin.announcement.PREVIEW.format(
             count=len(users),
             users_preview=", ".join(
-                f"[{user.telegram_id}](tg://user?id={user.telegram_id})"
+                f"[{get_user_ref(user)}](tg://user?id={user.telegram_id})"
                 for user in users[:10]
             ),
             text=text,

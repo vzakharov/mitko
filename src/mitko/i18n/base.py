@@ -117,7 +117,6 @@ class Announcement:
 
 @dataclass
 class Admin:
-    CHAT_HEADER: str  # Template with {user_id}
     CHAT_INTRO: str
     announcement: Announcement
 

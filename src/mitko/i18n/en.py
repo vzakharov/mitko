@@ -168,8 +168,7 @@ class EnglishLocale(Locale):
         ),
     )
     admin = Admin(
-        CHAT_HEADER="#{user_id}",
-        CHAT_INTRO="This is the beginning of a chat with user [#{user_id}](tg://user?id={user_id})",
+        CHAT_INTRO="This is the beginning of a chat with {user_ref}",
         announcement=Announcement(
             PREVIEW="About to send to {count} user(s), including: {users_preview}\n\n{text}",
             YES="Yes, send",

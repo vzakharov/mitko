@@ -6,13 +6,12 @@ Create Date: ${create_date}
 
 """
 
-from typing import Sequence  # noqa: UP035
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 
 from alembic import op
 ${imports if imports else ""}
-
 # revision identifiers, used by Alembic.
 revision: str = ${repr(up_revision)}
 down_revision: str | None = ${repr(down_revision)}

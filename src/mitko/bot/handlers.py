@@ -7,6 +7,7 @@ from uuid import UUID
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
+from aiogram.types import User as TgUser
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col
@@ -42,6 +43,15 @@ register_activation_handlers(router)
 NUDGE_DELAY_SECONDS = 1.0
 
 
+async def _get_or_create_user_with_sync(
+    session: AsyncSession, tg_user: TgUser
+) -> User:
+    """Get or create user and sync metadata from Telegram (username)."""
+    user = await get_or_create_user(session, tg_user.id)
+    user.username = tg_user.username
+    return user
+
+
 def _reset_chat_state(chat: Chat) -> None:
     """Reset chat to empty state, clearing all history and Responses API state."""
     chat.message_history = []
@@ -61,7 +71,7 @@ def _format_profile_for_display(user: User) -> str:
 async def cmd_start(message: Message) -> None:
     assert message.from_user is not None
     async for session in get_db():
-        user = await get_or_create_user(session, message.from_user.id)
+        user = await _get_or_create_user_with_sync(session, message.from_user)
         chat = await get_or_create_chat(session, message.from_user.id)
 
         # Check if user has ANY existing data
@@ -166,7 +176,7 @@ async def handle_message(message: Message) -> None:
     assert message.from_user is not None
 
     async for session in get_db():
-        await get_or_create_user(session, message.from_user.id)
+        await _get_or_create_user_with_sync(session, message.from_user)
         chat = await get_or_create_chat(session, message.from_user.id)
 
         # Set or append to user_prompt
@@ -326,7 +336,7 @@ async def handle_reset_confirm(
 
     async for session in get_db():
         # Get or create user and chat (defensive programming)
-        user = await get_or_create_user(session, telegram_id)
+        user = await _get_or_create_user_with_sync(session, callback.from_user)
         chat = await get_or_create_chat(session, telegram_id)
 
         # Use ProfileService to reset

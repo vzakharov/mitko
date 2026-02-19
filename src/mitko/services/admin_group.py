@@ -9,6 +9,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..bot.utils import get_user_ref
 from ..config import SETTINGS
 from ..i18n import L
 from ..utils.async_utils import Throttler
@@ -72,16 +73,18 @@ async def mirror_to_admin_thread(
     Silent failure: never raises.
     """
     try:
+        user = chat.user
+        user_ref = get_user_ref(user)
         if not chat.admin_thread_id:
             chat.admin_thread_id = (
                 await bot.create_forum_topic(
                     chat_id=SETTINGS.admin_group_id,
-                    name=L.admin.CHAT_HEADER.format(user_id=chat.telegram_id),
+                    name=user_ref,
                 )
             ).message_thread_id
             await bot.send_message(
                 chat_id=SETTINGS.admin_group_id,
-                text=L.admin.CHAT_INTRO.format(user_id=chat.telegram_id),
+                text=L.admin.CHAT_INTRO.format(user_ref=user_ref),
                 message_thread_id=chat.admin_thread_id,
                 parse_mode=ParseMode.MARKDOWN,
             )

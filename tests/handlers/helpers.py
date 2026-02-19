@@ -45,6 +45,7 @@ def make_message(
     text: str = "hello",
     user_id: int = 12345,
     message_id: int = 1,
+    username: str | None = None,
     *,
     stage_replies: int = 1,
 ) -> Message:
@@ -58,7 +59,9 @@ def make_message(
         message_id=message_id,
         date=datetime.now(),
         chat=TgChat(id=user_id, type="private"),
-        from_user=TgUser(id=user_id, is_bot=False, first_name="Test"),
+        from_user=TgUser(
+            id=user_id, is_bot=False, first_name="Test", username=username
+        ),
         text=text,
     )
     msg.as_(bot)

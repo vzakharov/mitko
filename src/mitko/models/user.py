@@ -21,6 +21,9 @@ class User(SQLModel, table=True):
     __tablename__: ClassVar[Any] = "users"
 
     telegram_id: int = Field(sa_column=Column(BigInteger(), primary_key=True))
+    username: str | None = Field(
+        default=None, sa_column=Column(VARCHAR(255), nullable=True)
+    )
 
     # Role flags
     is_seeker: bool | None = Field(default=None)
