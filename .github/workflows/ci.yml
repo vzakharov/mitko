@@ -20,14 +20,13 @@ jobs:
         run: uv sync --extra dev
 
       - name: Check code formatting
-        run: uv run ruff format --check src/
+        run: uv run ruff format --check src/ tests/
 
       - name: Lint code
-        run: uv run ruff check src/
+        run: uv run ruff check src/ tests/
 
       - name: Type check
         run: uv run pyright
 
-      # Uncomment when tests exist:
-      # - name: Run tests
-      #   run: uv run pytest
+      - name: Run tests
+        run: uv run pytest
