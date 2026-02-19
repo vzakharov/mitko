@@ -83,14 +83,7 @@ class EnglishLocale(Locale):
             Wanna connect? (I'll pause matching until you respond)"""
         ),
         ACCEPT_WAITING="Got it! I'm back to looking while we wait for the other side.",
-        CONNECTION_MADE=dedent(
-            """\
-            🎉 Boom, matched! Here's the details:
-
-            {profile}
-
-            You can reach out to them directly now."""
-        ),
+        CONNECTION_MADE="🎉 Boom, matched! Reach out: {contact}",
         REJECT_NOTED="Cool, got it. I'll find someone better!",
     )
     profile = Profile(

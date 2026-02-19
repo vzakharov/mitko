@@ -10,5 +10,5 @@ def get_callback_message(callback: CallbackQuery) -> Message:
     return callback.message
 
 
-def get_user_ref(user: User) -> str:
+def format_user_label(user: User) -> str:
     return f"@{user.username}" if user.username else f"#{user.telegram_id}"

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mitko.bot.handlers import handle_match_accept, handle_match_reject
 from mitko.bot.keyboards import MatchAction
-from mitko.db import get_or_create_user
+from mitko.db import get_or_create_chat, get_or_create_user
 from mitko.i18n import L
 from mitko.models.match import Match, MatchStatus
 
@@ -34,6 +34,9 @@ async def _setup_match(
     user_a.matching_summary = "Backend developer"
     user_b = await get_or_create_user(session, USER_B_TG)
     user_b.matching_summary = "CTO hiring backend"
+    # Create chats for both users (needed for send_and_record_bot_message)
+    await get_or_create_chat(session, USER_A_TG)
+    await get_or_create_chat(session, USER_B_TG)
     match = Match(
         user_a_id=USER_A_TG,
         user_b_id=USER_B_TG,
@@ -88,7 +91,7 @@ async def test_user_b_accepts_first(db_session: AsyncSession):
     assert req.text == L.matching.ACCEPT_WAITING
 
 
-@patch("mitko.bot.handlers.send_to_user", new_callable=AsyncMock)
+@patch("mitko.services.chat_utils.send_to_user", new_callable=AsyncMock)
 @patch("mitko.bot.handlers.get_bot")
 async def test_both_accept_becomes_connected(
     mock_get_bot: AsyncMock,
@@ -100,7 +103,7 @@ async def test_both_accept_becomes_connected(
     Note: callback.answer() goes through asyncio.gather alongside send_to_user,
     and aiogram's TelegramMethod objects are unhashable (breaks gather's dedup).
     So for the connected path we don't inject MockedBot — we only verify the
-    status transition and that send_to_user was called for the other user.
+    status transition and that send_and_record_bot_message was called for both users.
     The callback.answer() path is covered by the first-accept tests above.
     """
     mock_get_bot.return_value = AsyncMock()
@@ -122,11 +125,14 @@ async def test_both_accept_becomes_connected(
         )
 
     assert match.status == "connected"
-    mock_send.assert_called_once()
-    assert mock_send.call_args[0][1] == USER_A_TG
+    # send_to_user is called twice (once for each user via send_and_record_bot_message)
+    assert mock_send.call_count == 2
+    # Check both users were notified (second arg is Chat object, extract telegram_id)
+    call_recipients = {call[0][1].telegram_id for call in mock_send.call_args_list}
+    assert call_recipients == {USER_A_TG, USER_B_TG}
 
 
-@patch("mitko.bot.handlers.send_to_user", new_callable=AsyncMock)
+@patch("mitko.services.chat_utils.send_to_user", new_callable=AsyncMock)
 @patch("mitko.bot.handlers.get_bot")
 async def test_user_a_completes_b_accepted_match(
     mock_get_bot: AsyncMock,
@@ -152,8 +158,11 @@ async def test_user_a_completes_b_accepted_match(
         )
 
     assert match.status == "connected"
-    mock_send.assert_called_once()
-    assert mock_send.call_args[0][1] == USER_B_TG
+    # send_to_user is called twice (once for each user via send_and_record_bot_message)
+    assert mock_send.call_count == 2
+    # Check both users were notified (second arg is Chat object, extract telegram_id)
+    call_recipients = {call[0][1].telegram_id for call in mock_send.call_args_list}
+    assert call_recipients == {USER_A_TG, USER_B_TG}
 
 
 async def test_reject_sets_rejected(db_session: AsyncSession):

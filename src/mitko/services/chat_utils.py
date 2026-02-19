@@ -106,6 +106,7 @@ async def send_and_record_bot_message(
     prefix: str | None = INJECTED_MESSAGE_PREFIX,
     system_message: str | None = None,
     system_before_assistant: bool = False,
+    parse_mode: str | None = None,
 ) -> None:
     """
     Send a bot-initiated message to the user and record it in chat history.
@@ -145,5 +146,5 @@ async def send_and_record_bot_message(
     chat.last_responses_api_response_id = None
 
     session.add(chat)
-    await send_to_user(bot, chat, message_text, session)
+    await send_to_user(bot, chat, message_text, session, parse_mode=parse_mode)
     await session.commit()
