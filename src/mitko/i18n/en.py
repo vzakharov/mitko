@@ -68,7 +68,7 @@ class EnglishLocale(Locale):
         reset=KeyboardsReset(CONFIRM="Yep, wipe it", CANCEL="Nah, keep it"),
         activate=KeyboardsActivate(
             ACTIVATE="Start matching 🚀",
-            ACTIVATED="You're live! I'll start looking for matches.",
+            ACTIVATED="You're live! I'll start looking for matches.\n\n(Warning: this is not a fast process. Good news — it doesn't require anything from you, so go and live your life! 🤓)",
         ),
     )
     matching = Matching(
