@@ -74,17 +74,19 @@ async def mirror_to_admin_thread(
     """
     try:
         user = chat.user
-        user_ref = format_user_label(user)
+        user_label = format_user_label(user)
         if not chat.admin_thread_id:
             chat.admin_thread_id = (
                 await bot.create_forum_topic(
                     chat_id=SETTINGS.admin_group_id,
-                    name=user_ref,
+                    name=user_label,
                 )
             ).message_thread_id
             await bot.send_message(
                 chat_id=SETTINGS.admin_group_id,
-                text=L.admin.CHAT_INTRO.format(user_ref=user_ref),
+                text=L.admin.CHAT_INTRO.format(
+                    user_link=f"[{user_label}](tg://user?id={user.telegram_id})"
+                ),
                 message_thread_id=chat.admin_thread_id,
                 parse_mode=ParseMode.MARKDOWN,
             )

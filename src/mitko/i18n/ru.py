@@ -162,7 +162,7 @@ class RussianLocale(Locale):
         ),
     )
     admin = Admin(
-        CHAT_INTRO="Это начало чата с {user_ref}",
+        CHAT_INTRO="Это начало чата с {user_link}",
         announcement=Announcement(
             PREVIEW="Сейчас отправлю {count} пользователю(ям), включая: {users_preview}\n\n{text}",
             YES="Да, отправить",

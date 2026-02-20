@@ -128,7 +128,9 @@ async def test_both_accept_becomes_connected(
     # send_to_user is called twice (once for each user via send_and_record_bot_message)
     assert mock_send.call_count == 2
     # Check both users were notified (second arg is Chat object, extract telegram_id)
-    call_recipients = {call[0][1].telegram_id for call in mock_send.call_args_list}
+    call_recipients = {
+        call[0][1].telegram_id for call in mock_send.call_args_list
+    }
     assert call_recipients == {USER_A_TG, USER_B_TG}
 
 
@@ -161,7 +163,9 @@ async def test_user_a_completes_b_accepted_match(
     # send_to_user is called twice (once for each user via send_and_record_bot_message)
     assert mock_send.call_count == 2
     # Check both users were notified (second arg is Chat object, extract telegram_id)
-    call_recipients = {call[0][1].telegram_id for call in mock_send.call_args_list}
+    call_recipients = {
+        call[0][1].telegram_id for call in mock_send.call_args_list
+    }
     assert call_recipients == {USER_A_TG, USER_B_TG}
 
 

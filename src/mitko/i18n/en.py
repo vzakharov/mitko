@@ -161,7 +161,7 @@ class EnglishLocale(Locale):
         ),
     )
     admin = Admin(
-        CHAT_INTRO="This is the beginning of a chat with {user_ref}",
+        CHAT_INTRO="This is the beginning of a chat with {user_link}",
         announcement=Announcement(
             PREVIEW="About to send to {count} user(s), including: {users_preview}\n\n{text}",
             YES="Yes, send",
