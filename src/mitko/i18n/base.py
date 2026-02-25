@@ -8,6 +8,7 @@ from dataclasses import dataclass
 @dataclass
 class CommandsStart:
     GREETING: str
+    TELL_ME_MORE_REPLY: str
 
 
 @dataclass
@@ -42,10 +43,16 @@ class KeyboardsActivate:
 
 
 @dataclass
+class KeyboardsStart:
+    TELL_ME_MORE: str
+
+
+@dataclass
 class Keyboards:
     match: KeyboardsMatch
     reset: KeyboardsReset
     activate: KeyboardsActivate
+    start: KeyboardsStart
 
 
 @dataclass

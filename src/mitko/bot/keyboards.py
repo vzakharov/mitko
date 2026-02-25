@@ -7,6 +7,25 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from ..i18n import L
 
 
+class IntroAction(CallbackData, prefix="intro"):
+    """Callback data for intro 'Tell me more' action"""
+
+    action: Literal["tell_me_more"]
+
+
+def intro_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=L.keyboards.start.TELL_ME_MORE,
+                    callback_data=IntroAction(action="tell_me_more").pack(),
+                )
+            ]
+        ]
+    )
+
+
 class MatchAction(CallbackData, prefix="match"):
     """Callback data for match consent actions"""
 

@@ -18,7 +18,7 @@ from pydantic_ai.models.openai import (
     OpenAIResponsesModelSettings,
 )
 
-from ..agents.chat_agent import CHAT_AGENT
+from ..agents.chat_agent import get_chat_agent
 from ..config import SETTINGS
 from ..models import Chat
 from ..types.messages import says
@@ -26,6 +26,7 @@ from ..utils.collection_utils import compact
 from .base_generation import MESSAGE_HISTORY_MAX_LENGTH, BaseGenerationService
 
 if TYPE_CHECKING:
+    from pydantic_ai import Agent
     from pydantic_ai.run import AgentRunResult
 
     from ..types.messages import ConversationResponse
@@ -47,6 +48,12 @@ class ChatBasedGeneration(BaseGenerationService["ConversationResponse"], ABC):
     """
 
     chat: Chat
+
+    @property
+    def _agent(self) -> "Agent[None, ConversationResponse]":
+        return get_chat_agent(
+            include_pitch=not self.chat.omit_pitch_in_instructions
+        )
 
     def _build_message_history(self) -> list[ModelRequest | ModelResponse]:
         """Convert stored HistoryMessage list to PydanticAI ModelMessage objects."""
@@ -76,12 +83,13 @@ class ChatBasedGeneration(BaseGenerationService["ConversationResponse"], ABC):
         3. Standard prompt caching when Responses API is disabled
 
         Args:
-            user_prompt: The user's input prompt (can be None for system-driven generation)
+            user_prompt: The user's input prompt (can be None for system-driven generation only)
 
         Returns:
             Agent run result with ConversationResponse
         """
         chat = self.chat
+        agent = self._agent
 
         if SETTINGS.use_openai_responses_api:
             model_settings = OpenAIResponsesModelSettings(
@@ -89,7 +97,7 @@ class ChatBasedGeneration(BaseGenerationService["ConversationResponse"], ABC):
             )
 
             async def run_fallback():
-                return await CHAT_AGENT.run(
+                return await agent.run(
                     user_prompt,
                     model_settings=model_settings,
                     message_history=self._build_message_history(),
@@ -100,7 +108,7 @@ class ChatBasedGeneration(BaseGenerationService["ConversationResponse"], ABC):
                     chat.last_responses_api_response_id
                 )
                 try:
-                    return await CHAT_AGENT.run(
+                    return await agent.run(
                         user_prompt,
                         model_settings=model_settings,
                     )
@@ -121,7 +129,7 @@ class ChatBasedGeneration(BaseGenerationService["ConversationResponse"], ABC):
                     raise
             return await run_fallback()
 
-        return await CHAT_AGENT.run(
+        return await agent.run(
             user_prompt,
             model_settings=(
                 OpenAIChatModelSettings(

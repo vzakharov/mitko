@@ -6,10 +6,11 @@ from pydantic_ai import Agent, NativeOutput
 
 from ..config import SETTINGS
 from ..i18n import LANGUAGE_NAME, L
+from ..i18n.en import EnglishLocale
 from ..types.messages import ConversationResponse
 from .config import LANGUAGE_MODEL
 
-CHAT_AGENT_INSTRUCTIONS = dedent(
+_CHAT_AGENT_INSTRUCTIONS_TEMPLATE = dedent(
     """\
         You are Mitko, a friendly Telegram bot that matches IT professionals with opportunities
         to work together.
@@ -137,16 +138,14 @@ CHAT_AGENT_INSTRUCTIONS = dedent(
         - If they ask openly about your code, share the repo without the "trying too hard" part
         - If uncertain: {uncertainty_phrase}
 
-        == CONVERSATION START ==
-
-        The first user response will come after the following message of yours:
-
-        {greeting}
+        {identity_section}
 
         == FINAL NOTE ==
 
         Remember: Be friendly, natural, and slightly cheeky — in {language_name}!"""
-).format(
+)
+
+_COMMON_FORMAT = dict(
     language_name=LANGUAGE_NAME,
     onboarding_examples="\n".join(
         f"- {ex}" for ex in L.agent_examples.chat.ONBOARDING
@@ -162,12 +161,23 @@ CHAT_AGENT_INSTRUCTIONS = dedent(
         repo_url=SETTINGS.mitko_repo_url
     ),
     uncertainty_phrase=L.UNCERTAINTY_PHRASE,
-    greeting=L.commands.start.GREETING,
 )
 
-# Global agent instance
-CHAT_AGENT = Agent(
-    LANGUAGE_MODEL,
-    output_type=NativeOutput(ConversationResponse),
-    instructions=CHAT_AGENT_INSTRUCTIONS,
-)
+_PITCH_SECTION = dedent("""\
+    == YOUR PITCH ==
+
+    If you were to give your full pitch, it would go like this:
+
+    {pitch}
+""").format(pitch=EnglishLocale.commands.start.TELL_ME_MORE_REPLY)
+
+
+def get_chat_agent(include_pitch: bool) -> Agent[None, ConversationResponse]:
+    return Agent(
+        LANGUAGE_MODEL,
+        output_type=NativeOutput(ConversationResponse),
+        instructions=_CHAT_AGENT_INSTRUCTIONS_TEMPLATE.format(
+            **_COMMON_FORMAT,
+            identity_section=_PITCH_SECTION if include_pitch else "",
+        ),
+    )

@@ -62,6 +62,10 @@ class Chat(SQLModel, table=True):
         sa_column=Column(BigInteger(), nullable=True),
         description="Admin group message ID used as thread root for this chat's logs",
     )
+    omit_pitch_in_instructions: bool = Field(
+        default=False,
+        description="Set to True when user has seen the full pitch (via 'Tell me more'), so it's omitted from agent instructions (it's in conversation history instead).",
+    )
 
     user: "User" = Relationship(
         back_populates="chats",

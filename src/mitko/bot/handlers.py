@@ -28,7 +28,13 @@ from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
 from .activation import register_activation_handlers
 from .bot_instance import get_bot
-from .keyboards import MatchAction, ResetAction, reset_confirmation_keyboard
+from .keyboards import (
+    IntroAction,
+    MatchAction,
+    ResetAction,
+    intro_keyboard,
+    reset_confirmation_keyboard,
+)
 from .utils import get_callback_message
 
 router = Router()
@@ -83,14 +89,33 @@ async def cmd_start(message: Message) -> None:
                 reply_markup=reset_confirmation_keyboard(message.from_user.id),
             )
         else:
-            # New user - just send greeting and initialize with empty history
-            await message.answer(L.commands.start.GREETING)
+            # New user - send short greeting with "Tell me more" button
+            await message.answer(L.commands.start.GREETING, reply_markup=intro_keyboard())
             _reset_chat_state(chat)
             await session.commit()
             logger.info(
                 "Started chat for user %d: empty history",
                 message.from_user.id,
             )
+
+
+@router.callback_query(IntroAction.filter(F.action == "tell_me_more"))
+async def handle_tell_me_more(callback: CallbackQuery) -> None:
+    assert callback.from_user is not None
+    async for session in get_db():
+        chat = await get_or_create_chat(session, callback.from_user.id)
+        await send_and_record_bot_message(
+            bot=get_bot(),
+            recipient=chat,
+            message_text=L.commands.start.TELL_ME_MORE_REPLY,
+            session=session,
+            prefix=None,
+            system_message='User pressed "Tell me more" button, triggering the hardcoded reply above',
+            system_before_assistant=False,
+        )
+        chat.omit_pitch_in_instructions = True
+        await session.commit()
+    await callback.answer()
 
 
 async def _has_pending_generation(

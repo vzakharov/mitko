@@ -15,6 +15,7 @@ from .base import (
     KeyboardsActivate,
     KeyboardsMatch,
     KeyboardsReset,
+    KeyboardsStart,
     Locale,
     Matching,
     Profile,
@@ -32,6 +33,14 @@ class EnglishLocale(Locale):
                 """\
                 Hey, I'm Mitko, your IT matchmaker 👋
 
+                I connect job seekers with people looking for teammates — directly, no recruiters, no HR filters. We'll chat a bit, I'll build your "work DNA," and start quietly matching you with people on the other side.
+
+                So, let's get started: what's your name, what do you do, what makes you happy, what frustrates you? :-)"""
+            ),
+            TELL_ME_MORE_REPLY=dedent(
+                """\
+                Okay, here's the full pitch 😄
+
                 Be honest, aren't you tired of this whole thing where every time you want to find a job — or a hire — you have to go through all those job postings, CVs, cover letters? And then wait while masses of HR folks and managers at every level conduct all their interviews, so that — THANK THE GODS! — finally two people who'll be coding, designing, marketing, conquering the world side by side can actually talk?
 
                 I'm trying to change that.
@@ -42,10 +51,8 @@ class EnglishLocale(Locale):
 
                 If you _both_ agree, I'll share contact details and you can connect directly. And from there, if everything clicks, you can loop in the HR folks and even score that referral bonus 😉
 
-                Technical note: I can't look at images, read files, or browse the internet yet, even though I might sometimes hallucinate and say I can. But you can always copy-paste text into the chat.
-
-                So, let's get started: what's your name, what do you do, what makes you happy, what frustrates you? :-)"""
-            )
+                Technical note: I can't look at images, read files, or browse the internet yet, even though I might sometimes hallucinate and say I can. But you can always copy-paste text into the chat."""
+            ),
         ),
         reset=CommandsReset(
             WARNING=dedent(
@@ -70,6 +77,7 @@ class EnglishLocale(Locale):
             ACTIVATE="Start matching 🚀",
             ACTIVATED="You're live! I'll start looking for matches.\n\n(Warning: this is not a fast process. Good news — it doesn't require anything from you, so go and live your life! 🤓)",
         ),
+        start=KeyboardsStart(TELL_ME_MORE="Tell me more"),
     )
     matching = Matching(
         FOUND=dedent(
