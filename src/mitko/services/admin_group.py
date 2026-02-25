@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,30 +70,51 @@ async def mirror_to_admin_thread(
     """Post text to the admin forum topic for this chat, creating the topic if needed.
 
     Creates a named forum topic on first call and persists its message_thread_id.
-    Persists admin_thread_id via session.add() + session.commit() when a new topic is created.
+    If the topic has been deleted, recreates it automatically.
     Silent failure: never raises.
     """
-    try:
-        user = chat.user
-        user_label = format_user_label(user)
-        if not chat.admin_thread_id:
-            chat.admin_thread_id = (
-                await bot.create_forum_topic(
-                    chat_id=SETTINGS.admin_group_id,
-                    name=user_label,
-                )
-            ).message_thread_id
-            await bot.send_message(
-                chat_id=SETTINGS.admin_group_id,
-                text=L.admin.CHAT_INTRO.format(
-                    user_link=f"[{user_label}](tg://user?id={user.telegram_id})"
-                ),
-                message_thread_id=chat.admin_thread_id,
-                parse_mode=ParseMode.MARKDOWN,
-            )
-            session.add(chat)
-            await session.commit()
 
+    async def create_thread():
+        await _create_admin_thread(bot, chat, session)
+
+    async def post_to_thread():
         await post_to_admin(bot, text, thread_id=chat.admin_thread_id)
+
+    try:
+        if not chat.admin_thread_id:
+            await create_thread()
+        try:
+            await post_to_thread()
+        except TelegramBadRequest as e:
+            if "message thread not found" not in e.message:
+                raise
+            await create_thread()
+            await post_to_thread()
     except Exception as e:
         logger.exception("Failed to mirror message to admin thread: %s", e)
+
+
+async def _create_admin_thread(
+    bot: Bot, chat: "Chat", session: AsyncSession
+) -> None:
+    user = chat.user
+    user_label = format_user_label(user)
+    chat.admin_thread_id = (
+        await bot.create_forum_topic(
+            chat_id=SETTINGS.admin_group_id,
+            name=user_label[
+                1:  # we don't want to include the @ or # in the topic name
+                # TODO: Think of a more elegant way to handle this
+            ],
+        )
+    ).message_thread_id
+    await bot.send_message(
+        chat_id=SETTINGS.admin_group_id,
+        text=L.admin.CHAT_INTRO.format(
+            user_link=f"[{user_label}](tg://user?id={user.telegram_id})"
+        ),
+        message_thread_id=chat.admin_thread_id,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    session.add(chat)
+    await session.commit()
