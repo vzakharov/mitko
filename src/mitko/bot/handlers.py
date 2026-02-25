@@ -117,8 +117,11 @@ async def handle_tell_me_more(callback: CallbackQuery) -> None:
             message_text=L.commands.start.TELL_ME_MORE_REPLY,
             session=session,
             prefix=None,
-            system_message='User pressed "Tell me more" button, triggering the hardcoded reply above',
-            system_before_assistant=False,
+            system_message='User pressed "Tell me more" button, triggering the hardcoded reply below',
+            system_before_assistant=True,
+        )
+        await get_callback_message(callback).edit_reply_markup(
+            reply_markup=None
         )
         chat.omit_pitch_in_instructions = True
         await session.commit()
