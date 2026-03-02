@@ -3,10 +3,9 @@
 import asyncio
 import logging
 from datetime import UTC, datetime
-from typing import Any
 
 from aiogram import Bot
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardMarkup, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_chat, get_chat_or_none
@@ -40,34 +39,42 @@ async def _get_telegram_id_and_chat(
 
 async def send_to_user(
     bot: Bot,
-    recipient: Chat | int,
+    recipient: Chat | int | Message,
     text: str,
     session: AsyncSession,
-    **kwargs: Any,
+    parse_mode: str | None = None,
+    reply_markup: InlineKeyboardMarkup | None = None,
 ) -> Message:
     """Send a message to the user and mirror it to their admin group thread.
 
     Args:
         bot: Telegram Bot instance
-        recipient: Chat object or raw telegram_id (int)
+        recipient: Chat object, raw telegram_id (int), or Message object. If a Message object is provided, the message is sent as an answer to the original message.
         text: Message text
         session: DB session (used to persist admin_thread_id if a new thread is created)
         **kwargs: Forwarded to bot.send_message (e.g. reply_markup, parse_mode)
     """
-    telegram_id, chat = await _get_telegram_id_and_chat(recipient, session)
+    if isinstance(recipient, Message):
+        return await recipient.answer(
+            text, parse_mode=parse_mode, reply_markup=reply_markup
+        )
+    else:
+        telegram_id, chat = await _get_telegram_id_and_chat(recipient, session)
 
-    if (
-        remaining := _DM_MIN_INTERVAL
-        - (datetime.now(UTC) - chat.updated_at).total_seconds()
-    ) > 0:
-        await asyncio.sleep(remaining)
+        if (
+            remaining := _DM_MIN_INTERVAL
+            - (datetime.now(UTC) - chat.updated_at).total_seconds()
+        ) > 0:
+            await asyncio.sleep(remaining)
 
-    await global_throttler.wait()
-    result = await bot.send_message(telegram_id, text, **kwargs)
+        await global_throttler.wait()
+        result = await bot.send_message(
+            telegram_id, text, parse_mode=parse_mode, reply_markup=reply_markup
+        )
 
-    await _mirror_outgoing(bot, telegram_id, text, session, chat)
+        await _mirror_outgoing(bot, telegram_id, text, session, chat)
 
-    return result
+        return result
 
 
 async def _mirror_outgoing(
@@ -107,6 +114,8 @@ async def send_and_record_bot_message(
     system_message: str | None = None,
     system_before_assistant: bool = False,
     parse_mode: str | None = None,
+    reply_markup: InlineKeyboardMarkup | None = None,
+    send_as_answer_to: Message | None = None,
 ) -> None:
     """
     Send a bot-initiated message to the user and record it in chat history.
@@ -130,6 +139,7 @@ async def send_and_record_bot_message(
         prefix: Optional prefix to inject into history only (not sent to user). To omit, set literally None, otherwise the default prefix is used.
         system_message: Optional system message to inject into history only (not sent to user)
         system_before_assistant: Whether to inject the system message before the assistant message instead of after
+        send_as_answer_to: If provided, the message is sent as an answer to that message.
     """
     _, chat = await _get_telegram_id_and_chat(recipient, session)
     addition = [
@@ -146,5 +156,12 @@ async def send_and_record_bot_message(
     chat.last_responses_api_response_id = None
 
     session.add(chat)
-    await send_to_user(bot, chat, message_text, session, parse_mode=parse_mode)
+    await send_to_user(
+        bot,
+        send_as_answer_to or chat,
+        message_text,
+        session,
+        parse_mode=parse_mode,
+        reply_markup=reply_markup,
+    )
     await session.commit()

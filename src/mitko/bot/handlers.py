@@ -66,10 +66,17 @@ def _reset_chat_state(chat: Chat) -> None:
     chat.last_responses_api_response_id = None
 
 
-async def _send_greeting(message: Message) -> None:
+async def _send_greeting(
+    chat: Chat, session: AsyncSession, send_as_answer_to: Message
+) -> None:
     """Send greeting message with "Tell me more" button."""
-    await message.answer(
-        L.commands.start.GREETING, reply_markup=intro_keyboard()
+    await send_and_record_bot_message(
+        get_bot(),
+        chat,
+        L.commands.start.GREETING,
+        session,
+        reply_markup=intro_keyboard(),
+        send_as_answer_to=send_as_answer_to,
     )
 
 
@@ -97,7 +104,7 @@ async def cmd_start(message: Message) -> None:
             )
         else:
             # New user - send short greeting with "Tell me more" button
-            await _send_greeting(message)
+            await _send_greeting(chat, session, message)
             _reset_chat_state(chat)
             await session.commit()
             logger.info(
@@ -381,7 +388,7 @@ async def handle_reset_confirm(
         await message.edit_text(L.commands.reset.SUCCESS)
 
         # Send standard greeting (same as /start)
-        await _send_greeting(message)
+        await _send_greeting(chat, session, message)
         _reset_chat_state(chat)
         # Cancel any pending generations for this chat
         pending_gens = (
