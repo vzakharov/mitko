@@ -73,11 +73,14 @@ async def get_user(session: AsyncSession, telegram_id: int) -> User:
     return (await _select_user(session, telegram_id)).scalar_one()
 
 
-async def get_or_create_user(session: AsyncSession, telegram_id: int) -> User:
+async def get_or_create_user(
+    session: AsyncSession, telegram_id: int, username: str | None = None
+) -> User:
     if user := await get_user_or_none(session, telegram_id):
         return user
     user = await _create(
-        session, User(telegram_id=telegram_id, state="onboarding")
+        session,
+        User(telegram_id=telegram_id, username=username, state="onboarding"),
     )
     await session.commit()
     return user
