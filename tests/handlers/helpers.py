@@ -120,6 +120,8 @@ async def patch_get_db(
     with (
         patch("mitko.bot.handlers.get_db", fake_get_db),
         patch("mitko.bot.activation.get_db", fake_get_db),
-        patch("mitko.bot.handlers.get_bot", return_value=bot) if bot else patch("contextlib.nullcontext"),
+        patch("mitko.bot.handlers.get_bot", return_value=bot)
+        if bot
+        else patch("contextlib.nullcontext"),
     ):
         yield
