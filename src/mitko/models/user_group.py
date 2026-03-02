@@ -28,10 +28,7 @@ class UserGroup(SQLModel, table=True):
         ),
     )
 
-    members: list["UserGroupMember"] = Relationship(
-        back_populates="group",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
-    )
+    members: list["UserGroupMember"] = Relationship(back_populates="group")
 
 
 class UserGroupMember(SQLModel, table=True):
@@ -47,7 +44,7 @@ class UserGroupMember(SQLModel, table=True):
     user_id: int = Field(
         sa_column=Column(
             BigInteger(),
-            ForeignKey("users.telegram_id"),
+            ForeignKey("users.telegram_id", ondelete="CASCADE"),
             primary_key=True,
         )
     )

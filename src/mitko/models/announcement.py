@@ -22,7 +22,7 @@ class Announcement(SQLModel, table=True):
     group_id: uuid.UUID = Field(
         sa_column=Column(
             PGUUID(as_uuid=True),
-            ForeignKey("user_groups.id"),
+            ForeignKey("user_groups.id", ondelete="CASCADE"),
             nullable=False,
             unique=True,
         )

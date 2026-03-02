@@ -44,13 +44,17 @@ class Match(SQLModel, table=True):
     )
     user_a_id: int = Field(
         sa_column=Column(
-            BigInteger(), ForeignKey("users.telegram_id"), nullable=False
+            BigInteger(),
+            ForeignKey("users.telegram_id", ondelete="CASCADE"),
+            nullable=False,
         )
     )
     user_b_id: int | None = Field(
         default=None,
         sa_column=Column(
-            BigInteger(), ForeignKey("users.telegram_id"), nullable=True
+            BigInteger(),
+            ForeignKey("users.telegram_id", ondelete="CASCADE"),
+            nullable=True,
         ),
     )
     similarity_score: float = Field(sa_column=Column(Float, nullable=False))

@@ -28,7 +28,9 @@ class Chat(SQLModel, table=True):
     )
     telegram_id: int = Field(
         sa_column=Column(
-            BigInteger(), ForeignKey("users.telegram_id"), nullable=False
+            BigInteger(),
+            ForeignKey("users.telegram_id", ondelete="CASCADE"),
+            nullable=False,
         )
     )
     user_prompt: str | None = Field(

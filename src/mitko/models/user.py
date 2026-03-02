@@ -81,15 +81,9 @@ class User(SQLModel, table=True):
     chats: list["Chat"] = Relationship(back_populates="user")
     matches_a: list["Match"] = Relationship(
         back_populates="user_a",
-        sa_relationship_kwargs={
-            "foreign_keys": "Match.user_a_id",
-            "cascade": "all, delete-orphan",
-        },
+        sa_relationship_kwargs={"foreign_keys": "Match.user_a_id"},
     )
     matches_b: list["Match"] = Relationship(
         back_populates="user_b",
-        sa_relationship_kwargs={
-            "foreign_keys": "Match.user_b_id",
-            "cascade": "all, delete-orphan",
-        },
+        sa_relationship_kwargs={"foreign_keys": "Match.user_b_id"},
     )

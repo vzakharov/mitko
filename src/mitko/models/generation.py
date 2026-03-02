@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Any, ClassVar, Literal, Optional
 
 from pydantic import HttpUrl
-from sqlalchemy import DateTime, Index, String, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, Column, Relationship, SQLModel
 
@@ -28,11 +28,19 @@ class Generation(SQLModel, table=True):
     )
     chat_id: uuid.UUID | None = Field(
         default=None,
-        foreign_key="chats.id",
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("chats.id", ondelete="CASCADE"),
+            nullable=True,
+        ),
     )
     match_id: uuid.UUID | None = Field(
         default=None,
-        foreign_key="matches.id",
+        sa_column=Column(
+            PGUUID(as_uuid=True),
+            ForeignKey("matches.id", ondelete="CASCADE"),
+            nullable=True,
+        ),
     )
     scheduled_for: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False),
