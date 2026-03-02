@@ -59,17 +59,13 @@ async def _get_or_create_user_with_sync(
     return user
 
 
-def _reset_chat_state(chat: Chat) -> None:
-    """Reset chat to empty state, clearing all history and Responses API state."""
+async def _reset_and_greet(
+    chat: Chat, session: AsyncSession, send_as_answer_to: Message
+) -> None:
+    """Reset chat state and send greeting message with "Tell me more" button."""
     chat.message_history = []
     chat.user_prompt = None
     chat.last_responses_api_response_id = None
-
-
-async def _send_greeting(
-    chat: Chat, session: AsyncSession, send_as_answer_to: Message
-) -> None:
-    """Send greeting message with "Tell me more" button."""
     await send_and_record_bot_message(
         get_bot(),
         chat,
@@ -104,8 +100,7 @@ async def cmd_start(message: Message) -> None:
             )
         else:
             # New user - send short greeting with "Tell me more" button
-            await _send_greeting(chat, session, message)
-            _reset_chat_state(chat)
+            await _reset_and_greet(chat, session, message)
             await session.commit()
             logger.info(
                 "Started chat for user %d: empty history",
@@ -388,8 +383,7 @@ async def handle_reset_confirm(
         await message.edit_text(L.commands.reset.SUCCESS)
 
         # Send standard greeting (same as /start)
-        await _send_greeting(chat, session, message)
-        _reset_chat_state(chat)
+        await _reset_and_greet(chat, session, message)
         # Cancel any pending generations for this chat
         pending_gens = (
             (
