@@ -106,8 +106,13 @@ def make_callback(
 @asynccontextmanager
 async def patch_get_db(
     session: AsyncSession,
+    bot: MockedBot | None = None,
 ) -> AsyncGenerator[None, None]:
-    """Context manager that patches get_db in both handlers and activation module."""
+    """Context manager that patches get_db in both handlers and activation module.
+
+    If bot is provided, also patches get_bot so handlers that call get_bot()
+    (e.g. _reset_and_greet) receive the MockedBot instead of raising RuntimeError.
+    """
 
     async def fake_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
@@ -115,5 +120,6 @@ async def patch_get_db(
     with (
         patch("mitko.bot.handlers.get_db", fake_get_db),
         patch("mitko.bot.activation.get_db", fake_get_db),
+        patch("mitko.bot.handlers.get_bot", return_value=bot) if bot else patch("contextlib.nullcontext"),
     ):
         yield

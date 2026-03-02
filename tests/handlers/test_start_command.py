@@ -20,7 +20,7 @@ async def test_new_user_gets_greeting(db_session: AsyncSession):
     bot = make_bot()
     msg = make_message(bot, user_id=5001)
 
-    async with patch_get_db(db_session):
+    async with patch_get_db(db_session, bot):
         await cmd_start(msg)
 
     req = bot.get_request()
@@ -28,7 +28,8 @@ async def test_new_user_gets_greeting(db_session: AsyncSession):
     assert req.text == L.commands.start.GREETING
 
     chat = await get_or_create_chat(db_session, 5001)
-    assert chat.message_history == []
+    assert len(chat.message_history) == 1
+    assert chat.message_history[0]["role"] == "assistant"
     assert chat.user_prompt is None
 
 
