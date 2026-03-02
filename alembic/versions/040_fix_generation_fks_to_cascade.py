@@ -23,7 +23,7 @@ def upgrade() -> None:
         op.f("generations_chat_id_fkey"), "generations", type_="foreignkey"
     )
     op.drop_constraint(
-        op.f("generations_match_id_fkey"), "generations", type_="foreignkey"
+        "fk_generations_match_id_matches", "generations", type_="foreignkey"
     )
     op.create_foreign_key(
         op.f("generations_match_id_fkey"),
@@ -52,7 +52,7 @@ def downgrade() -> None:
         "generations_chat_id_fkey", "generations", type_="foreignkey"
     )
     op.create_foreign_key(
-        op.f("generations_match_id_fkey"),
+        "fk_generations_match_id_matches",
         "generations",
         "matches",
         ["match_id"],
