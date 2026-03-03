@@ -8,7 +8,7 @@ from ..agents.models import MatchQualificationDecision
 from ..agents.qualifier_agent import QUALIFIER_AGENT, MatchQualification
 from ..bot.keyboards import match_consent_keyboard
 from ..config import SETTINGS
-from ..db import get_chat, get_chat_or_none, get_user
+from ..db import get_chat, get_user
 from ..i18n import L
 from ..models import Match, User
 from ..services.match_intro_generation import (
@@ -141,15 +141,18 @@ Internal Notes: {user_b.private_observations or "None"}"""
         decision: MatchQualificationDecision,
         explanation: str,
     ) -> None:
-        chat_a = await get_chat_or_none(self.session, user_a.telegram_id)
-        if chat_a is None:
-            return
-        text = (
-            L.admin.matching.QUALIFIED.format(explanation=explanation)
-            if decision == "qualified"
-            else L.admin.matching.DISQUALIFIED.format(explanation=explanation)
+        await mirror_to_admin_thread(
+            self.bot,
+            user_a.telegram_id,
+            (
+                L.admin.matching.QUALIFIED.format(explanation=explanation)
+                if decision == "qualified"
+                else L.admin.matching.DISQUALIFIED.format(
+                    explanation=explanation
+                )
+            ),
+            self.session,
         )
-        await mirror_to_admin_thread(self.bot, chat_a, text, self.session)
 
     async def _create_intro_generations(
         self, user_a: User, user_b: User, rationale: str

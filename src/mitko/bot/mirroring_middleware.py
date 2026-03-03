@@ -60,5 +60,5 @@ class MessageMirrorMiddleware(BaseMiddleware):
         session: AsyncSession,
     ) -> None:
         await get_or_create_user(session, telegram_id, username)
-        chat = await get_or_create_chat(session, telegram_id)
-        await mirror_to_admin_thread(bot, chat, f"→ {text}", session)
+        await get_or_create_chat(session, telegram_id)
+        await mirror_to_admin_thread(bot, telegram_id, f"→ {text}", session)

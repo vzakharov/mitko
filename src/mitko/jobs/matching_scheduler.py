@@ -29,7 +29,7 @@ async def run_matching_loop() -> None:
     """
     from ..bot.bot_instance import get_bot
     from ..bot.utils import format_user_label
-    from ..db import get_chat_or_none, get_user_or_none
+    from ..db import get_user
     from ..i18n import L
     from ..services.admin_group import mirror_to_admin_thread
 
@@ -47,33 +47,26 @@ async def run_matching_loop() -> None:
 
             match result:
                 case MatchFound(match):
-                    user_a = await get_user_or_none(session, match.user_a_id)
-                    chat_a = (
-                        await get_chat_or_none(session, match.user_a_id)
-                        if user_a is not None
-                        else None
-                    )
+                    user_a = await get_user(session, match.user_a_id)
 
-                    if chat_a is not None and user_a is not None:
+                    async def mirror(message: str) -> None:
                         await mirror_to_admin_thread(
                             get_bot(),
-                            chat_a,
-                            L.admin.matching.SEARCHING.format(
-                                label=format_user_label(user_a)
-                            ),
+                            match.user_a_id,
+                            message,
                             session,
                         )
+
+                    await mirror(
+                        L.admin.matching.SEARCHING.format(
+                            label=format_user_label(user_a)
+                        )
+                    )
 
                     await session.commit()
 
                     if match.user_b_id is None:
-                        if chat_a is not None:
-                            await mirror_to_admin_thread(
-                                get_bot(),
-                                chat_a,
-                                L.admin.matching.NOT_FOUND,
-                                session,
-                            )
+                        await mirror(L.admin.matching.NOT_FOUND)
 
                         logger.info(
                             "User %s participated in round %d but no match found (no available candidates)",
@@ -83,20 +76,13 @@ async def run_matching_loop() -> None:
                         forced_round = match.matching_round
                         continue
 
-                    if chat_a is not None:
-                        user_b = await get_user_or_none(
-                            session, match.user_b_id
+                    user_b = await get_user(session, match.user_b_id)
+                    await mirror(
+                        L.admin.matching.FOUND.format(
+                            label=format_user_label(user_b),
+                            score=match.similarity_score,
                         )
-                        if user_b is not None:
-                            await mirror_to_admin_thread(
-                                get_bot(),
-                                chat_a,
-                                L.admin.matching.FOUND.format(
-                                    label=format_user_label(user_b),
-                                    score=match.similarity_score,
-                                ),
-                                session,
-                            )
+                    )
 
                     matched_in_round = True
                     await GenerationOrchestrator(session).create_generation(

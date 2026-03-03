@@ -8,12 +8,11 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..db import get_chat, get_chat_or_none
+from ..db import get_chat
 from ..models.chat import Chat
 from ..types.messages import says
 from ..utils.async_utils import Throttler
 from ..utils.collection_utils import compact
-from ..utils.typing_utils import raise_error
 
 # 1 msg/s per DM chat (Telegram limit)
 _DM_MIN_INTERVAL = 1.0
@@ -72,7 +71,7 @@ async def send_to_user(
             telegram_id, text, parse_mode=parse_mode, reply_markup=reply_markup
         )
 
-        await _mirror_outgoing(bot, telegram_id, text, session, chat)
+        await _mirror_outgoing(bot, telegram_id, text, session)
 
         return result
 
@@ -82,27 +81,10 @@ async def _mirror_outgoing(
     telegram_id: int,
     text: str,
     session: AsyncSession,
-    chat: Chat | None,
 ) -> None:
-    """Mirror an outgoing message to the admin group thread for this user."""
     from .admin_group import mirror_to_admin_thread
 
-    try:
-        chat = (
-            chat
-            or await get_chat_or_none(session, telegram_id)
-            or raise_error(
-                ValueError(f"No chat found for telegram_id={telegram_id}")
-            )
-        )
-
-        await mirror_to_admin_thread(bot, chat, f"← {text}", session)
-    except Exception as e:
-        logger.exception(
-            "Failed to mirror outgoing message for telegram_id=%d: %s",
-            telegram_id,
-            e,
-        )
+    await mirror_to_admin_thread(bot, telegram_id, f"← {text}", session)
 
 
 async def send_and_record_bot_message(

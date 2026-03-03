@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..bot.utils import format_user_label
 from ..config import SETTINGS
+from ..db import get_chat
 from ..i18n import L
 from ..utils.async_utils import Throttler
 from .chat_utils import global_throttler
@@ -63,24 +64,27 @@ async def post_to_admin(
 
 async def mirror_to_admin_thread(
     bot: Bot,
-    chat: "Chat",
+    telegram_id: int,
     text: str,
     session: AsyncSession,
 ) -> None:
-    """Post text to the admin forum topic for this chat, creating the topic if needed.
+    """Post text to the admin forum topic for this user, creating the topic if needed.
 
+    Looks up the Chat by telegram_id internally.
     Creates a named forum topic on first call and persists its message_thread_id.
     If the topic has been deleted, recreates it automatically.
     Silent failure: never raises.
     """
 
-    async def create_thread():
-        await _create_admin_thread(bot, chat, session)
-
-    async def post_to_thread():
-        await post_to_admin(bot, text, thread_id=chat.admin_thread_id)
-
     try:
+        chat = await get_chat(session, telegram_id)
+
+        async def create_thread():
+            await _create_admin_thread(bot, chat, session)
+
+        async def post_to_thread():
+            await post_to_admin(bot, text, thread_id=chat.admin_thread_id)
+
         if not chat.admin_thread_id:
             await create_thread()
         try:
@@ -90,8 +94,11 @@ async def mirror_to_admin_thread(
                 raise
             await create_thread()
             await post_to_thread()
-    except Exception as e:
-        logger.exception("Failed to mirror message to admin thread: %s", e)
+    except Exception:
+        logger.exception(
+            "Failed to mirror message to admin thread for telegram_id=%d",
+            telegram_id,
+        )
 
 
 async def _create_admin_thread(

@@ -143,8 +143,10 @@ async def test_qualification_mirrored_to_admin_thread(
     assert chat_a.id is not None  # chat was loaded correctly
 
 
-async def test_qualification_skipped_when_no_chat(db_session: AsyncSession):
-    """Admin mirror is silently skipped when user A has no Chat row."""
+async def test_qualification_always_calls_mirror_even_when_no_chat(
+    db_session: AsyncSession,
+):
+    """Admin mirror is always called; mirror_to_admin_thread handles missing chat silently."""
     user_a = await _create_user(db_session, 3001, is_seeker=True)
     user_b = await _create_user(db_session, 4002, is_provider=True)
     # Intentionally no chat created for user_a
@@ -179,4 +181,5 @@ async def test_qualification_skipped_when_no_chat(db_session: AsyncSession):
         )
         await service.execute()
 
-    mock_mirror.assert_not_awaited()
+    mock_mirror.assert_awaited_once()
+    assert mock_mirror.call_args[0][1] == user_a.telegram_id
