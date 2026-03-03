@@ -123,9 +123,19 @@ class Announcement:
 
 
 @dataclass
+class AdminMatching:
+    SEARCHING: str  # Template: {label}
+    FOUND: str  # Template: {label}, {score}
+    NOT_FOUND: str
+    QUALIFIED: str  # Template: {explanation}
+    DISQUALIFIED: str  # Template: {explanation}
+
+
+@dataclass
 class Admin:
     CHAT_INTRO: str
     announcement: Announcement
+    matching: AdminMatching
 
 
 # Abstract base class

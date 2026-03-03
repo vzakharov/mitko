@@ -4,6 +4,7 @@ from textwrap import dedent
 
 from .base import (
     Admin,
+    AdminMatching,
     AgentExamples,
     AgentExamplesChat,
     AgentExamplesRationale,
@@ -171,6 +172,13 @@ class RussianLocale(Locale):
     )
     admin = Admin(
         CHAT_INTRO="Это начало чата с {user_link}",
+        matching=AdminMatching(
+            SEARCHING="🔍 Ищу пару для {label}...",
+            FOUND="🔗 Найден кандидат {label} (схожесть: {score:.2f})",
+            NOT_FOUND="🤷 Кандидатов в этом раунде нет",
+            QUALIFIED="✅ Подходит — {explanation}",
+            DISQUALIFIED="❌ Не подходит — {explanation}",
+        ),
         announcement=Announcement(
             PREVIEW="Сейчас отправлю {count} пользователю(ям), включая: {users_preview}\n\n{text}",
             YES="Да, отправить",

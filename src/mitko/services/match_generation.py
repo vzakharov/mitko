@@ -3,12 +3,12 @@
 import logging
 from dataclasses import dataclass
 from textwrap import dedent
-from typing import Literal
 
+from ..agents.models import MatchQualificationDecision
 from ..agents.qualifier_agent import QUALIFIER_AGENT, MatchQualification
 from ..bot.keyboards import match_consent_keyboard
 from ..config import SETTINGS
-from ..db import get_chat, get_user
+from ..db import get_chat, get_chat_or_none, get_user
 from ..i18n import L
 from ..models import Match, User
 from ..services.match_intro_generation import (
@@ -16,6 +16,7 @@ from ..services.match_intro_generation import (
 )
 from ..types.messages import says
 from ..utils.typing_utils import raise_error
+from .admin_group import mirror_to_admin_thread
 from .base_generation import BaseGenerationService
 from .chat_utils import send_to_user
 from .generation_orchestrator import GenerationOrchestrator
@@ -53,6 +54,9 @@ class MatchGeneration(BaseGenerationService[MatchQualification]):
             self.match.match_rationale = explanation
             self.match.status = decision
 
+            await self._post_qualification_to_admin(
+                user_a, decision, explanation
+            )
             await self.session.commit()
 
             # Only notify users if match is qualified
@@ -94,7 +98,7 @@ class MatchGeneration(BaseGenerationService[MatchQualification]):
 
     async def _generate_match_rationale(
         self, user_a: User, user_b: User
-    ) -> tuple[str, Literal["qualified", "disqualified"]]:
+    ) -> tuple[str, MatchQualificationDecision]:
         """Generate match rationale and decision using QUALIFIER_AGENT.
 
         Returns:
@@ -130,6 +134,22 @@ Internal Notes: {user_b.private_observations or "None"}"""
         self.record_usage_and_cost(result, "match generation")
 
         return rationale.explanation, rationale.decision
+
+    async def _post_qualification_to_admin(
+        self,
+        user_a: User,
+        decision: MatchQualificationDecision,
+        explanation: str,
+    ) -> None:
+        chat_a = await get_chat_or_none(self.session, user_a.telegram_id)
+        if chat_a is None:
+            return
+        text = (
+            L.admin.matching.QUALIFIED.format(explanation=explanation)
+            if decision == "qualified"
+            else L.admin.matching.DISQUALIFIED.format(explanation=explanation)
+        )
+        await mirror_to_admin_thread(self.bot, chat_a, text, self.session)
 
     async def _create_intro_generations(
         self, user_a: User, user_b: User, rationale: str

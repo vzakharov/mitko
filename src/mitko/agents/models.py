@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+MatchQualificationDecision = Literal["qualified", "disqualified"]
+
 
 class MatchQualification(BaseModel):
     """Match evaluation result with decision and internal reasoning"""
@@ -15,7 +17,7 @@ class MatchQualification(BaseModel):
             "not user-facing messaging."
         )
     )
-    decision: Literal["qualified", "disqualified"] = Field(
+    decision: MatchQualificationDecision = Field(
         description=(
             "Match quality decision: 'qualified' means match is worthwhile and should be "
             "presented to users; 'disqualified' means match isn't strong enough."
