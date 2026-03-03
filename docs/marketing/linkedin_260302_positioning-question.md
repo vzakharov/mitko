@@ -87,5 +87,6 @@ The Boardy origin story is actually a useful asset for future posts — it's hon
 - **Broader positioning angle**: networking tool for mutually useful people, not just hiring — work is a special case of mutually beneficial collaboration (Artem Stenin)
 - **Referral angle**: people find jobs through colleagues/referrals, so "finding future colleagues" is actually a real use case (Artem Stenin)
 - **Origin**: inspired by Boardy — started as a Russian-language clone, then narrowed to hiring as the more concrete/tractable angle
+- **Media**: AI-modified photo of @vzakharov attached — likely contributed to reach (LinkedIn algo favors posts with images)
 - **What worked**: vulnerability + direct ask for help + giving concrete alternatives to react to → good engagement
 - **Bot trial**: 7 tried, all 7 clicked "Tell me more" (100% on intro hook), 5/7 reached profile creation, 2/7 dropped after /start
