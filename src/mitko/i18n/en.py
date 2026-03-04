@@ -12,6 +12,7 @@ from .base import (
     Commands,
     CommandsReset,
     CommandsStart,
+    CommandsUploadCV,
     Keyboards,
     KeyboardsActivate,
     KeyboardsMatch,
@@ -69,6 +70,27 @@ class EnglishLocale(Locale):
             ),
             SUCCESS="✅ Done, wiped it all! Now I've got amnesia about you 😄",
             CANCELLED="Alright, leaving your profile as is.",
+        ),
+        upload_cv=CommandsUploadCV(
+            PROMPT=(
+                "Send me your CV as a PDF (max 5MB), and I'll parse it "
+                "for context."
+            ),
+            SUCCESS=(
+                "Nice one — CV parsed and saved. I'll use it in our chat "
+                "from now on."
+            ),
+            PROCESSING="Got it. Parsing your PDF now...",
+            ERROR_TYPE="I can only process PDF files (`application/pdf`) for now.",
+            ERROR_SIZE="That file is too big 😅 Max allowed size is 5MB.",
+            ERROR_PARSE=(
+                "I couldn't extract readable text from this PDF. "
+                "Try a different one."
+            ),
+            ERROR_RATE_LIMIT=(
+                "Easy there, speedrunner 😄 Please wait about {hours}h "
+                "before uploading a new CV."
+            ),
         ),
     )
     keyboards = Keyboards(

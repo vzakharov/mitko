@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  db:
+    image: ankane/pgvector:latest
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: mitko
+      POSTGRES_PASSWORD: mitko
+      POSTGRES_DB: mitko
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

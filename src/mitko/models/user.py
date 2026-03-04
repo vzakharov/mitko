@@ -59,6 +59,12 @@ class User(SQLModel, table=True):
     profile_updated_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
+    cv_text: str | None = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
+    cv_uploaded_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
 
     created_at: datetime = Field(
         default_factory=datetime.now,

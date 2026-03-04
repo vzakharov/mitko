@@ -12,6 +12,7 @@ from .base import (
     Commands,
     CommandsReset,
     CommandsStart,
+    CommandsUploadCV,
     Keyboards,
     KeyboardsActivate,
     KeyboardsMatch,
@@ -69,6 +70,29 @@ class RussianLocale(Locale):
             ),
             SUCCESS="✅ Готово, стёр всё! Теперь у меня амнезия по поводу тебя 😄",
             CANCELLED="Ладно, не трогаю твой профиль.",
+        ),
+        upload_cv=CommandsUploadCV(
+            PROMPT=(
+                "Отправь мне резюме в PDF (до 5MB), и я аккуратно вытащу "
+                "текст в контекст."
+            ),
+            SUCCESS=(
+                "Круто, резюме разобрал и сохранил. Буду учитывать его в "
+                "нашей переписке."
+            ),
+            PROCESSING="Принял, разбираю PDF...",
+            ERROR_TYPE=(
+                "Сейчас поддерживаю только PDF-файлы (`application/pdf`)."
+            ),
+            ERROR_SIZE="Файл слишком большой 😅 Максимум — 5MB.",
+            ERROR_PARSE=(
+                "Не получилось извлечь читаемый текст из этого PDF. "
+                "Попробуй другой файл."
+            ),
+            ERROR_RATE_LIMIT=(
+                "Полегче, чемпион 😄 Новый CV можно загрузить примерно "
+                "через {hours}ч."
+            ),
         ),
     )
     keyboards = Keyboards(

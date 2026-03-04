@@ -19,9 +19,21 @@ class CommandsReset:
 
 
 @dataclass
+class CommandsUploadCV:
+    PROMPT: str
+    SUCCESS: str
+    PROCESSING: str
+    ERROR_TYPE: str
+    ERROR_SIZE: str
+    ERROR_PARSE: str
+    ERROR_RATE_LIMIT: str
+
+
+@dataclass
 class Commands:
     start: CommandsStart
     reset: CommandsReset
+    upload_cv: CommandsUploadCV
 
 
 @dataclass

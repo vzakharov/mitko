@@ -29,5 +29,6 @@ htmlcov/
 .env
 .env.local
 *.log
-
+.github/
+.agent-memory/
 /tmp

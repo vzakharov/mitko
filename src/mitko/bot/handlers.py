@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import math
 import uuid
 from datetime import UTC, datetime
 from uuid import UUID
@@ -24,6 +25,7 @@ from ..i18n import L
 from ..jobs.generation_processor import nudge_processor
 from ..models import Chat, Generation, User, get_db
 from ..services.chat_utils import send_and_record_bot_message
+from ..services.cv_parser import CVParserService
 from ..services.generation_orchestrator import GenerationOrchestrator
 from ..services.profiler import ProfileService
 from .activation import register_activation_handlers
@@ -48,6 +50,9 @@ register_activation_handlers(router)
 # Delay before nudging processor to allow rapid successive messages to be processed
 # (e.g., long messages split by Telegram into multiple parts)
 NUDGE_DELAY_SECONDS = 1.0
+CV_MIME_TYPE = "application/pdf"
+MAX_CV_SIZE_BYTES = 5 * 1024 * 1024
+CV_UPLOAD_RATE_LIMIT_SECONDS = 12 * 60 * 60
 
 
 async def _get_or_create_user_with_sync(
@@ -197,6 +202,82 @@ async def _delayed_nudge() -> None:
     """Delay nudge to allow rapid successive messages to be processed first."""
     await asyncio.sleep(NUDGE_DELAY_SECONDS)
     nudge_processor()
+
+
+@router.message(Command("upload_cv"))
+async def cmd_upload_cv(message: Message) -> None:
+    await message.answer(L.commands.upload_cv.PROMPT)
+
+
+@router.message(F.document)
+async def handle_cv_upload(message: Message) -> None:
+    if message.document is None:
+        return
+    if message.document.mime_type != CV_MIME_TYPE:
+        await message.answer(L.commands.upload_cv.ERROR_TYPE)
+        return
+    if (
+        message.document.file_size is not None
+        and message.document.file_size > MAX_CV_SIZE_BYTES
+    ):
+        await message.answer(L.commands.upload_cv.ERROR_SIZE)
+        return
+    assert message.from_user is not None
+
+    async for session in get_db():
+        user = await _get_or_create_user_with_sync(session, message.from_user)
+        chat = await get_or_create_chat(session, message.from_user.id)
+
+        now = datetime.now(UTC)
+        if user.cv_uploaded_at is not None:
+            uploaded_at = user.cv_uploaded_at
+            if uploaded_at.tzinfo is None:
+                uploaded_at = uploaded_at.replace(tzinfo=UTC)
+            elapsed_seconds = (now - uploaded_at).total_seconds()
+            if elapsed_seconds < CV_UPLOAD_RATE_LIMIT_SECONDS:
+                remaining_hours = math.ceil(
+                    (CV_UPLOAD_RATE_LIMIT_SECONDS - elapsed_seconds) / 3600
+                )
+                await message.answer(
+                    L.commands.upload_cv.ERROR_RATE_LIMIT.format(
+                        hours=remaining_hours
+                    )
+                )
+                return
+
+        await message.answer(L.commands.upload_cv.PROCESSING)
+        try:
+            downloaded_file = await get_bot().download(message.document)
+            if downloaded_file is None:
+                raise ValueError("Failed to download PDF")
+            cv_text = CVParserService(session).extract_text(
+                downloaded_file.read()
+            )
+        except Exception:
+            logger.exception(
+                "Failed to process CV PDF for user %d",
+                message.from_user.id,
+            )
+            await message.answer(L.commands.upload_cv.ERROR_PARSE)
+            return
+
+        user.cv_text = cv_text
+        user.cv_uploaded_at = datetime.now(UTC)
+        chat.user_prompt = f"[CV uploaded]\n\n{cv_text}"
+
+        generation = await GenerationOrchestrator(session).create_generation(
+            chat_id=chat.id
+        )
+        await session.commit()
+
+        logger.info(
+            "Stored CV for user %d and created generation %s",
+            message.from_user.id,
+            generation.id,
+        )
+
+        asyncio.create_task(_delayed_nudge())
+        await message.answer(L.commands.upload_cv.SUCCESS)
 
 
 @router.message()
